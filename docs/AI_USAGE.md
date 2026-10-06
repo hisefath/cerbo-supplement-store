@@ -37,7 +37,7 @@ An honest account of how AI was used to build this slice: what worked, where it 
   - **Broken `http://` payment links on Railway** without trusted proxies. Fix: `trustProxies`. The code review later narrowed this to scheme and IP only, so a forged `X-Forwarded-Host` can't steer the emailed link.
   - **No way to withdraw a sent link.** Fix: built `cancel`, under the same row lock as pay.
 - **Mutation testing the tests.** The full suite passed on the first run, which on money code made me *more* suspicious, not less. So I broke the code on purpose:
-  - Truncating instead of rounding the fee failed **7 tests**.
+  - Truncating instead of rounding the fee failed **7 tests** (and 8 of the final 26 when I re-ran it at the end).
   - Deleting the idempotent-replay branch failed the replay test.
   - Then I restored both.
 - **Rendering the diagrams instead of trusting them.** The AI-written sequence diagram had a `;` inside a message, which silently breaks Mermaid's parser. GitHub would have shown an error box. I only caught it by rendering all six diagrams with Mermaid 11 in the browser pane.
