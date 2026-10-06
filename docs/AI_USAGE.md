@@ -58,4 +58,31 @@ An honest account of how AI was used to build this slice: what worked, where it 
 
 ## Code review panel (after the build)
 
-_Results are appended below when the review completes._
+Five lenses (money, payment flow, security, requirements/doc truthfulness, simplicity) produced **32 findings; 15 survived** adversarial verification. All 15 are fixed, or deliberately declined with a reason.
+
+**Real bugs it found:**
+- **Duplicate orders.** A double-clicked "Send" created two orders and emailed two payment links, so the patient could be charged twice for one recommendation. Every checkout safeguard was scoped to a single order, so none of them caught it. Fixed with a per-form `request_key` (unique), the same idempotency pattern as checkout.
+- **`lines[01]` vs `lines[1]`.** Two spellings of the same product id became two lines and crashed with a 500 on the unique index. Fixed: only canonical integer keys are accepted.
+- **Audit blind spot.** A *succeeded* payment on an unpaid order (money captured but never booked) passed every check. The audit now also ties each order's stock movements to its lines.
+- **False alarms during traffic.** `ledger:verify` read without a consistent snapshot, so a checkout committing mid-audit could trip it. Fixed with one `REPEATABLE READ` transaction on Postgres.
+- **Doc claims that didn't match the code:**
+  - "`Split` asserts its invariant": it doesn't. It's true by construction.
+  - The described lock order didn't match `settle()`.
+  - "No cancellations" listed as a limitation after cancel was built.
+  - FR5 dashboard numbers had no tests.
+
+**Where the reviewers themselves were wrong, or I went beyond them:**
+- **A verifier's fix would have broken Postgres.** It suggested wrapping `verifyAll` with `SET TRANSACTION ISOLATION LEVEL …`, but Postgres only allows that as the *first* statement of the *outermost* transaction. Running the suite on Postgres (not just SQLite) caught it immediately, because every test runs inside the harness's transaction. Fixed with a `transactionLevel() === 1` guard. The money verifier later confirmed the guard is required.
+- **I found the pending-replay bug first.** While the panel was still running, I traced a path myself and found that a replayed key returning a still-*pending* payment was shown to the patient as "declined". Three reviewers flagged it later. I'd already fixed it and added a regression test.
+- **Declined: removing `shouldRenderJsonWhen` from `bootstrap/app.php`.** It's Laravel 13's own skeleton code, and deviating from the skeleton costs reviewers more than it saves.
+
+**My own mistake, caught before calling it done:** I added the `request_key` column by *editing the original migration*. Production had already run that migration, so the boot-time `migrate` would never add the column, and order creation would break. I caught it while reviewing the deploy, moved the change into a new migration, and verified the upgrade path by rebuilding the previously deployed schema, with existing rows, from git and migrating it forward. (A first attempt at that simulation misused `git stash`. Untracked files aren't stashed, so the two migrations collided. I caught that, restored the stash, and redid the simulation properly.)
+
+## Net result
+
+- **Tests:** 26 (10,173 assertions), green on SQLite *and* Postgres, locally and in GitHub Actions.
+- **Mutation checks:** two seeded bugs, each killed by the suite.
+- **Real concurrency:** 8 simultaneous payments → 1 charge, and 6 buyers for 4 units → 4 sold.
+- **Production:** an end-to-end run against the live deploy, including a double-submit and replay.
+
+The AI wrote most of the code, but every claim in these docs has been checked against something that ran.
