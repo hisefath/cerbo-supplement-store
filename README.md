@@ -9,6 +9,7 @@ A working vertical slice of a supplement store inside an EHR:
 | | |
 |---|---|
 | **Live demo** | https://supplement-store-slice.up.railway.app |
+| **Video demo** | _(link pending; script in [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md))_ |
 | **Repo (GitLab, primary)** | https://labs.gauntletai.com/sefathchowdhury/cerbo-supplement-store |
 | **Repo (GitHub mirror)** | https://github.com/hisefath/cerbo-supplement-store |
 | **Docs** | [PRD](docs/PRD.md) · [System design + diagrams](docs/SYSTEM_DESIGN.md) · [Architecture & trade-offs](docs/ARCHITECTURE.md) · [AI usage log](docs/AI_USAGE.md) · [Demo script](docs/DEMO_SCRIPT.md) · [Mermaid sources](docs/diagrams/) |
@@ -91,7 +92,7 @@ php artisan ledger:verify
 php artisan migrate:fresh --seed
 ```
 
-The last one resets the demo data. The suite also runs unchanged against Postgres, which exercises the CHECK constraints and the partial unique index:
+The last one resets the demo data. The suite also runs unchanged against Postgres, which exercises the CHECK constraints and the partial unique index. Create the database first with `createdb store_test`; the credentials below are placeholders:
 
 ```bash
 DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=store_test DB_USERNAME=postgres DB_PASSWORD=secret php artisan test
@@ -147,7 +148,7 @@ About 2,000 hand-written lines; everything else is the standard Laravel skeleton
 3. **Stripe Connect.** The provider margin becomes a transfer to the provider's connected account, and the payout batch settles `provider_payable`.
 4. **Recurring protocols**, the real volume lever for functional medicine.
 5. **Instrumenting recommendations** in the existing marketplace integrations, so "volume migrated" has a real denominator.
-6. A **load test**. Concurrency correctness is already checked by `scripts/race-check.sh`: 8 simultaneous payments → 1 charge, and 6 buyers for 4 units → 4 sold.
+6. A **load test**. Concurrency correctness is already checked by `scripts/race-check.sh`: 8 simultaneous payments → 1 charge, and 6 buyers for 4 units → 4 sold. It needs Postgres plus a multi-worker server; see the script's header for the two commands.
 
 Open product question: pure at-cost dispensing makes the payout negative (by the fee). Should the platform absorb the fee for those providers?
 

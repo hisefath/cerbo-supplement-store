@@ -1,6 +1,6 @@
 # Demo video script (about 5 minutes)
 
-Record at https://supplement-store-slice.up.railway.app, or locally with `php artisan serve --port=8100`. Run `php artisan migrate:fresh --seed` first for clean data. The script follows the brief's grading: core-flow integrity first, then judgment, then AI use.
+Record at https://supplement-store-slice.up.railway.app, where the live data works as-is. Or record locally with `php artisan serve --port=8100`, running `php artisan migrate:fresh --seed` first for clean data. The script follows the brief's grading: core-flow integrity first, then judgment, then AI use.
 
 | Time | Screen | Say |
 |---|---|---|
@@ -14,8 +14,8 @@ Record at https://supplement-store-slice.up.railway.app, or locally with `php ar
 | 3:20 | **Platform metrics** | "GMV and fee revenue come straight from the ledger. The effective rate is a hair over 75 bps because each small order rounds half-up. Weekly paid orders and active providers are the 'volume migrated' leading indicator. The books check runs live here." |
 | 3:45 | Editor: `app/Money/Split.php` | "Payout is the residual, so the invariant is exact." |
 | 3:55 | Editor: `app/Services/CheckoutService.php` | "Reserve, charge, settle. No DB lock is held across the processor call. There are three layers against double charge: the idempotency key, the row lock with a status check, and a partial unique index." |
-| 4:15 | Terminal: `php artisan test` then `php artisan ledger:verify` | "21 tests: 5,000 random carts against a rounding oracle, plus each failure path. I mutation-tested them: breaking the rounding fails 7 tests." |
+| 4:15 | Terminal: `php artisan test` then `php artisan ledger:verify` | "26 tests: 5,000 random carts against a rounding oracle, plus each failure path, on SQLite and Postgres in CI. I mutation-tested them: breaking the rounding fails 7 tests." |
 | 4:35 | `docs/AI_USAGE.md` | "AI built this with me, but I ran adversarial review panels on the design and the code, overrode some of their recommendations, and caught the AI overclaiming in my own docs. It's all logged." |
-| 4:55 | README "What's next" | "Next: a reconcile job for stuck payments, refunds as reversal entries, Stripe Connect for payouts, and recurring protocols." |
+| 4:55 | README "What's next" | "Deliberately cut: refunds, payouts, recurring orders, drafts, tax and shipping, and real auth. Next: a reconcile job for stuck payments, refunds as reversal entries, Stripe Connect for payouts, and recurring protocols." |
 
 **Tip:** if a reviewer wants to see tamper detection, `tests/Feature/OrderFlowTest.php::test_ledger_verify_catches_tampering` shifts one cent and `ledger:verify` names the order and the failed check.
