@@ -19,7 +19,7 @@
   <div class="card">
     @if ($order->status === \App\Models\Order::PAID)
       <h2 class="good">Paid ✓</h2>
-      <p>Paid {{ $order->paid_at->toDayDateTimeString() }}. Reference <code>{{ $payment?->gateway_ref }}</code>.</p>
+      <p>Paid {{ $order->paid_at->format('D, M j, Y g:i A T') }}. Reference <code>{{ $payment?->gateway_ref }}</code>.</p>
       <p class="muted"><span class="stub">Shipping stubbed</span> Your order will ship to the address above.</p>
     @elseif ($order->status === \App\Models\Order::PROCESSING)
       <meta http-equiv="refresh" content="3">

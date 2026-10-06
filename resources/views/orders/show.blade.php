@@ -6,8 +6,8 @@
 
 <div class="card">
   <p><strong>Patient:</strong> {{ $order->patient->name }} · {{ $order->patient->shipping_address }}<br>
-  <strong>Sent:</strong> {{ $order->sent_at->toDayDateTimeString() }}
-  @if ($order->paid_at) · <strong>Paid:</strong> {{ $order->paid_at->toDayDateTimeString() }} @endif</p>
+  <strong>Sent:</strong> {{ $order->sent_at->format('D, M j, Y g:i A T') }}
+  @if ($order->paid_at) · <strong>Paid:</strong> {{ $order->paid_at->format('D, M j, Y g:i A T') }} @endif</p>
   @if ($order->status === \App\Models\Order::AWAITING_PAYMENT)
     <p><span class="stub">Email stubbed</span> The patient's payment link (as emailed):
       <a href="{{ route('checkout.show', $order->checkout_token) }}" target="_blank" rel="noreferrer">open the patient checkout ↗</a></p>
@@ -39,7 +39,7 @@
   <h2>Where every cent goes</h2>
   <table style="max-width:560px">
     <tr><td>Patient pays (subtotal)</td><td class="num">@money($order->subtotal_cents)</td></tr>
-    <tr><td>→ Cost of goods, kept by Cerbo (inventory)</td><td class="num">@money($order->cogs_cents)</td></tr>
+    <tr><td>→ Cost of goods, kept by the platform (inventory)</td><td class="num">@money($order->cogs_cents)</td></tr>
     <tr><td>→ Platform fee, {{ $order->fee_bps }} bps of subtotal, rounded half-up</td><td class="num">@money($order->fee_cents)</td></tr>
     <tr><td>→ Provider payout (margin @money($order->subtotal_cents - $order->cogs_cents) − fee)</td><td class="num">@money($order->provider_payout_cents)</td></tr>
     <tr class="total"><td>COGS + fee + payout</td><td class="num">@money($order->cogs_cents + $order->fee_cents + $order->provider_payout_cents)</td></tr>
@@ -54,7 +54,7 @@
       <tr>
         <td>{{ $payment->id }}</td><td>{{ $payment->status }}</td><td class="num">@money($payment->amount_cents)</td>
         <td><code>{{ $payment->idempotency_key }}</code></td><td><code>{{ $payment->gateway_ref ?? '—' }}</code></td>
-        <td class="muted">{{ $payment->failure_reason ?? '—' }}</td><td class="muted">{{ $payment->created_at->format('M j, g:i:sa') }}</td>
+        <td class="muted">{{ $payment->failure_reason ?? '—' }}</td><td class="muted">{{ $payment->created_at->format('M j, g:i:sa T') }}</td>
       </tr>
     @empty
       <tr><td colspan="7" class="muted">No payment attempts yet.</td></tr>
@@ -88,7 +88,7 @@
   <table style="max-width:640px">
     <tr><th>Supplement</th><th class="num">Δ units</th><th>Reason</th><th>At</th></tr>
     @forelse ($order->inventoryMovements as $m)
-      <tr><td>{{ $m->product->name }}</td><td class="num">{{ $m->delta > 0 ? '+' : '' }}{{ $m->delta }}</td><td>{{ $m->reason }}</td><td class="muted">{{ $m->created_at->format('M j, g:i:sa') }}</td></tr>
+      <tr><td>{{ $m->product->name }}</td><td class="num">{{ $m->delta > 0 ? '+' : '' }}{{ $m->delta }}</td><td>{{ $m->reason }}</td><td class="muted">{{ $m->created_at->format('M j, g:i:sa T') }}</td></tr>
     @empty
       <tr><td colspan="4" class="muted">Stock is reserved at payment, so nothing has moved yet.</td></tr>
     @endforelse

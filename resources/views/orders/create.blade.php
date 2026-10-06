@@ -41,7 +41,7 @@
     <h2>Quote <span class="muted">(computed by the server; locked when you send)</span></h2>
     <table style="max-width:520px">
       <tr><td>Patient pays (order total)</td><td class="num" id="q-subtotal">—</td></tr>
-      <tr><td>Cost of goods (Cerbo keeps)</td><td class="num" id="q-cogs">—</td></tr>
+      <tr><td>Cost of goods (platform keeps)</td><td class="num" id="q-cogs">—</td></tr>
       <tr><td>Your gross margin</td><td class="num" id="q-margin">—</td></tr>
       <tr><td>Platform fee ({{ $feeBps }} bps of order total)</td><td class="num" id="q-fee">—</td></tr>
       <tr class="total"><td>Your payout</td><td class="num" id="q-payout">—</td></tr>

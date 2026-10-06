@@ -1,7 +1,7 @@
 @extends('layout')
 @section('title', 'Platform metrics')
 @section('content')
-<h1>Platform metrics <span class="muted">(Cerbo finance view, computed from the ledger)</span></h1>
+<h1>Platform metrics <span class="muted">(platform finance view, computed from the ledger)</span></h1>
 
 <div class="kpis">
   <div class="kpi"><div class="v">@money($gmv)</div><div class="l">GMV processed in-house</div></div>
@@ -42,6 +42,6 @@
       <tr><td colspan="4" class="muted">No paid orders yet.</td></tr>
     @endforelse
   </table>
-  <p class="muted">The leading indicator. In-house share of all supplement recommendations would need Cerbo's existing marketplace-integration events as the denominator.</p>
+  <p class="muted">The leading indicator. In-house share of all supplement recommendations would need the EHR's existing marketplace-integration events as the denominator.</p>
 </div>
 @endsection

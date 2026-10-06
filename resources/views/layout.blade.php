@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
 <meta name="csrf-token" content="{{ csrf_token() }}">
-<title>@yield('title', 'Supplement Store') · Cerbo partner slice</title>
+<title>@yield('title', 'Supplement Store') · demo</title>
 <style>
   :root { --fg:#1f2933; --muted:#616e7c; --line:#e4e7eb; --bg:#f6f7f9; --card:#fff; --accent:#2f6f5e; --bad:#b42318; --good:#067647; }
   * { box-sizing:border-box; }
@@ -68,5 +68,8 @@
   @if ($errors->any())<div class="flash err">@foreach ($errors->all() as $message)<div>{{ $message }}</div>@endforeach</div>@endif
   @yield('content')
 </main>
+<footer style="max-width:1120px;margin:0 auto 32px;padding:0 16px" class="muted">
+  Take-home vertical slice (partner project). Demo data only. Payments, auth, email and shipping are simulated. Not an official product and not operated by any EHR vendor.
+</footer>
 </body>
 </html>

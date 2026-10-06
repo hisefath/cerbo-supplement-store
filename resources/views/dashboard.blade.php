@@ -42,8 +42,8 @@
         <td><span class="badge {{ $order->status }}">{{ str_replace('_', ' ', $order->status) }}</span></td>
         <td class="num">@money($order->subtotal_cents)</td>
         <td class="num">@money($order->provider_payout_cents)</td>
-        <td class="muted">{{ $order->sent_at->format('M j, g:ia') }}</td>
-        <td class="muted">{{ $order->paid_at?->format('M j, g:ia') ?? '—' }}</td>
+        <td class="muted">{{ $order->sent_at->format('M j, g:ia T') }}</td>
+        <td class="muted">{{ $order->paid_at?->format('M j, g:ia T') ?? '—' }}</td>
         <td><a href="{{ route('orders.show', $order->id) }}">Audit →</a></td>
       </tr>
     @empty
@@ -54,7 +54,7 @@
 
 <div class="card">
   <h2>Inventory</h2>
-  <p class="muted">Cerbo holds the stock. Sales reserve units at payment automatically. Restocks and adjustments here are recorded as audited movements (in production this would be an ops-only permission).</p>
+  <p class="muted">The platform holds the stock. Sales reserve units at payment automatically. Restocks and adjustments here are recorded as audited movements (in production this would be an ops-only permission).</p>
   <table>
     <tr><th>Supplement</th><th>SKU</th><th class="num">Unit cost</th><th class="num">MSRP</th><th class="num">On hand</th><th>Restock (+) / adjust (−)</th></tr>
     @foreach ($products as $product)

@@ -41,6 +41,6 @@ class CheckoutController extends Controller
 
         return $payment->status === Payment::SUCCEEDED
             ? redirect()->route('checkout.show', $token)->with('status', 'Payment received. Thank you!')
-            : redirect()->route('checkout.show', $token)->with('error', "Your card was declined ({$payment->failure_reason}). You have not been charged. Please try again.");
+            : redirect()->route('checkout.show', $token)->with('error', "Your card was declined (simulated: {$payment->failure_reason}). You have not been charged. Please try again.");
     }
 }

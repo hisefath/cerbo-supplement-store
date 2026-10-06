@@ -17,7 +17,7 @@ final class FakePaymentGateway implements PaymentGateway
         $reference = 'fake_ch_'.substr(hash('sha256', $idempotencyKey), 0, 16);
 
         return $paymentMethod === self::DECLINE
-            ? new ChargeResult(false, $reference, 'card_declined (simulated)')
+            ? new ChargeResult(false, $reference, 'card_declined')
             : new ChargeResult(true, $reference);
     }
 }

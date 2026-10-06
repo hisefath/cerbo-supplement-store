@@ -29,3 +29,4 @@ Thumbs.db
 # Private decision journal (kept local for now)
 /DECISIONS.md
 /database/database.sqlite
+/.claude/
