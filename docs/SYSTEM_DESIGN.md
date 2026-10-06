@@ -11,7 +11,7 @@ How the slice is built and why. Product rules and assumptions are in [PRD.md](PR
 ## Key assumptions that shape the design
 
 - **We are merchant of record and hold inventory.** The patient pays us, we keep COGS, owe the provider their margin, and earn 75 bps.
-- **The fee is 75 bps of the order subtotal, once per order, rounded half-up, and borne by the provider.** The patient pays exactly the quoted price.
+- **The fee is `fee_bps` (75 today) of the order subtotal, once per order, rounded half-up, and borne by the provider.** The patient pays exactly the quoted price.
 - **Quotes lock at send.** Unit price, unit cost, and fee rate are copied onto the order, so later catalog changes can't move a sent order's money.
 - **Payment is the only external call in the critical path, and it is slow and unreliable in real life.** The design never holds a DB transaction open across it.
 
@@ -31,14 +31,14 @@ flowchart LR
     DC["DashboardController"]
     CC["CheckoutController"]
     PC["PlatformController"]
-    OS["OrderService<br/>validate · snapshot · quote"]
+    OS["OrderService<br/>quote · send · cancel"]
     CS["CheckoutService<br/>two-phase payment"]
     SP["Split<br/>pure money math"]
     LG["Ledger<br/>post · verify"]
   end
 
   subgraph Seams["Seams (stubbed adapters)"]
-    PG["PaymentGateway<br/>→ FakePaymentGateway"]
+    PG["PaymentGateway::charge(amount, method, key)<br/>→ FakePaymentGateway"]
     ML["Mail<br/>→ log driver"]
     FF["Fulfillment<br/>→ log line"]
   end
@@ -67,9 +67,9 @@ flowchart LR
 
 <sub>Source: [`diagrams/architecture.mmd`](diagrams/architecture.mmd)</sub>
 
-A **modular monolith**. Controllers stay thin. Two services own the domain (`OrderService` for quote and send, `CheckoutService` for pay). One pure class owns the money math (`Split`), and one owns the books (`Ledger`). Each external dependency sits behind a seam:
+A **modular monolith**. Controllers stay thin. Two services own the domain (`OrderService` for quote, send, and cancel, `CheckoutService` for pay). One pure class owns the money math (`Split`), and one owns the books (`Ledger`). Each external dependency sits behind a seam:
 
-- **Payments:** a `PaymentGateway` interface bound to `FakePaymentGateway` in the service container.
+- **Payments:** a `PaymentGateway::charge(amountCents, paymentMethod, idempotencyKey)` interface bound to `FakePaymentGateway` in the service container. Simulating a decline is just a different `paymentMethod` value, as with Stripe's test payment methods, so no test-only flag leaks into the domain.
 - **Email:** Laravel's mail facade with the `log` driver.
 - **Fulfillment:** a log line at the "order paid" point.
 - **Auth:** `ActingProvider` middleware that resolves a provider from the session.
@@ -115,7 +115,7 @@ erDiagram
     bigint id PK
     bigint provider_id FK
     bigint patient_id FK
-    string status "awaiting_payment | processing | paid"
+    string status "awaiting_payment | processing | paid | cancelled"
     string checkout_token UK "patient capability link"
     int fee_bps "rate snapshot (75)"
     int subtotal_cents "GMV"
@@ -130,7 +130,7 @@ erDiagram
     bigint order_id FK
     bigint product_id FK
     int quantity
-    int unit_price_cents "snapshot: patient-facing"
+    int unit_price_cents "snapshot: patient-facing (immutable)"
     int unit_cost_cents "snapshot: COGS at send"
   }
   PAYMENTS {
@@ -147,7 +147,7 @@ erDiagram
     bigint order_id FK
     bigint payment_id FK
     string account "processor_clearing | inventory_cogs | provider_payable | platform_fee_revenue"
-    int amount_cents "debit +, credit -, sums to 0 per payment"
+    int amount_cents "debit +, credit -, sums to 0 per payment; UNIQUE(payment_id, account)"
     timestamp created_at "append-only"
   }
   INVENTORY_MOVEMENTS {
@@ -155,7 +155,7 @@ erDiagram
     bigint product_id FK
     bigint order_id FK "nullable"
     int delta "signed"
-    string reason "restock | adjustment | sale | sale_released"
+    string reason "restock | adjustment | reserve | release"
     string actor
   }
 ```
@@ -164,14 +164,20 @@ erDiagram
 
 | Table | Role | Integrity mechanism |
 |---|---|---|
-| `products` | Catalog plus platform-owned stock | `stock_on_hand` only changes via a conditional decrement (`WHERE stock_on_hand >= qty`). Postgres `CHECK (stock_on_hand >= 0)`. |
+| `products` | Catalog plus platform-owned stock | Stock changes **only** through `Product::adjustStock()`: one atomic relative `UPDATE` plus an audit movement in the same transaction. Decrements are conditional (`WHERE stock_on_hand >= qty`, affected rows checked), so stock can't go negative. Postgres also has `CHECK (stock_on_hand >= 0)`. |
 | `orders` | Header plus **persisted split** | Split columns written once from `Split`. Postgres `CHECK (subtotal = cogs + fee + payout)` and `CHECK (payout >= 0)`. |
-| `order_lines` | **Snapshots** of price and cost at send | Never updated after send. Line math is derived (`qty × unit`), not stored twice. |
+| `order_lines` | **Snapshots** of price and cost at send | Model refuses update and delete. Line math is derived (`qty × unit`), not stored twice. The audit recomputes the split from these lines. |
 | `payments` | One row per attempt | `UNIQUE(idempotency_key)`. Partial unique index allows at most one `pending` or `succeeded` payment per order. |
-| `ledger_entries` | Double-entry postings | Append-only (model refuses update and delete). Σ = 0 per payment, asserted before insert and re-verified by `ledger:verify`. |
-| `inventory_movements` | Stock audit trail | Every stock change writes a signed movement. `ledger:verify` checks `stock_on_hand == Σ delta`. |
+| `ledger_entries` | Double-entry postings | Append-only (model refuses update and delete). `UNIQUE(payment_id, account)`, so a payment can't be posted twice. Σ = 0 per payment, asserted before insert and re-verified by `ledger:verify`. |
+| `inventory_movements` | Stock audit trail | Every stock change writes a signed movement (`restock`, `adjustment`, `reserve`, `release`). `ledger:verify` checks `stock_on_hand == Σ delta`. |
 
-Why both persisted split columns on `orders` **and** ledger rows? The columns are the **quote** the provider agreed to at send time. The ledger is the **record of money that actually moved**. Keeping both and verifying they agree is the audit: if they ever disagree, something is wrong and `ledger:verify` says which order.
+Why both persisted split columns on `orders` **and** ledger rows? The columns are the **quote** the provider agreed to at send time. The ledger is the **record of money that actually moved**. The audit does three independent comparisons, so a wrong number can't hide behind a copy of itself:
+
+1. It recomputes the split from the immutable line snapshots and the order's `fee_bps`, and compares that to the stored quote.
+2. It compares the ledger to the quote, account by account.
+3. It compares the succeeded payment to the subtotal.
+
+If any of them disagree, `ledger:verify` names the order and the check that failed.
 
 ## 3. The money split
 
@@ -188,11 +194,11 @@ flowchart LR
 
 ```
 subtotal = Σ qty × unit_price        cogs = Σ qty × unit_cost
-fee      = ⌊(subtotal × 75 + 5000) / 10000⌋       # half-up, integer-only
+fee      = ⌊(subtotal × fee_bps + 5000) / 10000⌋  # half-up, integer-only; fee_bps = 75, snapshotted per order
 payout   = subtotal − cogs − fee                  # residual → invariant holds by construction
 ```
 
-The payout is computed as the **residual**, so `subtotal == cogs + fee + payout` can never be off by a cent, no matter how the fee rounds. All arithmetic is PHP 64-bit integer math (`intdiv`); no floats anywhere.
+The payout is computed as the **residual**, so `subtotal == cogs + fee + payout` can never be off by a cent, no matter how the fee rounds. All arithmetic is PHP 64-bit integer math (`intdiv`) on `bigint` columns, with no floats anywhere. Prices enter as text and are parsed by a strict grammar (`^\$?\d{1,5}(\.\d{1,2})?$`, so at most $99,999.99) straight into cents. A unit test checks the invariant, and the fee against an independent rounding oracle, across 5,000 random carts.
 
 ## 4. Payment flow (the core)
 
@@ -205,34 +211,36 @@ sequenceDiagram
   participant DB as Database
   participant PG as PaymentGateway (fake)
 
-  Patient->>CC: POST /pay/{token} (idempotency_key from form)
-  CC->>CS: pay(order, key, simulateDecline?)
+  Patient->>CC: POST /pay/{token} (payment_method, idempotency_key minted by GET)
+  CC->>CS: pay(order, paymentMethod, key)
 
   Note over CS,DB: Phase 1: reserve (short DB transaction)
   CS->>DB: BEGIN, SELECT order FOR UPDATE
-  alt payment with this key already exists
-    CS-->>CC: replay stored result (no second charge)
+  alt a payment with this key already exists (same order)
+    CS-->>CC: replay stored outcome (no second charge)
   else order.status != awaiting_payment
-    CS-->>CC: reject (already paid or in flight)
+    CS-->>CC: reject (paid, cancelled, or already in flight)
   else
-    CS->>DB: UPDATE products SET stock = stock - qty WHERE stock >= qty (per line)
-    CS->>DB: INSERT payment(pending), INSERT movements(sale), order → processing
+    CS->>DB: per line, by product id: UPDATE stock = stock - qty WHERE stock >= qty, plus movement(reserve)
+    CS->>DB: INSERT payment(pending), order → processing
     CS->>DB: COMMIT
   end
 
   Note over CS,PG: Phase 2: charge (no DB transaction held open)
-  CS->>PG: charge(amount_cents, idempotency_key)
+  CS->>PG: charge(amount_cents, payment_method, idempotency_key)
   PG-->>CS: ChargeResult(succeeded | declined, ref)
+  Note over CS,PG: Exception or timeout = outcome unknown: payment stays pending, order stays processing (ledger:verify flags it)
 
   Note over CS,DB: Phase 3: settle (short DB transaction)
+  CS->>DB: BEGIN, lock order, lock payment (proceed only if still pending)
   alt succeeded
     CS->>DB: payment → succeeded, order → paid (paid_at)
-    CS->>DB: INSERT 4 ledger_entries (asserted Σ = 0 and = order split)
+    CS->>DB: INSERT 4 ledger_entries (Σ = 0 asserted; UNIQUE(payment_id, account))
   else declined
-    CS->>DB: payment → failed, stock += qty, movements(sale_released), order → awaiting_payment
+    CS->>DB: payment → failed, stock += qty with movement(release), order → awaiting_payment
   end
   CS->>DB: COMMIT
-  CC-->>Patient: receipt or "payment declined, try again"
+  CC-->>Patient: redirect to GET /pay/{token}: receipt, or "declined, try again" with a fresh key
 ```
 
 <sub>Source: [`diagrams/payment-sequence.mmd`](diagrams/payment-sequence.mmd)</sub>
@@ -243,6 +251,13 @@ sequenceDiagram
 2. **Charge.** Call the gateway with the **same idempotency key**, with no transaction open. Real processors take hundreds of ms to seconds; holding row locks across that would serialize checkout and risk lock timeouts.
 3. **Settle.** In one DB transaction: on success, mark the payment and order paid and post the ledger. On decline, mark the payment failed, release stock (with compensating movements), and reopen the order for retry.
 
+**Idempotency key lifecycle.** One key = one payment attempt:
+
+- `GET /pay/{token}` mints a fresh UUID into the form on every render.
+- Every `POST` (success, decline, or rejection) redirects back to that `GET` (post/redirect/get), so a retry after a decline carries a new key.
+- A re-submitted key (double-click, refresh of the POST) replays the stored outcome, *including a decline*. So a double-click on a declined card never fires a second charge.
+- Keys are `UNIQUE` globally, and a key that belongs to another order is rejected.
+
 **Double-pay protections, layered:**
 
 | Scenario | What stops it |
@@ -252,7 +267,9 @@ sequenceDiagram
 | A bug that skips the above | Partial unique index: at most one `pending`/`succeeded` payment per order, enforced by the DB |
 | Gateway retry | The gateway receives the idempotency key, as Stripe and others support |
 
-**Known gap (documented, not built):** if the process dies between phase 2 and phase 3, the order stays in `processing` with a `pending` payment. The fix is a reconcile job that looks up `pending` payments older than N minutes and asks the gateway for the charge by idempotency key.
+**Gateway contract.** `declined` means a definitive decline only. An exception or timeout means the outcome is *unknown*. In that case it propagates, and the payment stays `pending` with the order in `processing`. It is never mapped to "declined", because releasing stock for a charge that actually went through is worse than waiting.
+
+**Known gap (detected, not auto-fixed):** the same `pending`/`processing` state results if the process dies between phase 2 and phase 3. `ledger:verify` flags any payment `pending` for more than 15 minutes. The fix is a reconcile job that asks the gateway for the charge by idempotency key and runs the normal settle step.
 
 ## 5. Order lifecycle
 
@@ -261,16 +278,18 @@ stateDiagram-v2
   [*] --> awaiting_payment: provider sends order<br/>(prices, costs, fee_bps snapshotted; link issued)
   awaiting_payment --> processing: patient pays<br/>(stock reserved, payment pending)
   processing --> paid: charge succeeded<br/>(ledger posted)
-  processing --> awaiting_payment: charge declined<br/>(stock released, can retry)
+  processing --> awaiting_payment: charge declined<br/>(stock released, retry allowed)
+  awaiting_payment --> cancelled: provider cancels<br/>(link stops working)
   paid --> [*]
+  cancelled --> [*]
   note right of paid
-    Next (out of scope): fulfilled, refunded (reversal entries), cancelled
+    Next (out of scope): fulfilled, refunded (reversal entries)
   end note
 ```
 
 <sub>Source: [`diagrams/order-state.mmd`](diagrams/order-state.mmd)</sub>
 
-Transitions happen only inside `CheckoutService`. Each is guarded by the current status read under a row lock, so an order can't be paid twice or settled from the wrong state.
+Transitions happen only inside `CheckoutService` and `OrderService::cancel`. Each is guarded by the current status read under the same order row lock, so an order can't be paid twice, settled from the wrong state, or cancelled while a payment is in flight. Lock order is always the order row, then products by ascending id, then the payment row, which avoids deadlocks between concurrent checkouts.
 
 ## 6. Auditability
 
@@ -291,4 +310,19 @@ flowchart LR
 
 <sub>Source: [`diagrams/deployment.mmd`](diagrams/deployment.mmd)</sub>
 
-A single Docker image (FrankenPHP + Laravel) on Railway with managed Postgres. The container runs migrations and an idempotent demo seed on boot. Local dev and the default test run use SQLite (zero setup). The suite also runs against Postgres (`DB_CONNECTION=pgsql`) so the production engine's locks and constraints are exercised.
+A single Docker image (FrankenPHP + Laravel) runs on Railway with managed Postgres.
+
+**On boot,** the container runs migrations and then the demo seed. The seed is a no-op unless the DB is empty. It creates stock, orders, and payments through the real services, so the demo data passes `ledger:verify` like live data.
+
+**Production settings:**
+- `APP_ENV=production` and `APP_DEBUG=false`.
+- `APP_KEY` lives only in Railway variables.
+- `trustProxies('*')`, because Railway terminates TLS at its edge and generated payment links must be `https`.
+- Secure session cookies.
+
+**Engines.** Local dev and the default test run use SQLite (zero setup). The suite also runs unchanged against Postgres (`DB_CONNECTION=pgsql …`), which exercises the production engine's CHECK constraints and partial unique index.
+
+**What the tests don't cover.** Race guards are tested *deterministically*, not by real concurrency, because a single-process test can't create lock contention. The tests cover:
+- a pay attempt against an order already `processing` is rejected with no side effects;
+- a second live payment row is rejected by the database index;
+- a replayed key is never charged twice.

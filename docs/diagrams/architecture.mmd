@@ -11,14 +11,14 @@ flowchart LR
     DC["DashboardController"]
     CC["CheckoutController"]
     PC["PlatformController"]
-    OS["OrderService<br/>validate · snapshot · quote"]
+    OS["OrderService<br/>quote · send · cancel"]
     CS["CheckoutService<br/>two-phase payment"]
     SP["Split<br/>pure money math"]
     LG["Ledger<br/>post · verify"]
   end
 
   subgraph Seams["Seams (stubbed adapters)"]
-    PG["PaymentGateway<br/>→ FakePaymentGateway"]
+    PG["PaymentGateway::charge(amount, method, key)<br/>→ FakePaymentGateway"]
     ML["Mail<br/>→ log driver"]
     FF["Fulfillment<br/>→ log line"]
   end

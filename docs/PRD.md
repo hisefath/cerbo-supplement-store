@@ -22,7 +22,7 @@ Inside the EHR, a provider can recommend supplements to a patient and set the pr
 
 ### Non-goals (this slice)
 
-Real payment processing, auth, email, and shipping. Catalog browsing, search, imagery, and styling. Tax, shipping cost, and compliance. International or multi-currency. Warehouse modeling. Recurring protocols or auto-refill, refunds, and provider payouts are deferred to "next" (§10).
+Real payment processing, auth, email, and shipping. Catalog browsing, search, imagery, and styling. Tax, shipping cost, and compliance. International or multi-currency. Warehouse modeling. Recurring protocols or auto-refill, refunds, and provider payouts are deferred to "next" (§10). Cancelling an unpaid order *is* built, because a sent link has to be withdrawable.
 
 ## 3. Users and jobs to be done
 
@@ -34,7 +34,7 @@ Real payment processing, auth, email, and shipping. Catalog browsing, search, im
 
 ## 4. Core flow (happy path)
 
-1. A provider opens **New order** for one of *their* patients and selects one or more supplements, a quantity, and a **patient-facing unit price** for each. They can type a price or a markup %; the price is what gets stored.
+1. A provider opens **New order** for one of *their* patients and selects one or more supplements, a quantity, and a **patient-facing unit price** for each. They can type the price, or enter a whole-number **markup % on cost** that fills the price in. The price is the only thing submitted and stored.
 2. A **live quote** shows the money split for the whole order: subtotal, cost of goods (COGS), 75 bps fee, and the provider's payout. It is computed server-side by the same code that will post the ledger.
 3. The provider sends the order. Prices and costs are **snapshotted** onto the order lines; the quote is now locked. The patient gets a **unique payment link** (email is stubbed and logged).
 4. The patient opens the link and sees the provider, the items, the prices, and the total. They do **not** see cost or margin. They pay (the payment step is simulated).
@@ -45,11 +45,11 @@ Real payment processing, auth, email, and shipping. Catalog browsing, search, im
 
 | # | Requirement (from brief) | Acceptance criteria |
 |---|---|---|
-| FR1 | Provider assembles an order: ≥1 supplement, sets patient-facing price (or margin) per item | Can add N lines with qty and price. A markup % helper fills in the price. Validation: qty 1–100, unit price ≥ unit cost, provider payout ≥ $0. A provider can only order for their own patients. |
-| FR2 | Patient can pay (stubbed) | A patient link shows the order and a Pay button. A simulated decline path exists. Paying twice (double-click, refresh, two tabs) never charges twice or posts twice. |
+| FR1 | Provider assembles an order: ≥1 supplement, sets patient-facing price (or margin) per item | Can add N lines with qty and price. A markup-on-cost % helper fills the price; the live quote shows each line's margin and the order's payout. Validation: qty 1–100 and ≤ current stock (advisory; stock is reserved at payment); price matches `^\$?\d{1,5}(\.\d{1,2})?$`; unit price ≥ unit cost; provider payout ≥ $0. A provider can only order for their own patients (anything else is a 404). |
+| FR2 | Patient can pay (stubbed) | A patient link shows the order and a Pay button. A simulated decline path exists, and after a decline a retry from the reloaded page succeeds. Paying twice (double-click, refresh, two tabs) never charges or posts twice. If any line is out of stock at pay time, nothing changes: no charge, no payment row, no stock movement. Cancelled orders can't be paid. |
 | FR3 | Compute and persist the split: COGS, provider margin, 75 bps fee | Persisted on the order (`subtotal = cogs + fee + payout`, exactly, in integer cents) and as ledger entries at payment. |
 | FR4 | Split is correct and auditable | The order audit page shows lines, snapshots, the payment record, the ledger entries, and automated checks (ledger balances, ledger matches order, payment matches total). `php artisan ledger:verify` re-checks every paid order and every product's stock. |
-| FR5 | Provider dashboard: what's been sold, update inventory | Shows KPIs, units and revenue by product, recent orders, and stock on hand. A restock or adjust form writes an audited inventory movement. Sales decrement stock automatically. |
+| FR5 | Provider dashboard: what's been sold, update inventory | **Earnings** = Σ `provider_payout_cents` of paid orders, i.e. margin net of the fee (the brief's "provider margin"). The **sold-by-product** table comes from the line snapshots of *paid* orders: units, patient sales, and gross margin before the fee. The fee is charged per order, so it isn't allocated to products. The table also lists recent orders and stock on hand. A restock or adjust form (signed delta between −1000 and +1000, never below zero) writes an audited inventory movement. Sales reserve stock automatically. |
 
 ## 6. Money rules (the contract)
 
@@ -60,7 +60,7 @@ For an order with lines `(qty, unit_price, unit_cost)`:
 ```
 subtotal (GMV)   = Σ qty × unit_price                 # what the patient pays
 cogs             = Σ qty × unit_cost                  # retained by platform (we own the inventory)
-platform_fee     = round_half_up(subtotal × 75 / 10_000)   # 75 bps of the transaction, once per order
+platform_fee     = round_half_up(subtotal × fee_bps / 10_000)   # fee_bps = 75, snapshotted per order
 provider_payout  = subtotal − cogs − platform_fee     # provider's margin, net of the fee
 invariant:  subtotal == cogs + platform_fee + provider_payout   (exact, by construction)
 ```
@@ -93,7 +93,7 @@ invariant:  subtotal == cogs + platform_fee + provider_payout   (exact, by const
 | A3 | **The provider bears the fee** (it comes out of their margin). The patient pays exactly the quoted price. | The patient price stays what the provider told them, which mirrors marketplace norms (e.g. an application fee on a connected-account charge). The platform's take is COGS recovery plus the fee. |
 | A4 | Unit price must be ≥ unit cost, and order payout must be ≥ $0. | This prevents negative payouts, which would mean the provider owes the platform. Consequence: pure at-cost dispensing (zero markup) is blocked by the fee. **Open question for Cerbo**: should the platform absorb the fee for at-cost providers? |
 | A5 | Price, cost, and fee rate (`fee_bps`) are **snapshotted** when the order is sent. | The provider's quoted payout must not change if catalog cost or the fee rate changes later, and historical orders stay reproducible. |
-| A6 | Stock is **reserved at payment time** (not at quote) with a conditional decrement, and released if the charge fails. | Unpaid links shouldn't lock up inventory, and oversell is impossible because the decrement only succeeds if stock ≥ qty. |
+| A6 | Stock is **reserved at payment time** (not at quote) with a conditional decrement (`reserve` movement), and released if the charge fails (`release` movement). | Unpaid links shouldn't lock up inventory, and oversell is impossible because the decrement only succeeds if stock ≥ qty. |
 | A7 | One full payment per order. No partial or split-tender payments. | That's the simplest model that covers the flow. |
 | A8 | Inventory is platform-wide. The dashboard's "update inventory" = restock or adjust with an audit trail. | FR5 asks for it. In production this would be an ops-only permission, because Cerbo, not the provider, holds the stock. |
 | A9 | A provider sees and orders only for their own patients. Patients reach an order only through its unguessable link. | Authorization is enforced even though authentication is stubbed. |
@@ -103,7 +103,7 @@ invariant:  subtotal == cogs + platform_fee + provider_payout   (exact, by const
 
 | External | Stub | Seam for the real thing |
 |---|---|---|
-| Payments | `FakePaymentGateway`: approves by default; the "Simulate decline" button declines | `PaymentGateway` interface: `charge(amountCents, idempotencyKey)`. Swap for Stripe (Connect: application fee + transfer to provider). |
+| Payments | `FakePaymentGateway`: approves `pm_fake_visa` and declines `pm_fake_declined` (the "Simulate a declined card" button). No card fields exist anywhere. | `PaymentGateway` interface: `charge(amountCents, paymentMethod, idempotencyKey)`. Swap for Stripe (Connect: application fee + transfer to provider). |
 | Auth | "Acting as" provider switcher (session); patient access via random 40-char token link | Middleware that resolves the current provider. Swap for the EHR's real session or SSO. |
 | Email/SMS | Laravel `log` mailer: the payment link email is written to the log, and the link is shown in the UI | `MAIL_MAILER` env var. Swap for SES or Postmark. |
 | Shipping/fulfillment | A log line on payment | An "order paid" hook point in `CheckoutService`. Swap for a 3PL or fulfillment queue. |

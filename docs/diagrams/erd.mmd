@@ -34,7 +34,7 @@ erDiagram
     bigint id PK
     bigint provider_id FK
     bigint patient_id FK
-    string status "awaiting_payment | processing | paid"
+    string status "awaiting_payment | processing | paid | cancelled"
     string checkout_token UK "patient capability link"
     int fee_bps "rate snapshot (75)"
     int subtotal_cents "GMV"
@@ -49,7 +49,7 @@ erDiagram
     bigint order_id FK
     bigint product_id FK
     int quantity
-    int unit_price_cents "snapshot: patient-facing"
+    int unit_price_cents "snapshot: patient-facing (immutable)"
     int unit_cost_cents "snapshot: COGS at send"
   }
   PAYMENTS {
@@ -66,7 +66,7 @@ erDiagram
     bigint order_id FK
     bigint payment_id FK
     string account "processor_clearing | inventory_cogs | provider_payable | platform_fee_revenue"
-    int amount_cents "debit +, credit -, sums to 0 per payment"
+    int amount_cents "debit +, credit -, sums to 0 per payment; UNIQUE(payment_id, account)"
     timestamp created_at "append-only"
   }
   INVENTORY_MOVEMENTS {
@@ -74,6 +74,6 @@ erDiagram
     bigint product_id FK
     bigint order_id FK "nullable"
     int delta "signed"
-    string reason "restock | adjustment | sale | sale_released"
+    string reason "restock | adjustment | reserve | release"
     string actor
   }

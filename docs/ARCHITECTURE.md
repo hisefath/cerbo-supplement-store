@@ -21,7 +21,7 @@ This is the companion to [SYSTEM_DESIGN.md](SYSTEM_DESIGN.md), which has the dia
 ## Concepts the design relies on
 
 ### 1. Integer minor units, basis points, explicit rounding
-Money is stored and computed as **integer cents** (`int`, 64-bit). Floats can't represent 0.1 exactly, and errors compound across sums. The fee rate is an **integer in basis points** (75 = 0.75%), so `fee = intdiv(subtotal × 75 + 5000, 10000)` is exact integer math with **round-half-up** written into the formula. Prices entered as text ("24.99") are parsed with a strict regex straight into cents and never pass through a float.
+Money is stored and computed as **integer cents** (`int`, 64-bit). Floats can't represent 0.1 exactly, and errors compound across sums. The fee rate is an **integer in basis points** (`fee_bps` = 75 = 0.75%, snapshotted per order), so `fee = intdiv(subtotal × fee_bps + 5000, 10000)` is exact integer math with **round-half-up** written into the formula. Prices entered as text ("24.99") are parsed with a strict grammar (`^\$?\d{1,5}(\.\d{1,2})?$`) straight into cents and never pass through a float. Columns are `bigint`. The one float in the UI is the markup-% helper, and it only *fills the price field*: the server only ever sees, validates, and stores the price string.
 
 ### 2. Invariants by construction
 `provider_payout = subtotal − cogs − fee` is computed as the **residual**, so `subtotal = cogs + fee + payout` holds by construction and can't be broken by rounding. Rounding error has to land somewhere, and this puts it deterministically in one place: the provider's payout, by at most ½¢. That's documented, not hidden.
@@ -41,10 +41,12 @@ Each successful payment posts entries whose amounts **sum to zero**: debit `proc
 `awaiting_payment → processing → paid`, with `processing → awaiting_payment` on decline. Every transition reads the current status **under a row lock** and refuses if it's not the expected one (compare-and-set). This turns "two requests raced" from a data-corruption bug into a rejected request.
 
 ### 6. Pessimistic locking vs optimistic
-Checkout uses **pessimistic** row locks (`SELECT … FOR UPDATE`) on the order, held only for the milliseconds of the reserve and settle phases. Optimistic concurrency (a version column, retry on conflict) would also work, but checkout contention per order is near zero and the lock code is simpler to reason about. Stock uses an **atomic conditional update** (`UPDATE … SET stock = stock − q WHERE stock >= q`, check affected rows), so oversell is impossible without locking the product row at all.
+Checkout uses **pessimistic** row locks (`SELECT … FOR UPDATE`) on the order, held only for the milliseconds of the reserve and settle phases. Optimistic concurrency (a version column, retry on conflict) would also work, but checkout contention per order is near zero and the lock code is simpler to reason about. Stock uses an **atomic conditional update** (`UPDATE … SET stock = stock − q WHERE stock >= q`, check affected rows), so oversell is impossible without a separate read-then-write. **Lock order** is always: order row, then products by ascending id, then payment row. Two checkouts that share products therefore can't deadlock.
 
 ### 7. Idempotency keys
-The pay form carries a server-generated key. The key is `UNIQUE` on `payments`, and the same key is passed to the gateway. A retry of the *same* attempt (double-click, network retry, refresh) replays the stored outcome instead of charging again. This is the standard Stripe-style contract and the one that matters most in payments: **at-least-once delivery + idempotent handling = effectively exactly-once**.
+The pay form carries a server-minted key: **one key = one attempt**. Each render of the checkout page mints a new key, and every POST redirects back to that page, so a retry after a decline is a new attempt. The key is `UNIQUE` on `payments`, scoped to its order, and passed to the gateway. A retry of the *same* attempt (double-click, network retry, refresh) replays the stored outcome, decline included, instead of charging again. This is the standard Stripe-style contract and the one that matters most in payments: **at-least-once delivery + idempotent handling = effectively exactly-once**.
+
+*Why keep it when the order lock already blocks a second payment?* The lock stops *different* attempts from racing. The key makes the *same* attempt safe to repeat. Without it, a double-click on a declined card would fire a second charge attempt, because by then the order is back to `awaiting_payment`. A client whose response got lost (mobile, an EHR integration) also needs it to retry safely. A design reviewer suggested cutting it. I kept it for these two reasons.
 
 ### 8. Never hold a DB transaction across a network call
 A real payment call takes 300 ms to several seconds and can hang. Holding row locks or a transaction across it ties up connections and serializes checkout. So payment is split into **reserve (txn) → charge (no txn) → settle (txn)**. This is a small saga with a compensating action (release stock) on failure. The cost is an intermediate `processing` state that needs a **reconcile job** for crashes mid-flight. That's documented as the known gap.
@@ -56,7 +58,7 @@ Stock is decremented at **reserve** (before charging) and released on decline. T
 
 ### 10. Ports and adapters (seams)
 External systems sit behind boundaries the app owns:
-- `PaymentGateway` is an interface bound in the service container. Tests bind a declining fake, and production would bind Stripe.
+- `PaymentGateway::charge(amountCents, paymentMethod, idempotencyKey)` is an interface bound in the service container. The fake declines based on the payment method, as Stripe test methods do, so no test flag reaches the domain. Tests bind a call-counting spy, and production would bind Stripe.
 - Mail goes through Laravel's mailer, so the driver is a config value.
 - Auth is one middleware that answers "who is the acting provider".
 
@@ -91,7 +93,9 @@ Each guarantee is enforced at more than one layer:
 | Payment flow | Reserve → charge → settle | One transaction around the gateway call | Never hold locks across network I/O. Costs a `processing` state plus a reconcile job (documented). |
 | Patient access | Random token column | Laravel signed URLs | A DB token can be revoked or rotated, and is the same mechanism for email and SMS. Signed URLs can't be revoked without expiry. |
 | Live quote | Server endpoint reusing `Split` | Re-implement split in JS | One implementation of money math. A JS copy would drift. |
-| Order drafts / cancel | Not built | Draft, cancel, refund states | Not needed to prove the core flow. Listed as next. |
+| Order drafts / cancel / refund | Cancel built; drafts and refunds not | Full lifecycle | A sent link must be withdrawable, and cancel takes the same row lock as pay, so they can't both win. Drafts and refunds are listed as next. |
+| Markup helper | Kept (markup on cost, whole %) | Price-only input (two reviewers suggested it) | The brief says "price (or margin)". The helper only fills the price field; the live quote shows margin and payout from the server. |
+| Movements on checkout | `reserve` / `release` movements | Only log manual adjustments (a reviewer suggested it) | Then *every* stock change goes through one method with an audit row, and the stock invariant is just `stock == Σ delta`. |
 | Ledger immutability | Model guard (+ prod: revoke UPDATE/DELETE) | DB triggers | Triggers differ between SQLite and Postgres. A DB role grant is the real prod control. |
 
 ## Known limitations (honest list)
@@ -100,4 +104,6 @@ Each guarantee is enforced at more than one layer:
 - **No refunds, payouts, cancellations, or recurring orders.** The ledger is shaped for them as reversal and settlement entries.
 - **Inventory editing sits on the provider dashboard** because FR5 asks for it. In production it would be an ops-only role.
 - **SQLite ignores `FOR UPDATE`.** It serializes writers globally instead (`transaction_mode = IMMEDIATE`), which is correct but coarse. Postgres is the engine of record.
-- **Stubbed auth** means anyone with the demo URL can act as a demo provider. Demo data only.
+- **Stubbed auth** means anyone with the demo URL can act as a demo provider. `/platform` (the finance view) is unauthenticated on the demo. Demo data only.
+- **Race tests are deterministic, not concurrent.** They simulate the in-flight state and hit the DB indexes directly. A real concurrent soak test against Postgres is next.
+- **Times display in UTC.** Per-practice time zones would come from the EHR.

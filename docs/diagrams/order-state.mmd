@@ -2,8 +2,10 @@ stateDiagram-v2
   [*] --> awaiting_payment: provider sends order<br/>(prices, costs, fee_bps snapshotted; link issued)
   awaiting_payment --> processing: patient pays<br/>(stock reserved, payment pending)
   processing --> paid: charge succeeded<br/>(ledger posted)
-  processing --> awaiting_payment: charge declined<br/>(stock released, can retry)
+  processing --> awaiting_payment: charge declined<br/>(stock released, retry allowed)
+  awaiting_payment --> cancelled: provider cancels<br/>(link stops working)
   paid --> [*]
+  cancelled --> [*]
   note right of paid
-    Next (out of scope): fulfilled, refunded (reversal entries), cancelled
+    Next (out of scope): fulfilled, refunded (reversal entries)
   end note
