@@ -328,7 +328,11 @@ A single Docker image (FrankenPHP + Laravel) runs on Railway with managed Postgr
 
 **Engines.** Local dev and the default test run use SQLite (zero setup). The suite also runs unchanged against Postgres (`DB_CONNECTION=pgsql …`), which exercises the production engine's CHECK constraints and partial unique index.
 
-**What the tests don't cover.** Race guards are tested *deterministically*, not by real concurrency, because a single-process test can't create lock contention. The tests cover:
+**What PHPUnit doesn't cover.** Race guards are tested *deterministically* in PHPUnit, because a single-process test can't create lock contention. The deterministic tests cover:
 - a pay attempt against an order already `processing` is rejected with no side effects;
 - a second live payment row is rejected by the database index;
 - a replayed key is never charged twice.
+
+Real contention is exercised separately by `scripts/race-check.sh`, which runs concurrent requests against Postgres with 8 PHP workers:
+- 8 simultaneous payments for one order → 1 payment row, 1 ledger posting.
+- 6 simultaneous payments for 4 units of stock → exactly 4 paid, stock 0, `ledger:verify` OK.

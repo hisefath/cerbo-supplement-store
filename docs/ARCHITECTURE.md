@@ -105,5 +105,9 @@ Each guarantee is enforced at more than one layer:
 - **Inventory editing sits on the provider dashboard** because FR5 asks for it. In production it would be an ops-only role.
 - **SQLite ignores `FOR UPDATE`.** It serializes writers globally instead (`transaction_mode = IMMEDIATE`), which is correct but coarse. Postgres is the engine of record.
 - **Stubbed auth** means anyone with the demo URL can act as a demo provider. `/platform` (the finance view) is unauthenticated on the demo. Demo data only.
-- **Race tests are deterministic, not concurrent.** They simulate the in-flight state and hit the DB indexes directly. A real concurrent soak test against Postgres is next.
+- **Concurrency is checked by a script, not in CI.** The PHPUnit race tests are deterministic: they simulate the in-flight state and hit the DB indexes directly. `scripts/race-check.sh` runs real concurrent requests against Postgres with 8 PHP workers:
+  - 8 simultaneous payments for one order → exactly 1 payment and 1 posting.
+  - 6 simultaneous payments for a 4-unit product → exactly 4 paid, stock 0, books reconcile.
+
+  The script is run by hand and isn't a load test.
 - **Times display in UTC.** Per-practice time zones would come from the EHR.

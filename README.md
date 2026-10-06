@@ -146,7 +146,7 @@ About 2,000 hand-written lines; everything else is the standard Laravel skeleton
 3. **Stripe Connect.** The provider margin becomes a transfer to the provider's connected account, and the payout batch settles `provider_payable`.
 4. **Recurring protocols**, the real volume lever for functional medicine.
 5. **Instrumenting recommendations** in the existing marketplace integrations, so "volume migrated" has a real denominator.
-6. A **concurrent soak test** on Postgres.
+6. A **load test**. Concurrency correctness is already checked by `scripts/race-check.sh`: 8 simultaneous payments → 1 charge, and 6 buyers for 4 units → 4 sold.
 
 Open product question: pure at-cost dispensing makes the payout negative (by the fee). Should the platform absorb the fee for those providers?
 
