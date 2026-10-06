@@ -188,6 +188,17 @@ class OrderFlowTest extends TestCase
         $this->assertBooksReconcile();
     }
 
+    public function test_replaying_a_key_whose_attempt_is_still_pending_reports_processing_not_declined(): void
+    {
+        $order = $this->sendOrder();
+        $key = (string) Str::uuid();
+        Payment::create(['order_id' => $order->id, 'idempotency_key' => $key, 'amount_cents' => 6399, 'status' => Payment::PENDING]);
+        Order::whereKey($order->id)->update(['status' => Order::PROCESSING]); // first click is mid-charge
+
+        $this->pay($order, key: $key)->assertSessionHas('status', 'Your payment is being processed.');
+        $this->get("/pay/{$order->checkout_token}")->assertSee('Payment in progress');
+    }
+
     public function test_a_second_attempt_on_a_paid_order_is_rejected(): void
     {
         $spy = $this->spyGateway();

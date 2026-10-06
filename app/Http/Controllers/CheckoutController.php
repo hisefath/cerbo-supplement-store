@@ -39,8 +39,11 @@ class CheckoutController extends Controller
             return redirect()->route('checkout.show', $token)->with('error', $e->getMessage());
         }
 
-        return $payment->status === Payment::SUCCEEDED
-            ? redirect()->route('checkout.show', $token)->with('status', 'Payment received. Thank you!')
-            : redirect()->route('checkout.show', $token)->with('error', "Your card was declined (simulated: {$payment->failure_reason}). You have not been charged. Please try again.");
+        // A replayed key can return an attempt that is still pending (double-click while the first is charging).
+        return redirect()->route('checkout.show', $token)->with(...match ($payment->status) {
+            Payment::SUCCEEDED => ['status', 'Payment received. Thank you!'],
+            Payment::FAILED => ['error', "Your card was declined (simulated: {$payment->failure_reason}). You have not been charged. Please try again."],
+            default => ['status', 'Your payment is being processed.'],
+        });
     }
 }
