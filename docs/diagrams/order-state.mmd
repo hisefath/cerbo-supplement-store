@@ -1,5 +1,5 @@
 stateDiagram-v2
-  [*] --> awaiting_payment: provider sends order<br/>(prices, costs, fee_bps snapshotted; link issued)
+  [*] --> awaiting_payment: provider sends order<br/>(prices, costs, fee_bps snapshotted, link issued)
   awaiting_payment --> processing: patient pays<br/>(stock reserved, payment pending)
   processing --> paid: charge succeeded<br/>(ledger posted)
   processing --> awaiting_payment: charge declined<br/>(stock released, retry allowed)

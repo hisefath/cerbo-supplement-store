@@ -1,45 +1,51 @@
-flowchart LR
+flowchart TB
   subgraph Clients
+    direction LR
     PB["Provider<br/>(inside the EHR)"]
     PT["Patient<br/>(payment link)"]
     OPS["Platform / finance"]
   end
 
   subgraph App["Laravel monolith (one deployable)"]
-    MW["ActingProvider middleware<br/>(stubbed auth)"]
-    OC["OrderController"]
-    DC["DashboardController"]
-    CC["CheckoutController"]
-    PC["PlatformController"]
-    OS["OrderService<br/>quote · send · cancel"]
-    CS["CheckoutService<br/>two-phase payment"]
-    SP["Split<br/>pure money math"]
-    LG["Ledger<br/>post · verify"]
+    direction TB
+    subgraph HTTP["HTTP layer (thin)"]
+      direction LR
+      MW["ActingProvider middleware<br/>(stubbed auth, real scoping)"]
+      OC["OrderController"]
+      DC["DashboardController"]
+      CC["CheckoutController"]
+    end
+    subgraph Domain["Domain"]
+      direction LR
+      OS["OrderService<br/>quote · send · cancel"]
+      CS["CheckoutService<br/>reserve → charge → settle"]
+      SP["Split<br/>pure money math"]
+      LG["Ledger<br/>post · audit · verify"]
+      PR["Product::adjustStock<br/>atomic + audited"]
+    end
   end
 
   subgraph Seams["Seams (stubbed adapters)"]
+    direction LR
     PG["PaymentGateway::charge(amount, method, key)<br/>→ FakePaymentGateway"]
-    ML["Mail<br/>→ log driver"]
-    FF["Fulfillment<br/>→ log line"]
+    ML["Mail → log driver"]
+    FF["Fulfillment → log line"]
   end
 
-  DB[("Postgres (prod) / SQLite (dev)<br/>orders · order_lines · payments<br/>ledger_entries · inventory_movements")]
+  DB[("Postgres (prod) / SQLite (dev)")]
 
   PB --> MW
   MW --> OC
   MW --> DC
   PT --> CC
-  OPS --> PC
+  OPS --> DC
   OC --> OS
-  OS --> SP
-  OS --> ML
   CC --> CS
+  OS --> SP
   CS --> SP
   CS --> LG
+  CS --> PR
+  OS --> ML
   CS --> PG
   CS --> FF
-  OS --> DB
-  CS --> DB
-  LG --> DB
-  DC --> DB
-  PC --> DB
+  Domain --> DB

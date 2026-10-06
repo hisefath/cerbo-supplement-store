@@ -18,56 +18,62 @@ How the slice is built and why. Product rules and assumptions are in [PRD.md](PR
 ## 1. Architecture
 
 ```mermaid
-flowchart LR
+flowchart TB
   subgraph Clients
+    direction LR
     PB["Provider<br/>(inside the EHR)"]
     PT["Patient<br/>(payment link)"]
     OPS["Platform / finance"]
   end
 
   subgraph App["Laravel monolith (one deployable)"]
-    MW["ActingProvider middleware<br/>(stubbed auth)"]
-    OC["OrderController"]
-    DC["DashboardController"]
-    CC["CheckoutController"]
-    PC["PlatformController"]
-    OS["OrderService<br/>quote · send · cancel"]
-    CS["CheckoutService<br/>two-phase payment"]
-    SP["Split<br/>pure money math"]
-    LG["Ledger<br/>post · verify"]
+    direction TB
+    subgraph HTTP["HTTP layer (thin)"]
+      direction LR
+      MW["ActingProvider middleware<br/>(stubbed auth, real scoping)"]
+      OC["OrderController"]
+      DC["DashboardController"]
+      CC["CheckoutController"]
+    end
+    subgraph Domain["Domain"]
+      direction LR
+      OS["OrderService<br/>quote · send · cancel"]
+      CS["CheckoutService<br/>reserve → charge → settle"]
+      SP["Split<br/>pure money math"]
+      LG["Ledger<br/>post · audit · verify"]
+      PR["Product::adjustStock<br/>atomic + audited"]
+    end
   end
 
   subgraph Seams["Seams (stubbed adapters)"]
+    direction LR
     PG["PaymentGateway::charge(amount, method, key)<br/>→ FakePaymentGateway"]
-    ML["Mail<br/>→ log driver"]
-    FF["Fulfillment<br/>→ log line"]
+    ML["Mail → log driver"]
+    FF["Fulfillment → log line"]
   end
 
-  DB[("Postgres (prod) / SQLite (dev)<br/>orders · order_lines · payments<br/>ledger_entries · inventory_movements")]
+  DB[("Postgres (prod) / SQLite (dev)")]
 
   PB --> MW
   MW --> OC
   MW --> DC
   PT --> CC
-  OPS --> PC
+  OPS --> DC
   OC --> OS
-  OS --> SP
-  OS --> ML
   CC --> CS
+  OS --> SP
   CS --> SP
   CS --> LG
+  CS --> PR
+  OS --> ML
   CS --> PG
   CS --> FF
-  OS --> DB
-  CS --> DB
-  LG --> DB
-  DC --> DB
-  PC --> DB
+  Domain --> DB
 ```
 
 <sub>Source: [`diagrams/architecture.mmd`](diagrams/architecture.mmd)</sub>
 
-A **modular monolith**. Controllers stay thin. Two services own the domain (`OrderService` for quote, send, and cancel, `CheckoutService` for pay). One pure class owns the money math (`Split`), and one owns the books (`Ledger`). Each external dependency sits behind a seam:
+A **modular monolith**. Controllers stay thin. Two services own the domain (`OrderService` for quote, send, and cancel, `CheckoutService` for pay). One pure class owns the money math (`Split`), one owns the books (`Ledger`), and one method owns stock (`Product::adjustStock`). Each external dependency sits behind a seam:
 
 - **Payments:** a `PaymentGateway::charge(amountCents, paymentMethod, idempotencyKey)` interface bound to `FakePaymentGateway` in the service container. Simulating a decline is just a different `paymentMethod` value, as with Stripe's test payment methods, so no test-only flag leaks into the domain.
 - **Email:** Laravel's mail facade with the `log` driver.
@@ -235,7 +241,7 @@ sequenceDiagram
   CS->>DB: BEGIN, lock order, lock payment (proceed only if still pending)
   alt succeeded
     CS->>DB: payment → succeeded, order → paid (paid_at)
-    CS->>DB: INSERT 4 ledger_entries (Σ = 0 asserted; UNIQUE(payment_id, account))
+    CS->>DB: INSERT 4 ledger_entries (Σ = 0 asserted, UNIQUE per payment+account)
   else declined
     CS->>DB: payment → failed, stock += qty with movement(release), order → awaiting_payment
   end
@@ -275,7 +281,7 @@ sequenceDiagram
 
 ```mermaid
 stateDiagram-v2
-  [*] --> awaiting_payment: provider sends order<br/>(prices, costs, fee_bps snapshotted; link issued)
+  [*] --> awaiting_payment: provider sends order<br/>(prices, costs, fee_bps snapshotted, link issued)
   awaiting_payment --> processing: patient pays<br/>(stock reserved, payment pending)
   processing --> paid: charge succeeded<br/>(ledger posted)
   processing --> awaiting_payment: charge declined<br/>(stock released, retry allowed)

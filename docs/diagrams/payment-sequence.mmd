@@ -30,7 +30,7 @@ sequenceDiagram
   CS->>DB: BEGIN, lock order, lock payment (proceed only if still pending)
   alt succeeded
     CS->>DB: payment → succeeded, order → paid (paid_at)
-    CS->>DB: INSERT 4 ledger_entries (Σ = 0 asserted; UNIQUE(payment_id, account))
+    CS->>DB: INSERT 4 ledger_entries (Σ = 0 asserted, UNIQUE per payment+account)
   else declined
     CS->>DB: payment → failed, stock += qty with movement(release), order → awaiting_payment
   end
