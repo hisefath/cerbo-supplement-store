@@ -1,0 +1,6 @@
+flowchart LR
+  U["Browser"] -->|HTTPS| R["Railway edge"]
+  R --> A["app service<br/>Docker: FrankenPHP + Laravel<br/>runs migrations + demo seed on boot"]
+  A -->|private network| D[("Railway Postgres")]
+  GH["GitHub (mirror)"] -.-> A
+  GL["GitLab (primary)"] -.- GH

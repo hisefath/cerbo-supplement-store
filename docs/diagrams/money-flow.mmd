@@ -1,0 +1,6 @@
+flowchart LR
+  P["Patient pays<br/>$63.99 (6399¢)"] --> C["processor_clearing<br/>+6399"]
+  C --> G["inventory_cogs<br/>−3250<br/>platform recovers item cost"]
+  C --> V["provider_payable<br/>−3101<br/>provider margin net of fee"]
+  C --> F["platform_fee_revenue<br/>−48<br/>75 bps of 6399, half-up"]
+  V -. "future: payout batch / Stripe Connect transfer" .-> B["Provider bank"]

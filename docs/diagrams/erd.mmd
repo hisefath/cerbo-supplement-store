@@ -1,0 +1,79 @@
+erDiagram
+  PROVIDERS ||--o{ PATIENTS : "cares for"
+  PROVIDERS ||--o{ ORDERS : "creates"
+  PATIENTS ||--o{ ORDERS : "pays for"
+  ORDERS ||--|{ ORDER_LINES : "contains"
+  PRODUCTS ||--o{ ORDER_LINES : "price/cost snapshotted into"
+  ORDERS ||--o{ PAYMENTS : "attempted by"
+  PAYMENTS ||--o{ LEDGER_ENTRIES : "settled as"
+  ORDERS ||--o{ LEDGER_ENTRIES : "posted to"
+  PRODUCTS ||--o{ INVENTORY_MOVEMENTS : "stock history"
+  ORDERS ||--o{ INVENTORY_MOVEMENTS : "reserves / releases"
+
+  PROVIDERS {
+    bigint id PK
+    string name
+    string email
+  }
+  PATIENTS {
+    bigint id PK
+    bigint provider_id FK
+    string name
+    string email
+    string shipping_address "US only"
+  }
+  PRODUCTS {
+    bigint id PK
+    string sku UK
+    string name
+    int unit_cost_cents "COGS, platform-owned"
+    int msrp_cents "suggested price"
+    int stock_on_hand "never < 0"
+  }
+  ORDERS {
+    bigint id PK
+    bigint provider_id FK
+    bigint patient_id FK
+    string status "awaiting_payment | processing | paid"
+    string checkout_token UK "patient capability link"
+    int fee_bps "rate snapshot (75)"
+    int subtotal_cents "GMV"
+    int cogs_cents
+    int fee_cents
+    int provider_payout_cents "subtotal = cogs + fee + payout"
+    timestamp sent_at
+    timestamp paid_at
+  }
+  ORDER_LINES {
+    bigint id PK
+    bigint order_id FK
+    bigint product_id FK
+    int quantity
+    int unit_price_cents "snapshot: patient-facing"
+    int unit_cost_cents "snapshot: COGS at send"
+  }
+  PAYMENTS {
+    bigint id PK
+    bigint order_id FK
+    string idempotency_key UK
+    int amount_cents
+    string status "pending | succeeded | failed"
+    string gateway_ref
+    string failure_reason
+  }
+  LEDGER_ENTRIES {
+    bigint id PK
+    bigint order_id FK
+    bigint payment_id FK
+    string account "processor_clearing | inventory_cogs | provider_payable | platform_fee_revenue"
+    int amount_cents "debit +, credit -, sums to 0 per payment"
+    timestamp created_at "append-only"
+  }
+  INVENTORY_MOVEMENTS {
+    bigint id PK
+    bigint product_id FK
+    bigint order_id FK "nullable"
+    int delta "signed"
+    string reason "restock | adjustment | sale | sale_released"
+    string actor
+  }

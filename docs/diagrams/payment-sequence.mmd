@@ -1,0 +1,36 @@
+sequenceDiagram
+  autonumber
+  actor Patient
+  participant CC as CheckoutController
+  participant CS as CheckoutService
+  participant DB as Database
+  participant PG as PaymentGateway (fake)
+
+  Patient->>CC: POST /pay/{token} (idempotency_key from form)
+  CC->>CS: pay(order, key, simulateDecline?)
+
+  Note over CS,DB: Phase 1: reserve (short DB transaction)
+  CS->>DB: BEGIN, SELECT order FOR UPDATE
+  alt payment with this key already exists
+    CS-->>CC: replay stored result (no second charge)
+  else order.status != awaiting_payment
+    CS-->>CC: reject (already paid or in flight)
+  else
+    CS->>DB: UPDATE products SET stock = stock - qty WHERE stock >= qty (per line)
+    CS->>DB: INSERT payment(pending), INSERT movements(sale), order → processing
+    CS->>DB: COMMIT
+  end
+
+  Note over CS,PG: Phase 2: charge (no DB transaction held open)
+  CS->>PG: charge(amount_cents, idempotency_key)
+  PG-->>CS: ChargeResult(succeeded | declined, ref)
+
+  Note over CS,DB: Phase 3: settle (short DB transaction)
+  alt succeeded
+    CS->>DB: payment → succeeded, order → paid (paid_at)
+    CS->>DB: INSERT 4 ledger_entries (asserted Σ = 0 and = order split)
+  else declined
+    CS->>DB: payment → failed, stock += qty, movements(sale_released), order → awaiting_payment
+  end
+  CS->>DB: COMMIT
+  CC-->>Patient: receipt or "payment declined, try again"

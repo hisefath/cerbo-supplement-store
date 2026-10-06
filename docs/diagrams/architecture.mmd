@@ -1,0 +1,45 @@
+flowchart LR
+  subgraph Clients
+    PB["Provider<br/>(inside the EHR)"]
+    PT["Patient<br/>(payment link)"]
+    OPS["Platform / finance"]
+  end
+
+  subgraph App["Laravel monolith (one deployable)"]
+    MW["ActingProvider middleware<br/>(stubbed auth)"]
+    OC["OrderController"]
+    DC["DashboardController"]
+    CC["CheckoutController"]
+    PC["PlatformController"]
+    OS["OrderService<br/>validate · snapshot · quote"]
+    CS["CheckoutService<br/>two-phase payment"]
+    SP["Split<br/>pure money math"]
+    LG["Ledger<br/>post · verify"]
+  end
+
+  subgraph Seams["Seams (stubbed adapters)"]
+    PG["PaymentGateway<br/>→ FakePaymentGateway"]
+    ML["Mail<br/>→ log driver"]
+    FF["Fulfillment<br/>→ log line"]
+  end
+
+  DB[("Postgres (prod) / SQLite (dev)<br/>orders · order_lines · payments<br/>ledger_entries · inventory_movements")]
+
+  PB --> MW
+  MW --> OC
+  MW --> DC
+  PT --> CC
+  OPS --> PC
+  OC --> OS
+  OS --> SP
+  OS --> ML
+  CC --> CS
+  CS --> SP
+  CS --> LG
+  CS --> PG
+  CS --> FF
+  OS --> DB
+  CS --> DB
+  LG --> DB
+  DC --> DB
+  PC --> DB
