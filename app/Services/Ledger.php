@@ -7,6 +7,7 @@ use App\Models\LedgerEntry;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Product;
+use Illuminate\Support\Facades\DB;
 use LogicException;
 
 /** Settlement ledger: where every cent of a patient payment went. Debits +, credits −. */
@@ -41,15 +42,25 @@ final class Ledger
     {
         $s = $order->storedSplit();
         $r = $order->recomputedSplit();
+        $paid = $order->status === Order::PAID;
+        $succeeded = $order->payments->where('status', Payment::SUCCEEDED);
+
+        // Stock that left the shelf for this order, per product: its lines while reserved or sold, otherwise nothing.
+        $holdsStock = in_array($order->status, [Order::PROCESSING, Order::PAID], true);
+        $netMovement = $order->inventoryMovements->groupBy('product_id')->map(fn ($m) => (int) $m->sum('delta'))->filter()->sortKeys()->all();
+        $expectedMovement = $holdsStock ? $order->lines->mapWithKeys(fn ($l) => [$l->product_id => -$l->quantity])->sortKeys()->all() : [];
+
         $checks = [
             'Stored split balances: subtotal = COGS + fee + payout' => $s['subtotal'] === $s['cogs'] + $s['fee'] + $s['payout'],
-            'Stored split equals a recomputation from the line snapshots' => [$r->subtotal, $r->cogs, $r->fee, $r->payout] === array_values($s),
+            'Stored split equals a recomputation from the line snapshots' => ['subtotal' => $r->subtotal, 'cogs' => $r->cogs, 'fee' => $r->fee, 'payout' => $r->payout] === $s,
+            $holdsStock ? 'Net stock movements equal the order lines' : 'No stock held by this order' => $netMovement === $expectedMovement,
         ];
-        if ($order->status !== Order::PAID) {
-            return $checks + ['No ledger entries before payment' => $order->ledgerEntries->isEmpty()];
+        if (! $paid) {
+            return $checks + [
+                'No captured payment and no ledger entries before the order is paid' => $succeeded->isEmpty() && $order->ledgerEntries->isEmpty(),
+            ];
         }
 
-        $succeeded = $order->payments->where('status', Payment::SUCCEEDED);
         $actual = $order->ledgerEntries->groupBy('account')->map(fn ($e) => (int) $e->sum('amount_cents'))->sortKeys()->all();
         $expected = collect([
             LedgerEntry::CLEARING => $s['subtotal'],
@@ -65,12 +76,27 @@ final class Ledger
         ];
     }
 
-    /** Re-check everything. Returns human-readable failures; empty means the books reconcile. */
+    /**
+     * Re-check everything. Returns human-readable failures; empty means the books reconcile.
+     * Runs in one transaction (REPEATABLE READ on Postgres) so every read sees the same snapshot
+     * and a checkout committing mid-audit can't cause a false alarm.
+     */
     public static function verifyAll(): array
+    {
+        return DB::transaction(function () {
+            if (DB::getDriverName() === 'pgsql' && DB::transactionLevel() === 1) { // only legal as the outermost txn's first statement
+                DB::statement('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY');
+            }
+
+            return self::collectFailures();
+        });
+    }
+
+    private static function collectFailures(): array
     {
         $failures = [];
 
-        Order::with(['lines', 'payments', 'ledgerEntries'])->chunkById(200, function ($orders) use (&$failures) {
+        Order::with(['lines', 'payments', 'ledgerEntries', 'inventoryMovements'])->chunkById(200, function ($orders) use (&$failures) {
             foreach ($orders as $order) {
                 foreach (self::audit($order) as $check => $ok) {
                     if (! $ok) {

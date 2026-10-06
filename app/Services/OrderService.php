@@ -8,7 +8,7 @@ use App\Models\Product;
 use App\Models\Provider;
 use App\Money\Money;
 use App\Money\Split;
-use Illuminate\Support\Arr;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -49,7 +49,6 @@ final class OrderService
                 $errors["lines.{$product->id}.price"] = "{$product->name}: price can't be below cost (".Money::format($product->unit_cost_cents).').';
             }
             $lines[] = [
-                'product' => $product,
                 'product_id' => $product->id,
                 'quantity' => $item['quantity'],
                 'unit_price_cents' => $item['unit_price_cents'],
@@ -71,13 +70,40 @@ final class OrderService
         return ['lines' => $lines, 'split' => $split];
     }
 
-    /** Lock the quote onto a new order and send the patient a payment link. */
-    public function send(Provider $provider, Patient $patient, array $items): Order
+    /**
+     * Lock the quote onto a new order and send the patient a payment link. Idempotent on
+     * $requestKey (minted per form render), so a double-submitted form can't create two
+     * orders, and two payable links, for the same patient.
+     */
+    public function send(Provider $provider, Patient $patient, array $items, string $requestKey): Order
     {
-        $order = DB::transaction(function () use ($provider, $patient, $items) {
+        $existing = fn () => Order::where('request_key', $requestKey)->where('provider_id', $provider->id)->firstOrFail();
+        if (Order::where('request_key', $requestKey)->exists()) {
+            return $existing();
+        }
+
+        try {
+            $order = $this->createOrder($provider, $patient, $items, $requestKey);
+        } catch (UniqueConstraintViolationException) {
+            return $existing(); // the concurrent twin of this submit won the race
+        }
+
+        // Email seam: MAIL_MAILER=log writes this to storage/logs; swap the driver for SES/Postmark.
+        Mail::raw(
+            "{$provider->name} recommended supplements for you. Review and pay here: ".route('checkout.show', $order->checkout_token),
+            fn ($m) => $m->to($patient->email)->subject("Your supplement order from {$provider->name}"),
+        );
+
+        return $order;
+    }
+
+    private function createOrder(Provider $provider, Patient $patient, array $items, string $requestKey): Order
+    {
+        return DB::transaction(function () use ($provider, $patient, $items, $requestKey) {
             ['lines' => $lines, 'split' => $split] = $this->quote($items);
 
             $order = Order::create([
+                'request_key' => $requestKey,
                 'provider_id' => $provider->id,
                 'patient_id' => $patient->id,
                 'status' => Order::AWAITING_PAYMENT,
@@ -89,20 +115,10 @@ final class OrderService
                 'provider_payout_cents' => $split->payout,
                 'sent_at' => now(),
             ]);
-            foreach ($lines as $line) {
-                $order->lines()->create(Arr::only($line, ['product_id', 'quantity', 'unit_price_cents', 'unit_cost_cents']));
-            }
+            $order->lines()->createMany($lines);
 
             return $order;
         });
-
-        // Email seam: MAIL_MAILER=log writes this to storage/logs; swap the driver for SES/Postmark.
-        Mail::raw(
-            "{$provider->name} recommended supplements for you. Review and pay here: ".route('checkout.show', $order->checkout_token),
-            fn ($m) => $m->to($patient->email)->subject("Your supplement order from {$provider->name}"),
-        );
-
-        return $order;
     }
 
     /** Withdraw an unpaid order. Same row lock as checkout, so cancel and pay can't both win. */

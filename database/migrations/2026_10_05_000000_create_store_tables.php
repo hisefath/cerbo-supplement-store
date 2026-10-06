@@ -40,6 +40,7 @@ return new class extends Migration
 
         Schema::create('orders', function (Blueprint $t) {
             $t->id();
+            $t->string('request_key', 64)->unique(); // idempotency key of the "send order" form submit
             $t->foreignId('provider_id')->constrained();
             $t->foreignId('patient_id')->constrained();
             $t->string('status', 20)->index();   // awaiting_payment | processing | paid | cancelled

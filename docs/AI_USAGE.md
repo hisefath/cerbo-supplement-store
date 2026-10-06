@@ -34,7 +34,7 @@ An honest account of how AI was used to build this slice: what worked, where it 
   - **Unspecified idempotency-key lifecycle.** After a decline, a retry that reused the key would replay the decline forever. Fix: one key per attempt, minted on each page render, with post/redirect/get.
   - **No DB guard against posting a payment twice.** Fix: `UNIQUE(payment_id, account)` on the ledger.
   - **Deadlock risk** from locking products in arbitrary order. Fix: always lock in ascending id order.
-  - **Broken `http://` payment links on Railway** without trusted proxies. Fix: `trustProxies`.
+  - **Broken `http://` payment links on Railway** without trusted proxies. Fix: `trustProxies`. The code review later narrowed this to scheme and IP only, so a forged `X-Forwarded-Host` can't steer the emailed link.
   - **No way to withdraw a sent link.** Fix: built `cancel`, under the same row lock as pay.
 - **Mutation testing the tests.** The full suite passed on the first run, which on money code made me *more* suspicious, not less. So I broke the code on purpose:
   - Truncating instead of rounding the fee failed **7 tests**.

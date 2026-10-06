@@ -72,10 +72,11 @@ class DashboardController extends Controller
             ->join('orders', 'orders.id', '=', 'ledger_entries.order_id')
             ->join('providers', 'providers.id', '=', 'orders.provider_id')
             ->groupBy('providers.id', 'providers.name')
-            ->selectRaw("providers.name, COUNT(DISTINCT orders.id) AS orders,
-                SUM(CASE WHEN account = 'processor_clearing' THEN amount_cents ELSE 0 END) AS gmv,
-                -SUM(CASE WHEN account = 'platform_fee_revenue' THEN amount_cents ELSE 0 END) AS fee,
-                -SUM(CASE WHEN account = 'provider_payable' THEN amount_cents ELSE 0 END) AS payable")
+            ->selectRaw('providers.name, COUNT(DISTINCT orders.id) AS orders,
+                SUM(CASE WHEN account = ? THEN amount_cents ELSE 0 END) AS gmv,
+                -SUM(CASE WHEN account = ? THEN amount_cents ELSE 0 END) AS fee,
+                -SUM(CASE WHEN account = ? THEN amount_cents ELSE 0 END) AS payable',
+                [LedgerEntry::CLEARING, LedgerEntry::FEE_REVENUE, LedgerEntry::PROVIDER_PAYABLE])
             ->orderByDesc('gmv')
             ->get();
 

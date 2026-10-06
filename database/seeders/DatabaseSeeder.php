@@ -49,15 +49,15 @@ class DatabaseSeeder extends Seeder
         $pay = fn ($order, $method = FakePaymentGateway::APPROVE) => $checkout->pay($order, $method, (string) Str::uuid());
 
         // Order 1 is the worked example in docs/PRD.md §6: 6399 = 3250 COGS + 48 fee + 3101 payout.
-        $pay($orders->send($maya, $jordan, [$item('MAG-GLY-120', 2, 2400), $item('VD3-K2-60', 1, 1599)]));
-        $pay($orders->send($maya, $priya, [$item('OMEGA3-90', 1, 3295), $item('BCOMP-60', 2, 2199)]));
+        $pay($orders->send($maya, $jordan, [$item('MAG-GLY-120', 2, 2400), $item('VD3-K2-60', 1, 1599)], (string) Str::uuid()));
+        $pay($orders->send($maya, $priya, [$item('OMEGA3-90', 1, 3295), $item('BCOMP-60', 2, 2199)], (string) Str::uuid()));
 
         // A declined card, then a successful retry: two attempts, one ledger posting.
-        $order = $orders->send($sam, $alex, [$item('CURC-PHY-60', 1, 3900), $item('VD3-K2-60', 2, 1500)]);
+        $order = $orders->send($sam, $alex, [$item('CURC-PHY-60', 1, 3900), $item('VD3-K2-60', 2, 1500)], (string) Str::uuid());
         $pay($order, FakePaymentGateway::DECLINE);
         $pay($order);
 
         // Left unpaid so the demo can walk through the patient checkout.
-        $orders->send($maya, $priya, [$item('PROB-50B-30', 1, 3899), $item('MAG-GLY-120', 1, 2400)]);
+        $orders->send($maya, $priya, [$item('PROB-50B-30', 1, 3899), $item('MAG-GLY-120', 1, 2400)], (string) Str::uuid());
     }
 }

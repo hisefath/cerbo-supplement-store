@@ -16,8 +16,8 @@ Route::middleware(ActingProvider::class)->group(function () {
     Route::get('/orders/new', [OrderController::class, 'create'])->name('orders.create');
     Route::post('/orders/preview', [OrderController::class, 'preview'])->name('orders.preview');
     Route::post('/orders', [OrderController::class, 'store'])->name('orders.store');
-    Route::get('/orders/{id}', [OrderController::class, 'show'])->whereNumber('id')->name('orders.show');
-    Route::post('/orders/{id}/cancel', [OrderController::class, 'cancel'])->whereNumber('id')->name('orders.cancel');
+    Route::get('/orders/{id}', [OrderController::class, 'show'])->where('id', '[0-9]{1,18}')->name('orders.show');
+    Route::post('/orders/{id}/cancel', [OrderController::class, 'cancel'])->where('id', '[0-9]{1,18}')->name('orders.cancel');
     Route::get('/platform', [DashboardController::class, 'platform'])->name('platform');
 });
 

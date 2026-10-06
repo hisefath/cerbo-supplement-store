@@ -8,6 +8,7 @@ use App\Services\Ledger;
 use App\Services\OrderException;
 use App\Services\OrderService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class OrderController extends Controller
@@ -18,6 +19,7 @@ class OrderController extends Controller
             'patients' => $this->provider($request)->patients()->orderBy('name')->get(),
             'products' => Product::orderBy('name')->get(),
             'selectedPatient' => $request->integer('patient'),
+            'requestKey' => (string) Str::uuid(), // one key per form render: a double-submit can't create two orders
             'feeBps' => OrderService::PLATFORM_FEE_BPS,
         ]);
     }
@@ -43,10 +45,10 @@ class OrderController extends Controller
     public function store(Request $request, OrderService $orders)
     {
         $provider = $this->provider($request);
-        $request->validate(['patient_id' => 'required|integer']);
+        $request->validate(['patient_id' => 'required|integer', 'request_key' => 'required|uuid']);
         $patient = $provider->patients()->findOrFail($request->integer('patient_id')); // 404 unless it's their patient
 
-        $order = $orders->send($provider, $patient, $this->items($request));
+        $order = $orders->send($provider, $patient, $this->items($request), $request->input('request_key'));
 
         return redirect()->route('orders.show', $order->id)
             ->with('status', 'Order sent. The payment link was emailed to the patient (email is stubbed: written to the app log).');
@@ -70,7 +72,7 @@ class OrderController extends Controller
             return back()->with('error', $e->getMessage());
         }
 
-        return back()->with('status', "Order #{$order->id} cancelled. The patient's payment link no longer works.");
+        return back()->with('status', "Order #{$order->id} cancelled. The patient's link can no longer be used to pay.");
     }
 
     /**
@@ -89,6 +91,11 @@ class OrderController extends Controller
 
         $items = [];
         foreach ($data['lines'] as $productId => $line) {
+            // PHP turns canonical integer keys ("12") into ints; anything still a string ("012", " 12") is rejected,
+            // so two spellings of one product can't become two lines.
+            if (! is_int($productId)) {
+                throw ValidationException::withMessages(['lines' => 'Unknown product.']);
+            }
             $quantity = (int) ($line['quantity'] ?? 0);
             if ($quantity === 0) {
                 continue;
@@ -97,7 +104,7 @@ class OrderController extends Controller
             if ($cents === null) {
                 throw ValidationException::withMessages(["lines.$productId.price" => 'Enter a price like 24.99.']);
             }
-            $items[] = ['product_id' => (int) $productId, 'quantity' => $quantity, 'unit_price_cents' => $cents];
+            $items[] = ['product_id' => $productId, 'quantity' => $quantity, 'unit_price_cents' => $cents];
         }
 
         return $items;

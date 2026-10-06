@@ -41,12 +41,14 @@ Each successful payment posts entries whose amounts **sum to zero**: debit `proc
 `awaiting_payment → processing → paid`, with `processing → awaiting_payment` on decline. Every transition reads the current status **under a row lock** and refuses if it's not the expected one (compare-and-set). This turns "two requests raced" from a data-corruption bug into a rejected request.
 
 ### 6. Pessimistic locking vs optimistic
-Checkout uses **pessimistic** row locks (`SELECT … FOR UPDATE`) on the order, held only for the milliseconds of the reserve and settle phases. Optimistic concurrency (a version column, retry on conflict) would also work, but checkout contention per order is near zero and the lock code is simpler to reason about. Stock uses an **atomic conditional update** (`UPDATE … SET stock = stock − q WHERE stock >= q`, check affected rows), so oversell is impossible without a separate read-then-write. **Lock order** is always: order row, then products by ascending id, then payment row. Two checkouts that share products therefore can't deadlock.
+Checkout uses **pessimistic** row locks (`SELECT … FOR UPDATE`) on the order, held only for the milliseconds of the reserve and settle phases. Optimistic concurrency (a version column, retry on conflict) would also work, but checkout contention per order is near zero and the lock code is simpler to reason about. Stock uses an **atomic conditional update** (`UPDATE … SET stock = stock − q WHERE stock >= q`, check affected rows), so oversell is impossible without a separate read-then-write. **Lock order** is always: order row, then products by ascending id, then payment row. In settle, the payment row is locked before stock is released. The order lock serializes everything per order, so two checkouts that share products can't deadlock.
 
 ### 7. Idempotency keys
 The pay form carries a server-minted key: **one key = one attempt**. Each render of the checkout page mints a new key, and every POST redirects back to that page, so a retry after a decline is a new attempt. The key is `UNIQUE` on `payments`, scoped to its order, and passed to the gateway. A retry of the *same* attempt (double-click, network retry, refresh) replays the stored outcome, decline included, instead of charging again. This is the standard Stripe-style contract and the one that matters most in payments: **at-least-once delivery + idempotent handling = effectively exactly-once**.
 
 *Why keep it when the order lock already blocks a second payment?* The lock stops *different* attempts from racing. The key makes the *same* attempt safe to repeat. Without it, a double-click on a declined card would fire a second charge attempt, because by then the order is back to `awaiting_payment`. A client whose response got lost (mobile, an EHR integration) also needs it to retry safely. A design reviewer suggested cutting it. I kept it for these two reasons.
+
+**Sending an order is idempotent too.** The New Order form carries its own per-render `request_key` (`UNIQUE` on `orders`). A double-clicked "Send" therefore returns the first order instead of creating a second order, and a second payable link, for the same patient. Without this, a patient could legitimately pay twice for one recommendation.
 
 ### 8. Never hold a DB transaction across a network call
 A real payment call takes 300 ms to several seconds and can hang. Holding row locks or a transaction across it ties up connections and serializes checkout. So payment is split into **reserve (txn) → charge (no txn) → settle (txn)**. This is a small saga with a compensating action (release stock) on failure. The cost is an intermediate `processing` state that needs a **reconcile job** for crashes mid-flight. That's documented as the known gap.
@@ -75,7 +77,7 @@ Platform GMV and fee revenue are computed from **ledger rows**, not from order h
 
 ### 13. Defense in depth
 Each guarantee is enforced at more than one layer:
-- In code: `Split` asserts its invariant, and the ledger asserts Σ = 0 before insert.
+- In code: `Split` guarantees its invariant by construction (payout is the residual), and the ledger asserts Σ = 0 before insert.
 - In the DB: unique and partial-unique indexes, plus Postgres CHECK constraints.
 - After the fact: `ledger:verify` re-checks everything, and tests exercise the failure paths.
 
@@ -101,10 +103,10 @@ Each guarantee is enforced at more than one layer:
 ## Known limitations (honest list)
 
 - **Crash between charge and settle** leaves an order in `processing`. A reconcile job is designed but not built.
-- **No refunds, payouts, cancellations, or recurring orders.** The ledger is shaped for them as reversal and settlement entries.
+- **No refunds, payouts, or recurring orders.** Cancel covers unpaid orders only. The ledger is shaped for the rest as reversal and settlement entries.
 - **Inventory editing sits on the provider dashboard** because FR5 asks for it. In production it would be an ops-only role.
 - **SQLite ignores `FOR UPDATE`.** It serializes writers globally instead (`transaction_mode = IMMEDIATE`), which is correct but coarse. Postgres is the engine of record.
-- **Stubbed auth** means anyone with the demo URL can act as a demo provider. `/platform` (the finance view) is unauthenticated on the demo. Demo data only.
+- **Stubbed auth** means anyone with the demo URL can act as a demo provider. Provider write routes aren't throttled; only patient payment is. `/platform` (the finance view) is unauthenticated on the demo. Demo data only. If the shared demo state gets messy, reset it with `php artisan migrate:fresh --seed`.
 - **Concurrency is checked by a script, not in CI.** The PHPUnit race tests are deterministic: they simulate the in-flight state and hit the DB indexes directly. `scripts/race-check.sh` runs real concurrent requests against Postgres with 8 PHP workers:
   - 8 simultaneous payments for one order → exactly 1 payment and 1 posting.
   - 6 simultaneous payments for a 4-unit product → exactly 4 paid, stock 0, books reconcile.

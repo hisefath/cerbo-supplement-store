@@ -11,7 +11,7 @@
   @if ($order->status === \App\Models\Order::AWAITING_PAYMENT)
     <p><span class="stub">Email stubbed</span> The patient's payment link (as emailed):
       <a href="{{ route('checkout.show', $order->checkout_token) }}" target="_blank" rel="noreferrer">open the patient checkout ↗</a></p>
-    <form method="post" action="{{ route('orders.cancel', $order->id) }}" onsubmit="return confirm('Cancel this order? The payment link will stop working.')">
+    <form method="post" action="{{ route('orders.cancel', $order->id) }}" onsubmit="return confirm('Cancel this order? The patient will no longer be able to pay it.')">
       @csrf <button class="secondary small">Cancel order</button>
     </form>
   @endif

@@ -177,13 +177,17 @@ erDiagram
 | `ledger_entries` | Double-entry postings | Append-only (model refuses update and delete). `UNIQUE(payment_id, account)`, so a payment can't be posted twice. Σ = 0 per payment, asserted before insert and re-verified by `ledger:verify`. |
 | `inventory_movements` | Stock audit trail | Every stock change writes a signed movement (`restock`, `adjustment`, `reserve`, `release`). `ledger:verify` checks `stock_on_hand == Σ delta`. |
 
-Why both persisted split columns on `orders` **and** ledger rows? The columns are the **quote** the provider agreed to at send time. The ledger is the **record of money that actually moved**. The audit does three independent comparisons, so a wrong number can't hide behind a copy of itself:
+Why both persisted split columns on `orders` **and** ledger rows? The columns are the **quote** the provider agreed to at send time. The ledger is the **record of money that actually moved**. The audit cross-checks these records against each other:
 
 1. It recomputes the split from the immutable line snapshots and the order's `fee_bps`, and compares that to the stored quote.
 2. It compares the ledger to the quote, account by account.
-3. It compares the succeeded payment to the subtotal.
+3. It checks for exactly one succeeded payment, equal to the subtotal.
+4. For each product, the order's net stock movements must equal its lines while stock is reserved or sold, and must be zero otherwise.
+5. An unpaid order must have no captured payment and no ledger rows. This is what catches money that was charged but never booked.
 
-If any of them disagree, `ledger:verify` names the order and the check that failed.
+If any check disagrees, `ledger:verify` names the order and the check that failed.
+
+**Limit:** the recomputation uses the same `Split` code and the order's own `fee_bps`. It catches corrupted *data*, such as an edited column, a tampered line, or a skipped posting. It does not catch a bug *in* `Split` itself. That's what the unit tests and the random-cart rounding oracle are for. A fee-rate schedule to validate `fee_bps` against is listed as next.
 
 ## 3. The money split
 
@@ -295,12 +299,17 @@ stateDiagram-v2
 
 <sub>Source: [`diagrams/order-state.mmd`](diagrams/order-state.mmd)</sub>
 
-Transitions happen only inside `CheckoutService` and `OrderService::cancel`. Each is guarded by the current status read under the same order row lock, so an order can't be paid twice, settled from the wrong state, or cancelled while a payment is in flight. Lock order is always the order row, then products by ascending id, then the payment row, which avoids deadlocks between concurrent checkouts.
+Transitions happen only inside `CheckoutService` and `OrderService::cancel`. Each is guarded by the current status read under the same order row lock, so an order can't be paid twice, settled from the wrong state, or cancelled while a payment is in flight. Lock order: the order row is always locked first. Products are touched in ascending id order. In settle, the payment row is locked before stock is released. A payment belongs to exactly one order, and the order lock serializes everything per order, so two checkouts can't deadlock.
 
 ## 6. Auditability
 
-- **Order audit page** (`/orders/{id}`): lines with snapshots, the persisted split, every payment attempt, ledger entries, inventory movements, and live checks (ledger balances, ledger matches split, payment = subtotal).
-- **`php artisan ledger:verify`**: re-runs those checks for **every** paid order and the stock-vs-movements check for every product. It exits non-zero on any discrepancy, so it can run nightly or in CI.
+- **Order audit page** (`/orders/{id}`): lines with snapshots, the persisted split, every payment attempt, ledger entries, inventory movements, and the live checks listed in §2.
+- **`php artisan ledger:verify`** re-runs those checks for **every** order. It also checks:
+  - the whole ledger sums to zero;
+  - every product's `stock_on_hand` equals the sum of its movements;
+  - no payment has been `pending` for more than 15 minutes.
+
+  It reads inside one transaction (`REPEATABLE READ` on Postgres), so a checkout committing mid-audit can't cause a false alarm. It exits non-zero on any discrepancy, so it can run nightly or in CI.
 - **Platform metrics** (`/platform`) are computed **from the ledger**, the same rows auditors would look at, so GMV and fee revenue can't drift from what was actually charged.
 
 ## 7. Deployment
@@ -323,8 +332,8 @@ A single Docker image (FrankenPHP + Laravel) runs on Railway with managed Postgr
 **Production settings:**
 - `APP_ENV=production` and `APP_DEBUG=false`.
 - `APP_KEY` lives only in Railway variables.
-- `trustProxies('*')`, because Railway terminates TLS at its edge and generated payment links must be `https`.
-- Secure session cookies.
+- Trusted proxies for `X-Forwarded-Proto`/`-For` only, because Railway terminates TLS at its edge and payment links must be `https`. `X-Forwarded-Host` is deliberately *not* trusted, because a forged header could otherwise choose the domain of the emailed payment link.
+- `SESSION_SECURE_COOKIE=true`.
 
 **Engines.** Local dev and the default test run use SQLite (zero setup). The suite also runs unchanged against Postgres (`DB_CONNECTION=pgsql …`), which exercises the production engine's CHECK constraints and partial unique index.
 

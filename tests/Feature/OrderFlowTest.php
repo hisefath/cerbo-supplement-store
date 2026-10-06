@@ -53,7 +53,7 @@ class OrderFlowTest extends TestCase
             $this->mag->id => ['quantity' => 2, 'price' => '24.00'],
             $this->vitd->id => ['quantity' => 1, 'price' => '15.99'],
         ];
-        $this->post('/orders', ['patient_id' => $this->patient->id, 'lines' => $lines])->assertSessionHasNoErrors();
+        $this->post('/orders', ['patient_id' => $this->patient->id, 'request_key' => (string) Str::uuid(), 'lines' => $lines])->assertSessionHasNoErrors();
 
         return Order::latest('id')->firstOrFail();
     }
@@ -252,7 +252,7 @@ class OrderFlowTest extends TestCase
 
     public function test_order_validation_at_the_boundary(): void
     {
-        $send = fn (array $lines) => $this->post('/orders', ['patient_id' => $this->patient->id, 'lines' => $lines]);
+        $send = fn (array $lines) => $this->post('/orders', ['patient_id' => $this->patient->id, 'request_key' => (string) Str::uuid(), 'lines' => $lines]);
         $id = $this->mag->id;
 
         $send([$id => ['quantity' => 1, 'price' => '11.99']])->assertSessionHasErrors("lines.$id.price");     // below cost
@@ -265,14 +265,49 @@ class OrderFlowTest extends TestCase
         $this->assertSame(0, Order::count());
     }
 
+    public function test_double_submitted_order_form_creates_one_order_and_one_link(): void
+    {
+        $form = ['patient_id' => $this->patient->id, 'request_key' => (string) Str::uuid(), 'lines' => [$this->mag->id => ['quantity' => 1, 'price' => '24.00']]];
+
+        $first = $this->post('/orders', $form);
+        $second = $this->post('/orders', $form);
+
+        $this->assertSame(1, Order::count());
+        $this->assertSame($first->headers->get('Location'), $second->headers->get('Location'));
+    }
+
+    public function test_non_canonical_product_keys_are_rejected_not_duplicated(): void
+    {
+        $this->post('/orders', ['patient_id' => $this->patient->id, 'request_key' => (string) Str::uuid(), 'lines' => [
+            $this->mag->id => ['quantity' => 1, 'price' => '24.00'],
+            '0'.$this->mag->id => ['quantity' => 1, 'price' => '24.00'], // same product, another spelling
+        ]])->assertSessionHasErrors('lines');
+
+        $this->assertSame(0, Order::count());
+    }
+
+    public function test_dashboard_and_platform_report_paid_orders_only(): void
+    {
+        $this->pay($this->sendOrder());                                                     // PRD example: payout $31.01
+        $this->sendOrder([$this->mag->id => ['quantity' => 1, 'price' => '30.00']]);       // sent, never paid
+
+        $this->get('/dashboard')->assertOk()
+            ->assertSeeInOrder(['$63.99', '$31.01', '$0.48'])                                  // GMV, earnings (net of fee), fees
+            ->assertSeeInOrder(['Magnesium', '2', '$48.00', '$24.00']);                        // units from the paid order only
+
+        $this->get('/platform')->assertOk()
+            ->assertSeeInOrder(['$63.99', '$0.48', '$32.50', '$31.01'])                        // GMV, fee, COGS, payable: from the ledger
+            ->assertSee('Every order reconciles to the cent');
+    }
+
     public function test_providers_only_reach_their_own_patients_and_orders(): void
     {
         $other = Provider::create(['name' => 'Dr. Other', 'email' => 'other@example.com']);
         $theirPatient = Patient::create(['provider_id' => $other->id, 'name' => 'Not Mine', 'email' => 'nm@example.com', 'shipping_address' => 'x']);
-        $theirOrder = app(OrderService::class)->send($other, $theirPatient, [['product_id' => $this->mag->id, 'quantity' => 1, 'unit_price_cents' => 2400]]);
+        $theirOrder = app(OrderService::class)->send($other, $theirPatient, [['product_id' => $this->mag->id, 'quantity' => 1, 'unit_price_cents' => 2400]], (string) Str::uuid());
 
         // Acting as $this->provider (the default stub login).
-        $this->post('/orders', ['patient_id' => $theirPatient->id, 'lines' => [$this->mag->id => ['quantity' => 1, 'price' => '24.00']]])->assertNotFound();
+        $this->post('/orders', ['patient_id' => $theirPatient->id, 'request_key' => (string) Str::uuid(), 'lines' => [$this->mag->id => ['quantity' => 1, 'price' => '24.00']]])->assertNotFound();
         $this->get("/orders/{$theirOrder->id}")->assertNotFound();
         $this->post("/orders/{$theirOrder->id}/cancel")->assertNotFound();
 
@@ -319,6 +354,15 @@ class OrderFlowTest extends TestCase
 
         $this->assertSame(1, Artisan::call('ledger:verify'));
         $this->assertStringContainsString("Order #{$order->id}: Stored split equals a recomputation from the line snapshots FAILED", Artisan::output());
+    }
+
+    public function test_ledger_verify_catches_money_captured_but_never_posted(): void
+    {
+        $order = $this->sendOrder();
+        DB::table('payments')->insert(['order_id' => $order->id, 'idempotency_key' => 'k', 'amount_cents' => 6399, 'status' => Payment::SUCCEEDED, 'created_at' => now(), 'updated_at' => now()]);
+
+        $this->assertSame(1, Artisan::call('ledger:verify'));
+        $this->assertStringContainsString("Order #{$order->id}: No captured payment and no ledger entries before the order is paid FAILED", Artisan::output());
     }
 
     public function test_books_are_append_only(): void

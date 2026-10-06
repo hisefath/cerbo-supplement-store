@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
-    'provider_id', 'patient_id', 'status', 'checkout_token', 'fee_bps',
+    'request_key', 'provider_id', 'patient_id', 'status', 'checkout_token', 'fee_bps',
     'subtotal_cents', 'cogs_cents', 'fee_cents', 'provider_payout_cents', 'sent_at', 'paid_at',
 ])]
 class Order extends Model

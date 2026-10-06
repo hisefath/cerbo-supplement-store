@@ -25,6 +25,8 @@ final class Money
     /** Cents → "24.99" for form inputs. */
     public static function plain(int $cents): string
     {
-        return intdiv($cents, 100).'.'.str_pad((string) ($cents % 100), 2, '0', STR_PAD_LEFT);
+        $abs = abs($cents);
+
+        return ($cents < 0 ? '-' : '').intdiv($abs, 100).'.'.str_pad((string) ($abs % 100), 2, '0', STR_PAD_LEFT);
     }
 }

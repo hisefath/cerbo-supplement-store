@@ -20,8 +20,8 @@ final class CheckoutService
     /** @throws OrderException */
     public function pay(Order $order, string $paymentMethod, string $idempotencyKey): Payment
     {
-        [$payment, $isNew] = $this->reserve($order->id, $idempotencyKey);
-        if (! $isNew) {
+        $payment = $this->reserve($order->id, $idempotencyKey);
+        if (! $payment->wasRecentlyCreated) {
             return $payment; // same key → same outcome; never a second charge
         }
 
@@ -29,11 +29,11 @@ final class CheckoutService
         // `ledger:verify` flags it; the fix is a reconcile job that asks the gateway by idempotency key.
         $result = $this->gateway->charge($payment->amount_cents, $paymentMethod, $idempotencyKey);
 
-        return $this->settle($payment->id, $result);
+        return $this->settle($payment, $result);
     }
 
-    /** @return array{0: Payment, 1: bool} the payment, and whether this call created it */
-    private function reserve(int $orderId, string $key): array
+    /** Returns this attempt's payment: new (wasRecentlyCreated) or the stored one for a replayed key. */
+    private function reserve(int $orderId, string $key): Payment
     {
         return DB::transaction(function () use ($orderId, $key) {
             $order = Order::whereKey($orderId)->lockForUpdate()->firstOrFail();
@@ -43,7 +43,7 @@ final class CheckoutService
                     throw new OrderException('Invalid payment attempt.');
                 }
 
-                return [$existing, false];
+                return $existing;
             }
             if ($order->status !== Order::AWAITING_PAYMENT) {
                 throw new OrderException(match ($order->status) {
@@ -68,16 +68,16 @@ final class CheckoutService
             ]);
             $order->update(['status' => Order::PROCESSING]);
 
-            return [$payment, true];
+            return $payment;
         });
     }
 
-    private function settle(int $paymentId, ChargeResult $result): Payment
+    private function settle(Payment $attempt, ChargeResult $result): Payment
     {
-        return DB::transaction(function () use ($paymentId, $result) {
-            $orderId = Payment::whereKey($paymentId)->value('order_id');
-            $order = Order::whereKey($orderId)->lockForUpdate()->firstOrFail(); // lock order first, same as reserve()
-            $payment = Payment::whereKey($paymentId)->lockForUpdate()->firstOrFail();
+        return DB::transaction(function () use ($attempt, $result) {
+            // Lock order: the order row first (as in reserve), then this payment, then products by ascending id.
+            $order = Order::whereKey($attempt->order_id)->lockForUpdate()->firstOrFail();
+            $payment = Payment::whereKey($attempt->id)->lockForUpdate()->firstOrFail();
 
             if ($payment->status !== Payment::PENDING) {
                 return $payment; // already settled elsewhere (e.g. a future reconcile job)

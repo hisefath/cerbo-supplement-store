@@ -12,7 +12,7 @@ token() { grep -o 'name="csrf-token" content="[^"]*' | cut -d'"' -f4; }
 send_order() { # $1 = lines query string → prints the patient pay URL
   local jar=$DIR/provider t loc
   t=$(curl -s -c $jar -b $jar "$B/orders/new" | token)
-  loc=$(curl -s -c $jar -b $jar -o /dev/null -w '%{redirect_url}' -X POST "$B/orders" --data-urlencode "_token=$t" -d "patient_id=1" $1)
+  loc=$(curl -s -c $jar -b $jar -o /dev/null -w '%{redirect_url}' -X POST "$B/orders" --data-urlencode "_token=$t" -d "patient_id=1" -d "request_key=$(uuidgen)" $1)
   curl -s -c $jar -b $jar "$loc" | grep -o "$B/pay/[A-Za-z0-9]*" | head -1
 }
 

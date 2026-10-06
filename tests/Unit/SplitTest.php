@@ -74,5 +74,7 @@ class SplitTest extends TestCase
         $this->assertSame('$0.05', Money::format(5));
         $this->assertSame('$1,234.56', Money::format(123456));
         $this->assertSame('-$0.48', Money::format(-48));
+        $this->assertSame('24.05', Money::plain(2405));
+        $this->assertSame('-0.48', Money::plain(-48));
     }
 }

@@ -12,7 +12,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->trustProxies(at: '*'); // Railway terminates TLS at its edge; needed for https URLs
+        // Railway terminates TLS at its edge: trust its forwarded scheme/IP so links are https. Not X-Forwarded-Host,
+        // which would let a forged header choose the domain of the emailed payment link.
+        $middleware->trustProxies(at: '*', headers: Request::HEADER_X_FORWARDED_FOR | Request::HEADER_X_FORWARDED_PROTO);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

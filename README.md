@@ -28,7 +28,7 @@ A working vertical slice of a supplement store inside an EHR:
    - both payment attempts;
    - the double-entry ledger, with debits equal to credits;
    - stock reserve/release movements;
-   - five automated audit checks.
+   - the automated audit checks (split recomputed from the snapshots, one payment, ledger balanced and matching, stock movements matching the lines).
 6. **Platform metrics** shows GMV and fee revenue computed **from the ledger**, by provider and by week, plus a live run of the books check.
 
 ## The money rules
@@ -67,7 +67,7 @@ At payment, a balanced settlement ledger is posted:
 
 ## Run it locally
 
-Requires PHP 8.3+ and Composer. No Node and no Docker.
+Requires PHP 8.4+ and Composer. No Node and no Docker.
 
 ```bash
 composer setup
@@ -120,8 +120,9 @@ About 2,000 hand-written lines; everything else is the standard Laravel skeleton
 - **Laravel**, because it's Cerbo's production stack, so reviewers read it in their own idiom.
 - **Fee = 75 bps of the subtotal, once per order, half-up, borne by the provider.** The patient pays exactly the quoted price, and the payout is the residual.
 - **Snapshots at send.** Price, cost, and `fee_bps` are copied onto the order, so the quote the provider agreed to can't drift.
-- **The quote on the order and the ledger are kept separately and cross-checked.** The audit recomputes from immutable line snapshots, so a bad number can't hide behind a copy of itself.
+- **The quote on the order and the ledger are kept separately and cross-checked.** The audit recomputes from immutable line snapshots, and also checks stock movements against lines and looks for money captured but never booked.
 - **Reserve → charge → settle**, never holding a DB lock across the processor call. Stock is reserved before charging and released on decline.
+- **Idempotent "send order"** (a per-form key), so a double-click can't create two payable links for one patient.
 - **Three layers against double charge:**
   - the idempotency key, so the same attempt replays its stored outcome;
   - the order row lock with a status check, so different attempts can't race;

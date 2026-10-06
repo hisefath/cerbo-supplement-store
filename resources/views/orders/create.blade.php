@@ -5,6 +5,7 @@
 
 <form method="post" action="{{ route('orders.store') }}" id="order-form">
   @csrf
+  <input type="hidden" name="request_key" value="{{ old('request_key', $requestKey) }}">
   <div class="card">
     <label>Patient
       <select name="patient_id" required>
