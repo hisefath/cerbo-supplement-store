@@ -7,11 +7,11 @@ several harnesses read it and the repo is public.
 ## Resume
 
 <!-- Rewritten as the LAST edit of every supervisor move. Times come from `date`. -->
-- **As of:** 2026-10-09 18:22 CDT
-- **In flight:** none. G0 approved (brief@e8c6621), D23 logged.
-- **Next:** human types `/gather-evidence` (R01–R07; may dispatch per question).
-- **Waiting on:** human: `/gather-evidence`.
-- **Verified:** brief@e8c6621 Done-when all pass; make check OK
+- **As of:** 2026-10-09 18:35 CDT
+- **In flight:** none. gather-evidence pass 1 done: R01–R07 written (2 answered, 5 partial), Done-when all pass.
+- **Next:** human reviews research (Approve / Revise R<NN> / Stop) → `/write-prd` (G1). M1 MR (brief + research) can open after this.
+- **Waiting on:** human: research review.
+- **Verified:** docs/research Done-when checks clean; make check OK
 
 ## Tasks
 
@@ -39,6 +39,7 @@ several harnesses read it and the repo is public.
 | 2026-10-09 17:27 CDT | G-L5 | H1@19d8e18b0765 | "approved" |
 | 2026-10-09 18:19 CDT | decision: set v1 (main) aside; how to describe it | main@778e788; AGENTS.md "Project specifics"; journal D1-D17 | "actually the whole laravel thing, i dont want, since we're started from scratch. whatevers in main branch, just dont worry about it" · "for anything to do with the main branch, we should just say how we did the project in a one shot manner before, because ai is so powerful, and wanted to see if it would work, but then scratched that and started again with a full auditable work flow with me being very intimately involved in the planning stage as ai can catch whats broken but cant catch whats wrong, and solving the wrong problem is highly probable for a non deterministic model." |
 | 2026-10-09 18:22 CDT | G0 | specs/M1-in-ehr-supplement-orders/brief.md@e8c6621 | "approve" |
+| 2026-10-09 18:39 CDT | research review (no gate; gather-evidence STOP) | docs/research/R01-R07@b3966a6 | "approve, then /write-prd" |
 
 ## Log
 
@@ -65,3 +66,4 @@ several harnesses read it and the repo is public.
 2026-10-09 17:28 CDT VERIFY H1 applied in software-factory-kit ee2e6a2 (hash 19d8e18b0765 matched; scripts/test.sh 119 passed, 0 failed); pushed GitLab + GitHub. Kit H1/F3 status flips to adopted on the next route-failure pass.
 2026-10-09 18:13 CDT ROUTE human-owned gap recorded: AI usage log (REQ-15/22) has no owning skill; supervisor keeps docs/AI_USAGE.md per Q2 → candidate F5 for /route-failure at M1 close
 2026-10-09 18:20 CDT VERIFY M1 brief Done-when all pass (sections, ids, tech words, NS=1, 3 Q rows); D22 logged, D1-D17 superseded-by D22; AGENTS.md specifics updated per Approvals 18:19
+2026-10-09 18:35 CDT RESULT gather-evidence R01-R07 interactive, serial (sources.md is shared, so not parallel-safe: a dispatch-rule lesson), 32/105 tool calls
