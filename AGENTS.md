@@ -52,7 +52,6 @@ test output, questions). Templates: `specs/_templates/task.md`, `specs/_template
 - Canonical remote: Gauntlet GitLab (`origin`); GitHub is a push mirror (no PRs there).
 
 ## Project specifics
-- Clean restart (v2) under software-factory-kit: the v1 build lives in `main@778e788` (restore a file with `git checkout 778e788 -- <path>`). Never copy v1 code forward without a task that owns it.
-- v1's decisions are journal entries D1–D17, all `proposed`; the v2 gates accept or supersede them.
-- Stack: undecided until M3 design. Don't assume Laravel because v1 used it.
+- History: `main@778e788` is an earlier one-shot AI build, kept only as history. It is not an input: don't read, cite or reuse it (D22). This branch restarts with a fully auditable, human-gated workflow.
+- Stack: undecided until M3 design, chosen from the research evidence.
 - Money, when it exists: integer cents only, never floats.

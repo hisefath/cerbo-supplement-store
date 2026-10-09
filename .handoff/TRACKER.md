@@ -7,11 +7,11 @@ several harnesses read it and the repo is public.
 ## Resume
 
 <!-- Rewritten as the LAST edit of every supervisor move. Times come from `date`. -->
-- **As of:** 2026-10-09 17:13 CDT
-- **In flight:** `/sharpen-brief` M1 paused after reading inputs. Assignment source = Gauntlet portal "Cerbo · ECommerce Supplement Store" (project brief v1 + company info), captured privately outside the repo (uncleared for public quoting).
-- **Next:** human types `/route-failure` (F4: metrics + company lens; manual-only skill, the Skill tool refused to start it) → G-L5 → resume `/sharpen-brief` with the updated skill.
-- **Waiting on:** human: `/route-failure`; later G-L5, brief interview Q1–Q5, G0.
-- **Verified:** branch at bc8d3b8; portal company info says stack TypeScript/JS, Vue, MySQL/Postgres, AWS (v1 D1 assumed PHP/Laravel) → research question for the brief
+- **As of:** 2026-10-09 18:22 CDT
+- **In flight:** none. G0 approved (brief@e8c6621), D23 logged.
+- **Next:** human types `/gather-evidence` (R01–R07; may dispatch per question).
+- **Waiting on:** human: `/gather-evidence`.
+- **Verified:** brief@e8c6621 Done-when all pass; make check OK
 
 ## Tasks
 
@@ -37,6 +37,8 @@ several harnesses read it and the repo is public.
 | 2026-10-09 17:11 CDT | decision: how to add metrics + company lens to the factory (F4) | chat options card (1 spread across sharpen-brief, gather-evidence, write-prd + shared reference / 2 sharpen-brief only / 3 do nothing) | "1, im logged in now." |
 | 2026-10-09 17:21 CDT | /route-failure F4 + commit to software-factory-kit (push: origin → GitLab + github.com/hisefath/software-factory-kit) | software-factory-kit@88de807 (FINDINGS.md, HARNESS_CHANGELOG.md; diff not yet written, so G-L5 is NOT covered by these words) | "yes do all steps 1, 2, 3, but also lets commit this tot he software factory repo here https://github.com/hisefath/software-factory-kit" |
 | 2026-10-09 17:27 CDT | G-L5 | H1@19d8e18b0765 | "approved" |
+| 2026-10-09 18:19 CDT | decision: set v1 (main) aside; how to describe it | main@778e788; AGENTS.md "Project specifics"; journal D1-D17 | "actually the whole laravel thing, i dont want, since we're started from scratch. whatevers in main branch, just dont worry about it" · "for anything to do with the main branch, we should just say how we did the project in a one shot manner before, because ai is so powerful, and wanted to see if it would work, but then scratched that and started again with a full auditable work flow with me being very intimately involved in the planning stage as ai can catch whats broken but cant catch whats wrong, and solving the wrong problem is highly probable for a non deterministic model." |
+| 2026-10-09 18:22 CDT | G0 | specs/M1-in-ehr-supplement-orders/brief.md@e8c6621 | "approve" |
 
 ## Log
 
@@ -61,3 +63,5 @@ several harnesses read it and the repo is public.
 2026-10-09 17:13 CDT FAIL route-failure is disable-model-invocation: supervisor cannot start it; the human must type /route-failure (WORKFLOW §2 rule 3 working as designed)
 2026-10-09 17:24 CDT RESULT route-failure F4 → software-factory-kit FINDINGS F3 + HARNESS_CHANGELOG H1 [proposed] diff-sha256 19d8e18b0765, committed+pushed c6fa12f (GitLab + GitHub) per Approvals 17:21; NOTE tracker labels F1-F4 are local: kit F3 = tracker F4; tracker F1-F3 not yet in kit FINDINGS (deferred to M1 close, D20)
 2026-10-09 17:28 CDT VERIFY H1 applied in software-factory-kit ee2e6a2 (hash 19d8e18b0765 matched; scripts/test.sh 119 passed, 0 failed); pushed GitLab + GitHub. Kit H1/F3 status flips to adopted on the next route-failure pass.
+2026-10-09 18:13 CDT ROUTE human-owned gap recorded: AI usage log (REQ-15/22) has no owning skill; supervisor keeps docs/AI_USAGE.md per Q2 → candidate F5 for /route-failure at M1 close
+2026-10-09 18:20 CDT VERIFY M1 brief Done-when all pass (sections, ids, tech words, NS=1, 3 Q rows); D22 logged, D1-D17 superseded-by D22; AGENTS.md specifics updated per Approvals 18:19
