@@ -29,4 +29,10 @@ Thumbs.db
 # Private decision journal (kept local for now)
 /DECISIONS.md
 /database/database.sqlite
-/.claude/
+# Claude Code: commit the shared settings + verifier agent; keep machine-local files out
+/.claude/launch.json
+/.claude/settings.local.json
+# software-factory-kit (scripts/init-repo.sh): agent event logs may contain file contents; raw demo footage
+.handoff/runs/*/events.jsonl
+.handoff/runs/*/stderr.log
+docs/demo/raw/
