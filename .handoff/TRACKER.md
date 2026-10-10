@@ -7,11 +7,11 @@ several harnesses read it and the repo is public.
 ## Resume
 
 <!-- Rewritten as the LAST edit of every supervisor move. Times come from `date`. -->
-- **As of:** 2026-10-10 16:20 CDT
-- **In flight:** demo deploy prep (D55): GAP tasks M4-T901 (/healthz), M4-T902 (/version), M4-T903 (demo seed) running in parallel. M4 build T001-T011 squashed (last 1dafd61); check-security answered (D49-D54); ship-milestone STOP B (runbook, HEALTH.md, smoke.sh committed 11b3425).
-- **Next:** verify and squash T901-T903; human does runbook FS-1 to FS-8 (web-v2, postgres-v2, roles, domain, variables incl. TRUST_PROXY=1, migrations, seed); then /ship-milestone again for the deploy ask. Later: re-run /check-security and /report-milestone, then the D48 merge chain M1 to M4. After M4: design-lld catch-up (helper unitCostFromLowestAllowedPrice; D47 SM-1 guard; FM-3 new-key retry; failure_reason NULL meaning; acceptance Q-1 to Q-4); define-acceptance re-run (D47 test); FM-7 reconcile owner; milestone review items pass2 R6, R7, pass3 R3, R5.
-- **Waiting on:** M4-T901, M4-T902, M4-T903 workers.
-- **Verified:** 1dafd61 make check OK (108 unit + 43 M4 acceptance); built-app CSP hash matches
+- **As of:** 2026-10-10 18:31 CDT
+- **In flight:** nothing. M1-M4 merged to main (10a020e, GitHub mirrored); demo live at web-v2 (1130822, smoke GREEN). route-failure M4 retro closed: F5-F26 filed; H4-H15 all adopted in software-factory-kit (last b8560d0, pushed to GitLab + GitHub); D57-D69 recorded; docs/decisions/REVIEW.md (project review by topic and weight) generated and checked by make check.
+- **Next:** home the unpushed Cerbo commits d4c77e6..de232d2 (on merged milestone/m4-tracer-bullet) on main via a small MR; then /quiz-me (milestone close chain). Queued: M5-R01 design-lld catch-up, M5-R02 define-acceptance, M5-R03 clarify-spec M5 scope; next route-failure pass: neutral examples in H4/H8, update Cerbo's scripts/scope-guard.sh copy, record H4-H15 adopted in HARNESS_CHANGELOG, draw-diagrams trace bugs (Log 2026-10-10 00:03). Also: G-live probe, re-run /check-security, redeploy from main, align D33 Postgres 16 vs 18.
+- **Waiting on:** the human: git identity for software-factory-kit (no ~/.gitconfig; kit commits used Mastershefu <mastershefu@MacBook-Pro-4.local> via env), uptime probe on /healthz.
+- **Verified:** de232d2 make decisions OK (REVIEW.md current); 30a0de4 make check OK (unit + 43 M4 acceptance + decisions); kit b8560d0 scripts/test.sh 131 passed, 0 failed
 
 ## Tasks
 
