@@ -294,6 +294,31 @@ Copy this block for each new entry (D-ids increase by one, starting at D1):
 - Cost accepted: M4 grows by sign-in; alert thresholds are agent picks (A-10, A-11) until real data exists. · Reversibility: Type 2 (PRD edit + new G1) · Confidence: medium
 - Revisit if: the partner expects the order to open from the message without sign-in, or alert lines prove noisy. · Evidence: docs/product/prd.md Interview log Q9-Q11; Fullscript support (S02.3); HHS FAQ 570 via Holland & Hart summary · Interview line: "The notice says only who sent an order; the patient signs in to see it, and operations staff audit orders by number without ever seeing who the patient is."
 
+### D27 Screen layouts: live payout builder, two-step patient checkout, equation-first audit  [status: accepted]
+- 2026-10-09 21:52 CDT · map-ux-flows (G-ux, variant half) · M3 · Decided by: human, G-ux 2026-10-09 21:52 CDT: "go, then run pass 2" · Proposed by: map-ux-flows (Claude Code, claude-opus-5-5) · artifact: docs/design/screens.md@91997dc
+- Context and forces: three key screens carry the demo: the provider's order (FR-001, FR-002, FR-025), the patient's order and checkout (FR-022, FR-023, FR-037), and the reviewer's breakdown (FR-014, FR-050).
+- Options:
+  - Do nothing — rejected: define-acceptance needs a G-ux approval
+  - S1-V2 two steps, S1-V3 search lines — rejected: hide the payout until the end, or hide stock while browsing
+  - S2-V1 one page — rejected: the 30-minute price hold has no visible moment; S2-V3 pay first — rejected: hides the price-change notice (FR-022)
+  - S4-V2 money in and out, S4-V3 item by item — rejected: items hidden, or the check spread over three rows
+  - S1-V1, S2-V2, S4-V1 (agent's recommendation) — chosen
+- Choice · Why: for a demo that must show money integrity, facing a price rule that is final only at checkout, we chose a live payout panel, a separate checkout step and an equation-first audit view over denser or faster layouts, so each screen shows its rule at a glance, accepting one extra tap for the patient.
+- Cost accepted: the patient taps once more; the provider builder needs desktop width. · Reversibility: Type 2 · Confidence: high
+- Revisit if: patients abandon at the checkout step (SC-003). · Evidence: docs/design/screens.md S1, S2, S4 Variants · Interview line: "Each key screen shows its rule at a glance: the provider sees her payout as she builds, the patient sees prices locked when checkout starts, and the auditor sees one equation that adds up."
+
+### D28 UX contract: 9 screens, six states each, 90-second demo  [status: accepted]
+- 2026-10-09 21:57 CDT · map-ux-flows (G-ux) · M3 · Decided by: human, G-ux 2026-10-09 21:57 CDT: "approve, then /design-hld" · Proposed by: map-ux-flows (Claude Code, claude-opus-5-5) · artifact: docs/design/screens.md@96f2f5f
+- Context and forces: M4 and M5 stories US-1 to US-5 and US-8 need screens; the human asked to review both journeys together (Q1); provider desktop, patient phone (Q2); provider order inside the chart (Q3).
+- Options:
+  - Do nothing — rejected: define-acceptance needs G-ux
+  - M4 only (agent's first recommendation) — rejected by the human: review both journeys at once
+  - Happy-path screens only — rejected by the skill's rule: most bugs live in the other five states
+  - 9 screens with six states, copy, accessibility and a 1:30 demo — chosen
+- Choice · Why: for a slice judged on judgment and a live demo, we chose a full state contract for every screen over happy-path mock-ups, so tests and the build have no gaps to guess, accepting a longer design pass.
+- Cost accepted: one open question (fee share per product on S6, FR-028) goes to clarify-spec. · Reversibility: Type 2 · Confidence: high
+- Revisit if: the partner's demo feedback changes the spine. · Evidence: docs/design/flows.md, docs/design/screens.md · Interview line: "Every screen was designed in six states before any code, so the tests come straight from the design."
+
 ### D29 PRD revision: financial report with gross and net, four least-privilege operations roles  [status: accepted]
 - 2026-10-09 22:16 CDT · write-prd (G1) · M2 · Decided by: human, G1 2026-10-09 22:16 CDT: "approve, then /map-ux-flows" · Proposed by: write-prd (Claude Code, claude-opus-5-5) · artifact: docs/product/prd.md@ab9f181
 - Context and forces: the human asked that operations data produce financial reports and that operations access be managed with a lean team (Q12). R14 (report shape, gross vs net, 3-year retention) and R15 (minimum necessary, separation of duties, least privilege). FR-051 to FR-065, NFR-013, NFR-014.
@@ -305,6 +330,30 @@ Copy this block for each new entry (D-ids increase by one, starting at D1):
 - Choice · Why: for a platform that must close its books and pass an audit, facing a mixed principal-versus-agent case and HIPAA's minimum-necessary rule, we chose a balancing period report with gross and net side by side and four least-privilege roles with separated grant and review, over a single admin role, to keep every person to the data their job needs, accepting four more role screens in M6.
 - Cost accepted: M6 grows; a single SRE is a bottleneck for role changes (EC-15). · Reversibility: Type 2 · Confidence: medium
 - Revisit if: the partner's finance team settles gross vs net, or the team grows beyond four roles. · Evidence: docs/research/R14, R15; docs/product/prd.md US-9, US-10 · Interview line: "The person who hands out access never reviews the access log, and nobody on the ops team ever sees who a patient is."
+
+### D30 Operations layouts: order funnel, balance-first financial report, people-list access  [status: accepted]
+- 2026-10-09 22:31 CDT · map-ux-flows (G-ux, variant half) · M3 · Decided by: human, G-ux 2026-10-09 22:31 CDT: "go, then run pass 2" · Proposed by: map-ux-flows (Claude Code, claude-opus-5-5) · artifact: docs/design/screens.md@9282682
+- Context and forces: the human asked to see bottlenecks and alerts (Q9, Q11), to produce financial reports (Q12) and to manage operations access (Q12). FR-048, FR-049, FR-060 to FR-065, FR-054 to FR-056.
+- Options:
+  - Do nothing — rejected: define-acceptance for M6 needs G-ux
+  - S10-V1 alert tiles, S10-V3 measures against alert lines — rejected: neither shows where orders stall
+  - S11-V2 statement lines, S11-V3 totals over every order — rejected: harder for non-accountants, or unreadable in a busy month
+  - S12-V2 role cards — rejected: moving a person takes two actions
+  - S10-V2, S11-V1, S12-V1 (agent's recommendation) — chosen
+- Choice · Why: for operations users who need bottlenecks, a balancing month and safe access changes, we chose a funnel, the same balance equation as the order breakdown, and a people list with required reasons, over denser tables, so each screen answers its user's first question, accepting that itemized orders live in the export.
+- Cost accepted: the funnel looks jumpy with few orders. · Reversibility: Type 2 · Confidence: high
+- Revisit if: finance asks for itemized orders on screen. · Evidence: docs/design/screens.md S10-S12 Variants · Interview line: "The ops dashboard is a funnel because the bottleneck is literally the step where the count drops."
+
+### D31 UX contract extended to M6: 14 screens, demo covers every key screen  [status: accepted]
+- 2026-10-09 22:33 CDT · map-ux-flows (G-ux) · M3 · Decided by: human, G-ux 2026-10-09 22:33 CDT: "approve, then /design-hld" · Proposed by: map-ux-flows (Claude Code, claude-opus-5-5) · artifact: docs/design/screens.md@675f650
+- Context and forces: M6 stories US-6, US-9, US-10 added operations screens (S10-S14); the 90-second demo must show every key screen.
+- Options:
+  - Do nothing — rejected: M6 acceptance needs G-ux
+  - Keep the provider dashboard beat and a 2-minute demo — rejected: breaks the 1:30 limit
+  - Nine beats in 1:30 covering all six key screens (agent's proposal) — chosen
+- Choice · Why: for a demo that must show both the money path and the operations side, we chose nine short beats over a longer video, accepting a tight pace that the demo script may split later.
+- Cost accepted: about 7 seconds per operations beat. · Reversibility: Type 2 · Confidence: medium
+- Revisit if: the demo script cannot fit the beats. · Evidence: docs/design/screens.md Demo layout · Interview line: "Every screen has six designed states, and the demo walks the money from the provider's click to the finance lead's balanced report."
 
 ### D43 Broader holistic-care products parked as a future non-goal (NG-12)  [status: accepted]
 - 2026-10-10 10:58 CDT · clarify-spec (3b) · M2 · Decided by: human, clarify-spec CQ-3 2026-10-10 10:58 CDT: "A, non goals, can revisit later, and marked as was considered for the future of the product" · Proposed by: clarify-spec (Claude Code, claude-opus-5-5) · artifact: docs/product/prd.md@998ed94 NG-12
