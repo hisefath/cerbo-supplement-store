@@ -151,6 +151,7 @@ several harnesses read it and the repo is public.
 | 2026-10-10 18:28 CDT | G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) | H15@5fe6c05fbd96 | "Approve, adopt H15" |
 | 2026-10-10 18:30 CDT | G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) | H12@562b8efd0be7 | "Approve, adopt H12" |
 | 2026-10-10 18:31 CDT | G-L5 (block decision: rows without a diff) | software-factory-kit FINDINGS.md F14-F24 | "Approve, accept all as listed" |
+| 2026-10-10 18:32 CDT | push + MR + merge to main: M4 close-out (route-failure retro record, D57-D69, REVIEW.md) | milestone/m4-close-retro@1836d05+ | "yes, open the MR and merge to main" |
 
 ## Log
 
