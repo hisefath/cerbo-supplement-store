@@ -41,3 +41,6 @@ export function assertCanActOnPatient(viewer: Viewer, patient: PatientRef | unde
 export function assertIsOrderPatient(viewer: Viewer, order: OrderOwnership): void {
   if (!(viewer.role === 'patient' && viewer.userId === order.patientId)) throw new ProblemError('not-found')
 }
+
+/** Platform reviewers: who may open the paid-order list and an order breakdown (EP-5, EP-6, EP-25, EP-26, FR-052). */
+export const ORDER_REVIEWER_ROLES: Role[] = ['operations_specialist', 'finance_lead']

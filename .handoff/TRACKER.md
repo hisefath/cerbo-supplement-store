@@ -7,11 +7,11 @@ several harnesses read it and the repo is public.
 ## Resume
 
 <!-- Rewritten as the LAST edit of every supervisor move. Times come from `date`. -->
-- **As of:** 2026-10-10 13:43 CDT
-- **In flight:** M4-T005 (patient order view, access, no-edit) in .claude/worktrees/m4-t005 from milestone@a3a582b. Done: T001 61c966a, T002 eb3f87d, T003 09c7f55, T004 a3a582b.
-- **Next:** on T005 result: verify → squash → T006 (per-task verifier) ∥ T007, then T008, T009, milestone review. After M4: design-lld catch-up (helper unitCostFromLowestAllowedPrice; D47 SM-1 guard; FM-3 new-key retry; failure_reason NULL meaning; acceptance Q-1 to Q-4); define-acceptance re-run (D47 test); FM-7 reconcile owner; milestone review items pass2 R6, R7, pass3 R3, R5.
-- **Waiting on:** M4-T005 worker.
-- **Verified:** a3a582b make check OK (49 unit); M4 acceptance 28/43, no regressions
+- **As of:** 2026-10-10 13:49 CDT
+- **In flight:** M4-T006 (sign-in, idle) and M4-T007 (reviewer views) in parallel from milestone@67a0315. Done: T001 61c966a, T002 eb3f87d, T003 09c7f55, T004 a3a582b, T005 67a0315.
+- **Next:** T006 → verify + per-task verifier → squash; T007 → verify → squash; then T008, T009, milestone review. Milestone-review notes: T004 order-level rounding fallback (all products named); T005 price-view rules untested beyond sent/unchanged, expireHoldIfDue not built (FR-037 out of M4). After M4: design-lld catch-up (helper unitCostFromLowestAllowedPrice; D47 SM-1 guard; FM-3 new-key retry; failure_reason NULL meaning; acceptance Q-1 to Q-4); define-acceptance re-run (D47 test); FM-7 reconcile owner; milestone review items pass2 R6, R7, pass3 R3, R5.
+- **Waiting on:** M4-T006 and M4-T007 workers.
+- **Verified:** 67a0315 make check OK (49 unit); M4 acceptance 32/43, no regressions
 
 ## Tasks
 
@@ -236,3 +236,7 @@ several harnesses read it and the repo is public.
 2026-10-10 13:37 CDT DISPATCH M4-T004 harness=claude-subagent why=send validation and price floor, serial on BE-9 (G4 D45); worktree .claude/worktrees/m4-t004
 2026-10-10 13:43 CDT VERIFY M4-T004 squashed: scope-guard OK (4 paths); Done-when 3/3; make check OK (49 unit); M4 acceptance 28/43, no regressions; per-task verifier skipped per review plan (milestone review)
 2026-10-10 13:43 CDT DISPATCH M4-T005 harness=claude-subagent why=patient order view and access, serial on BE-4/BE-9; worktree .claude/worktrees/m4-t005
+2026-10-10 13:49 CDT VERIFY M4-T005 squashed: scope-guard OK (3 paths); Done-when 4/4; make check OK (49 unit); M4 acceptance 32/43, no regressions
+2026-10-10 13:49 CDT DISPATCH M4-T006 harness=claude-subagent why=sign-in and idle sign-out, parallel with T007 (disjoint Owns)
+2026-10-10 13:49 CDT DISPATCH M4-T007 harness=claude-subagent why=reviewer views, parallel with T006 (disjoint Owns)
+2026-10-10 13:56 CDT VERIFY M4-T007 squashed: scope-guard OK (8 paths); Done-when 5/5; make check OK (71 unit); milestone-review notes: EP-25 sorts by id only (LLD pagination says time DESC, id DESC); pages unrendered in a browser
