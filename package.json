@@ -1,0 +1,31 @@
+{
+  "name": "cerbo-supplement-store",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.22.0"
+  },
+  "scripts": {
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "test:acceptance": "vitest run tests/acceptance"
+  },
+  "dependencies": {
+    "kysely": "0.29.6",
+    "nuxt": "4.5.2",
+    "pg": "8.23.0",
+    "vue": "3.5.43",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@nuxt/test-utils": "4.3.2",
+    "@types/pg": "8.23.1",
+    "kysely-codegen": "0.20.0",
+    "node-pg-migrate": "9.0.0",
+    "typescript": "5.9.3",
+    "vitest": "5.0.1",
+    "vue-tsc": "3.3.11"
+  }
+}

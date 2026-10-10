@@ -7,11 +7,11 @@ several harnesses read it and the repo is public.
 ## Resume
 
 <!-- Rewritten as the LAST edit of every supervisor move. Times come from `date`. -->
-- **As of:** 2026-10-10 10:45 CDT
-- **In flight:** G3 on docs/architecture/lld.md@6733116 (revised: D42 payment timing, Q-7). D38-D41 answered (provisional, on 9af3b07; lld.md changed only in Decisions and Open questions since); D42 presented; then closing G3 binds every answer to 6733116.
-- **Next:** human answers D42, then closing G3. After G3: clarify-spec (LLD Q-1 cancel, Q-2 fee split, Q-7 Later scope), AGENTS.md stack diff (human-only), define-acceptance M4.
-- **Waiting on:** human: D42 verdict.
-- **Verified:** 6733116 embed-diagrams 18 in sync; make check OK; id checks clean
+- **As of:** 2026-10-10 16:20 CDT
+- **In flight:** demo deploy prep (D55): GAP tasks M4-T901 (/healthz), M4-T902 (/version), M4-T903 (demo seed) running in parallel. M4 build T001-T011 squashed (last 1dafd61); check-security answered (D49-D54); ship-milestone STOP B (runbook, HEALTH.md, smoke.sh committed 11b3425).
+- **Next:** verify and squash T901-T903; human does runbook FS-1 to FS-8 (web-v2, postgres-v2, roles, domain, variables incl. TRUST_PROXY=1, migrations, seed); then /ship-milestone again for the deploy ask. Later: re-run /check-security and /report-milestone, then the D48 merge chain M1 to M4. After M4: design-lld catch-up (helper unitCostFromLowestAllowedPrice; D47 SM-1 guard; FM-3 new-key retry; failure_reason NULL meaning; acceptance Q-1 to Q-4); define-acceptance re-run (D47 test); FM-7 reconcile owner; milestone review items pass2 R6, R7, pass3 R3, R5.
+- **Waiting on:** M4-T901, M4-T902, M4-T903 workers.
+- **Verified:** 1dafd61 make check OK (108 unit + 43 M4 acceptance); built-app CSP hash matches
 
 ## Tasks
 
@@ -82,6 +82,58 @@ several harnesses read it and the repo is public.
 | 2026-10-10 11:11 CDT | G3 Revise (trace FR-066 to FR-069; EP-20 and BE-9 coverage; S6 cancel in FE-15, ST and SEQ-5) | docs/architecture/lld.md@6733116 | "approve, then /design-lld" |
 | 2026-10-10 11:23 CDT | G3 (re-approval after revise for FR-066 to FR-069) | docs/architecture/lld.md@48545f9 + contracts/openapi.yaml + diagrams | "approve, then /define-acceptance" |
 | 2026-10-10 11:30 CDT | G3 Revise D38 (Nuxt 3 → Nuxt 4: the npm registry shows 4 is the current major; D38 named 3 from memory) | docs/architecture/lld.md@48545f9 D38 | "a" |
+| 2026-10-10 11:32 CDT | toolchain bootstrap: add dependencies (package.json pins listed in chat), docker test database, app shell, Makefile targets, .gitignore lines, and the AGENTS.md Commands + Stack diff (human-only edit) | chat proposal 2026-10-10 11:3x | "approve, then /define-acceptance" |
+| 2026-10-10 11:59 CDT | G3 (re-approval after Revise "a": D38 → Nuxt 4, journal D44) | docs/architecture/lld.md@5a984b8 | "approve G3 and acceptance, then /slice-tasks" |
+| 2026-10-10 11:59 CDT | G4 acceptance part: M4 definition of done, incl. Q-1 to Q-4 answers and the 7 recommended waivers (EDGE-003, 009, 015, 016, 042, 046, 047); Q-5 to Q-9 stay open to closing G4 | specs/M4-tracer-bullet/acceptance.md@695b94b | "approve G3 and acceptance, then /slice-tasks" |
+| 2026-10-10 12:06 CDT | G4 (option a: 9 vertical slices, tracer bullet first, T006 and T007 parallel, all claude; Q-5 to Q-9 take the recommendations in the STOP) | specs/M4-tracer-bullet/tasks/T001-T009@538db57 + acceptance.md@695b94b | "approve a, yes to vue-tsc, then go M4" |
+| 2026-10-10 12:06 CDT | Ask-first: add devDependency vue-tsc (pinned) and set Makefile types to npx nuxi typecheck (human-only Makefile edit, done by supervisor on this yes) | package.json, package-lock.json, Makefile | "approve a, yes to vue-tsc, then go M4" |
+| 2026-10-10 12:06 CDT | Build: "go M4" — create milestone/m4-tracer-bullet and dispatch implement-task per ready task | milestone/m4-tracer-bullet | "approve a, yes to vue-tsc, then go M4" |
+| 2026-10-10 12:13 CDT | human-only edit: AGENTS.md Commands row for make check (describe the type-check step) | AGENTS.md | "update AGENTS.md make check row" |
+| 2026-10-10 12:29 CDT | M4-T001 review dispositions, option b: relaunch T001 to fix R1 (unit tests in make check), R2 (dummy-hash cost), R7 (remove unused role-change code) before squash; R3, R5, R6 filed; R4 LLD catch-up; R8 to T004 | .handoff/reviews/M4-pass1.md; m4/t001-provider-sends-a-supplement-order@c0553aa | "do b instead" |
+| 2026-10-10 12:31 CDT | human-only edit: AGENTS.md Commands row for make check (add the unit-test step) | AGENTS.md | "update AGENTS.md make check row" |
+| 2026-10-10 12:33 CDT | supervisor commits M4-T001 relaunch fixes R2 (session.ts dummy-hash cost) and R7 (remove assertCanChangeRole, StaffRef) after the worker's git add was denied | m4/t001-provider-sends-a-supplement-order worktree: server/services/session.ts, server/services/access-policy.ts | "a, commit both" |
+| 2026-10-10 12:36 CDT | human-only edit: AGENTS.md Commands row for make check (unit-test command now uses --dir) | AGENTS.md | "update AGENTS.md make check row" |
+| 2026-10-10 12:45 CDT | G4 re-approval (Revise, option a): Owns entries server/api/orders/[orderId]/… → server/api/orders/*/… in T002, T003, T005, T008; supervisor commits T002's finished work | specs/M4-tracer-bullet/tasks@fdf9d40 | "a, fix the four Owns lines" |
+| 2026-10-10 12:51 CDT | M4-T002 review dispositions, option a: squash T002; add R1 (fail the attempt on any throw after tx1), R4 (lock order then lines; conditional attempt updates), R5 (freeze succeeded attempts) to T003 Ask (G4 re-approval for T003); R6, R7 noted for milestone close-out; R3 keep; R2 separate decision | .handoff/reviews/M4-pass2.md; m4/t002-patient-pays-once-split-recorded@9786e98; specs/M4-tracer-bullet/tasks/T003.md | "a, then bring me R2" |
+| 2026-10-10 13:01 CDT | R2 decision (review M4-pass2): a negative payout at payment time moves the order to needs_review before charging (option A) | server/services/payments.ts@eb3f87d; .handoff/reviews/M4-pass2.md R2 | "a, then start T003" |
+| 2026-10-10 13:15 CDT | verifier pass 3 on M4-T003 before squash; review plan for the rest of M4: per-task verifier only for T006 (sign-in), one milestone review covering T004, T005, T007, T008 (and T009) | m4/t003-pay-and-send-exactly-once@54536f0 | "a, and yes to that review plan" |
+| 2026-10-10 13:28 CDT | M4-T003 review dispositions (pass 3), option a: relaunch T003 to fix R1 (store only successes; release the key on every problem and 5xx, per lld.md BE-5), R2 (failure_reason only declined or no_answer; FM-3 same-key retry), R4 (10 s gateway timeout as no_answer); R3, R5 to the milestone review | .handoff/reviews/M4-pass3.md; m4/t003-pay-and-send-exactly-once@54536f0 | "a, relaunch T003 with R1, R2, R4" |
+| 2026-10-10 13:36 CDT | M4-T003 relaunch questions, option a: squash as is; after-M4 design-lld catch-up: FM-3 retry uses a new key (like FM-1), failure_reason NULL = closed without the gateway's answer; then dispatch T004 | m4/t003-pay-and-send-exactly-once@13e91c9 | "a, squash T003 and start T004" |
+| 2026-10-10 14:16 CDT | G4 re-approval (Revise, option a): T006 Owns widened with app/components/AppShell.vue, db/migrations/1760000006000_sign-in-attempts.sql, server/utils/db-types.ts, server/utils/problem.ts; relaunch T006 to fix pass4 R2, R3, R4, R5, R6, R7, R8, R9, R10; R1, R11 to milestone review | specs/M4-tracer-bullet/tasks/T006.md@1fe3bc7 | "a, widen T006 Owns and relaunch" |
+| 2026-10-10 14:33 CDT | verifier pass 5 on the M4-T006 relaunch before squash | m4/t006-sign-in-and-idle-sign-out@610754e | "a, run the verifier on T006" |
+| 2026-10-10 14:54 CDT | T006 review pass5 dispositions, option a: relaunch T006 for R3 (parallel-safe limit), R4 (re-check EP-17 before redirect), R2 local half (TRUST_PROXY setting, no shared unknown-address count; ship-milestone sets and confirms the Railway header), R1 (or-vs-and test); R5, R6 to milestone review; supervisor checks the result without another verifier pass unless asked | specs/M4-tracer-bullet/tasks/T006.md@08a61ae | "a, one more T006 run" |
+| 2026-10-10 15:08 CDT | G4 re-approval (Revise, option a): T009 Done-when becomes make -n check / grep -q "tests/acceptance" && npx vitest run --dir tests/acceptance/M4 && make check; rerun T009 | specs/M4-tracer-bullet/tasks/T009.md@f6f3714 | "a, fix T009's check and rerun" |
+| 2026-10-10 15:19 CDT | G4 re-approval (Revise, option a): add M4-T010 milestone review fixes (pass6 R2 cancel only from sent/payment_failed, R3 sign-in link carries next=, R4 name every below-floor item, R1 test, R15 Makefile comment) and run it; patient order list = M5 spec gap; R5, R6, R8, R9, R11 to LLD/acceptance catch-up; R10, R13, R14 to M5 | specs/M4-tracer-bullet/tasks/T010.md@75c17f0 | "a, add T010 and run it" |
+| 2026-10-10 15:39 CDT | report-milestone DV-1: M4 stays stacked on milestone/m1-research; merge M1, M2, M3, M4 to main in order, one MR each (option a) | milestone/m4-tracer-bullet@ec96fdf | "a, stack and merge M1 to M4 in order" |
+| 2026-10-10 15:47 CDT | G5 SEC-1 | docs/security/CHECKLIST.md@239c922 | "Approve, investigate SEC-1" |
+| 2026-10-10 15:48 CDT | G5 SEC-2 | docs/security/CHECKLIST.md@239c922 | "Approve, accept SEC-2" |
+| 2026-10-10 15:49 CDT | G5 SEC-3 | docs/security/CHECKLIST.md@239c922 | "Approve, accept SEC-3" |
+| 2026-10-10 15:50 CDT | G5 SEC-1 | docs/security/CHECKLIST.md@239c922 | "Approve, accept SEC-1" |
+| 2026-10-10 15:51 CDT | G5 SEC-4 | docs/security/CHECKLIST.md@239c922 | "Approve, add T011 and run it" (fix in M4-T011) |
+| 2026-10-10 15:51 CDT | G5 SEC-6 | docs/security/CHECKLIST.md@239c922 | "Approve, add T011 and run it" (fix in M4-T011) |
+| 2026-10-10 15:51 CDT | G5 SEC-7 | docs/security/CHECKLIST.md@239c922 | "Approve, add T011 and run it" (fix in M4-T011) |
+| 2026-10-10 15:51 CDT | G5 SEC-8 | docs/security/CHECKLIST.md@239c922 | "Approve, add T011 and run it" (fix in M4-T011) |
+| 2026-10-10 15:51 CDT | G5 SEC-9 | docs/security/CHECKLIST.md@239c922 | "Approve, add T011 and run it" (fix in M4-T011) |
+| 2026-10-10 15:51 CDT | G5 SEC-11 | docs/security/CHECKLIST.md@239c922 | "Approve, add T011 and run it" (fix in M4-T011) |
+| 2026-10-10 15:51 CDT | G5 SEC-5 | docs/security/CHECKLIST.md@239c922 | "Approve, add T011 and run it" (accept) |
+| 2026-10-10 15:51 CDT | G5 SEC-10 | docs/security/CHECKLIST.md@239c922 | "Approve, add T011 and run it" (accept) |
+| 2026-10-10 15:52 CDT | G4 re-approval (Revise): add M4-T011 security hardening (SEC-4, SEC-6, SEC-7, SEC-8, SEC-9, SEC-11) and run it | specs/M4-tracer-bullet/tasks/T011.md@0929805 | "Approve, add T011 and run it" |
+| 2026-10-10 15:55 CDT | G4 exception: M4 keeps 11 tasks (T011 security hardening) above the 10-task limit | specs/M4-tracer-bullet/tasks@58fa3ee | "a, keep T011 in M4 with an exception" |
+| 2026-10-10 16:07 CDT | verifier pass 7 on M4-T011 before squash | m4/t011-security-hardening-before-g5@182ee45 | "a, run the verifier on T011" |
+| 2026-10-10 16:11 CDT | standing security triage rule for this project: only critical/high findings truly reachable in the expected deployment (inside Cerbo's EHR) block; ship the demo first, fixing only what is exploitable in the demo deployment | milestone/m4-tracer-bullet@4b6aaab | "hey, we should only worry about critical and high severities that we are truly vulnerable to in the expected deployment environment. so inside of Cerbo's EHR, what could we be vulnerable to? thats what we care about. but before then, lets get the code out for demo purposes, and fix anything that may be vulnerable for the demo only" |
+| 2026-10-10 16:12 CDT | demo release: deploy the demo from milestone/m4-tracer-bullet before the M1 to M4 merge chain (option a) | milestone/m4-tracer-bullet@a4b64b4 | "a, deploy the demo from the branch" |
+| 2026-10-10 16:15 CDT | M4-T011 review dispositions (pass 7), option a: squash T011; R1 build-and-compare CSP hash check and R8 runtime-env warning go to ship-milestone smoke and runbook; R3 to LLD/contract catch-up; R2, R4, R5, R6, R7 filed | .handoff/reviews/M4-pass7.md; m4/t011-security-hardening-before-g5@182ee45 | "a, squash T011 then /ship-milestone" |
+| 2026-10-10 16:20 CDT | G-live STOP B: approve GAP-1, GAP-2, GAP-3 as task contracts M4-T901, M4-T902, M4-T903 on milestone/m4-tracer-bullet (D55; runbook Q-1 new web-v2 + postgres-v2, Q-3 GAP tasks on the M4 branch) | docs/ops/HEALTH.md@06c8d86 | "Approve, run the three GAP tasks" |
+| 2026-10-10 16:35 CDT | standing yes: the agent may run non-secret Railway setup commands for cerbo-supplement-store (add or rename services and databases, link, generate domains, set non-secret variables); secrets, role passwords, connection strings and the deploy itself stay human | docs/runbooks/deploy.md@a2cdfab | "yes, you may run non-secret Railway setup commands for cerbo-supplement-store" |
+| 2026-10-10 16:39 CDT | demo database version: keep PostgreSQL 18 on postgres-v2 (Railway template) instead of D33's 16 | docs/runbooks/deploy.md@29e27a2 | "done, keep 18" |
+| 2026-10-10 16:49 CDT | demo DB setup by one human-run script reading a git-ignored .env.railway (option a, no Keychain); the agent never reads the file or uses the passwords | scripts/railway-setup.sh | "a, write the script, and only do git ignore .env file, not macos keychain" |
+| 2026-10-10 16:54 CDT | deploy-production | M4@1130822 | "fixed, yes, deploy 1130822 to production" |
+| 2026-10-10 16:57 CDT | push milestone/m1-research and milestone/m4-tracer-bullet to origin (GitLab + GitHub mirror); main untouched | milestone/m4-tracer-bullet | "yes, push both branches" |
+| 2026-10-10 17:05 CDT | history plan: rebuild clean per-milestone branches from main (grouped commits per decision or result, one-line subjects), keep old branches as backup/*, push and merge M1, M2, M3 to main in order via GitLab MRs with merge commits; M4 stays local; MR body = TL;DR after the title, then a filled template describing changes and citing decisions and specs | milestone/m4-tracer-bullet | "yes approve the plan" (with: "yes should include a short tldr after the title, but also should include a good template for what we're doing in this PR, and answer the questions of the template after the tldr portion. we should describe the changes and reference the decisions and the specs that this PR is solving.") |
+| 2026-10-10 17:05 CDT | standing yes: merge milestone MRs automatically as we go; clean legible main history; brief one-line subjects and a TL;DR per PR | main | "yes do option b, and merge automatically as we do this, i just want a clean legible commit history to main detailing the changes in each milestone" |
+| 2026-10-10 17:28 CDT | M4 review pass 6 R7 disposition: keep (cancel vs checkout race already safe) | .handoff/reviews/M4-pass6.md | "a, keep R7 and R12, merge M4" |
+| 2026-10-10 17:28 CDT | M4 review pass 6 R12 disposition: keep (S2 copy built in T005, matches screens.md) | .handoff/reviews/M4-pass6.md | "a, keep R7 and R12, merge M4" |
+| 2026-10-10 17:28 CDT | G5 M4: merge milestone/m4-tracer-bullet to main via MR with a merge commit | milestone/m4-tracer-bullet@2604a27 | "a, keep R7 and R12, merge M4" |
 
 ## Log
 
@@ -196,3 +248,68 @@ several harnesses read it and the repo is public.
 2026-10-10 11:22 CDT RESULT M3-D06, M3-D11 status=done; embedded at 48545f9; G3 re-presented
 2026-10-10 11:23 CDT GATE G3 re-approved docs/architecture/lld.md@48545f9; next define-acceptance M4
 2026-10-10 11:30 CDT FAIL design-lld D38 named "Nuxt 3" from model memory; npm registry check at bootstrap showed Nuxt 4 is the current major (4.6.1; 3.21.11 maintenance). Route at M1 close (version claims need a registry check). AI_USAGE: AI was out of date.
+2026-10-10 11:34 CDT VERIFY bootstrap @d5f5e1a: npm install 684 packages exit 0; PostgreSQL 16.15 test db reachable on 127.0.0.1:54329; vitest 5.0.1; make check OK. Note: user's ~/.docker/config.json has credsStore=desktop while the context is colima, so image pulls need a clean DOCKER_CONFIG (not changed).
+2026-10-10 11:56 CDT VERIFY define-acceptance M4 @695b94b: npx vitest run tests/acceptance/M4 exit=1, 43 failed (43), all "relation practices does not exist" (missing: table, lld.md §1); -t M4_AT_041 exit 1 names it; -t M4_AT_999 exit 0 (Q-5); tsc 0 errors; Done-when checks clean
+2026-10-10 11:59 CDT GATE G3 re-approved lld.md@5a984b8; acceptance (G4 part) approved at 695b94b; next slice-tasks M4
+2026-10-10 12:04 CDT RESULT slice-tasks M4: 9 tasks @538db57, analyze RESULT: PASS (uncovered=0, overlaps=0); G4 presented
+2026-10-10 12:07 CDT DISPATCH M4-T001 harness=claude-subagent why=tracer bullet, watched on Claude (G4 D45); worktree .claude/worktrees/m4-t001 from milestone/m4-tracer-bullet@298358c
+2026-10-10 12:21 CDT DISPATCH M4-review-T001 harness=claude-verifier why=per-task review before squash (pass 1)
+2026-10-10 12:24 CDT RESULT M4-review-T001 verifier pass 1: 8 rows (0 P0/P1, 2 P2: R1 unit tests ungated, R2 dummy-hash timing; 6 P3); saved .handoff/reviews/M4-pass1.md; awaiting dispositions
+2026-10-10 12:29 CDT DISPATCH M4-T001 relaunch harness=claude-subagent why=review fixes R2, R7 (option b); milestone merged into task branch for R1
+2026-10-10 12:32 CDT FAIL M4-T001 relaunch: auto-mode classifier denied the worker git add/diff ("Security Weaken", likely the R7 removal of an auth helper); fixes R2, R7 left uncommitted in worktree; worker asked supervisor to commit them; supervisor did not (needs the human's word)
+2026-10-10 12:34 CDT VERIFY M4-T001 squashed as 61c966a: scope-guard OK (22 paths); Done-when exit 0 (6 passed); make check OK (22 unit); verifier pass 1 R2, R7 fixed, R1 by supervisor (3fca7ea, f1cc496)
+2026-10-10 12:34 CDT DISPATCH M4-T002 harness=claude-subagent why=riskiest slice (payments, ledger, DB guards), watched on Claude; worktree .claude/worktrees/m4-t002 from milestone/m4-tracer-bullet@f1cc496
+2026-10-10 12:42 CDT FAIL slice-tasks M4: Owns entries used literal Nuxt route folders [orderId], which scope-guard reads as a glob character class, so they can never match; T002 build green but uncommitted (human_review)
+2026-10-10 12:45 CDT DISPATCH M4-review-T002 harness=claude-verifier why=per-task review before squash (pass 2)
+2026-10-10 12:49 CDT RESULT M4-review-T002 verifier pass 2: 7 rows (0 P0/P1; 2 P2: R1 attempt stuck in processing after a throw between tx1 and tx2, R2 unapproved needs_review transition on negative payout; 5 P3); saved .handoff/reviews/M4-pass2.md; awaiting dispositions
+2026-10-10 13:01 CDT DISPATCH M4-T003 harness=claude-subagent why=payment correctness (idempotency, races, failures, R1/R4/R5); worktree .claude/worktrees/m4-t003 from milestone/m4-tracer-bullet@acc8a6b
+2026-10-10 13:15 CDT DISPATCH M4-review-T003 harness=claude-verifier why=per-task review before squash (pass 3, human yes)
+2026-10-10 13:19 CDT RESULT M4-review-T003 verifier pass 3: 5 rows (1 P1: R1 idempotency guard stores and replays 4xx problems and the 502 instead of releasing the key, contrary to lld.md BE-5 release and SEQ-1/SEQ-2 alternatives (confirmed by supervisor at lld.md:898, :1502, :1510, :1617); 4 P3); saved .handoff/reviews/M4-pass3.md
+2026-10-10 13:28 CDT DISPATCH M4-T003 relaunch harness=claude-subagent why=review pass 3 fixes R1, R2, R4
+2026-10-10 13:34 CDT FAIL supervisor: M4-T003 answers.md told the worker to read .handoff/reviews/M4-pass3.md, but the task context manifest says never give verifier reviews; worker read only the table rows. Future answers.md quotes the finding text instead of pointing at the review file
+2026-10-10 13:37 CDT VERIFY M4-T003 squashed as 09c7f55: scope-guard OK (8 paths); Done-when 6/6; make check OK (43 unit); M4 acceptance 26/43, no regressions
+2026-10-10 13:37 CDT DISPATCH M4-T004 harness=claude-subagent why=send validation and price floor, serial on BE-9 (G4 D45); worktree .claude/worktrees/m4-t004
+2026-10-10 13:43 CDT VERIFY M4-T004 squashed: scope-guard OK (4 paths); Done-when 3/3; make check OK (49 unit); M4 acceptance 28/43, no regressions; per-task verifier skipped per review plan (milestone review)
+2026-10-10 13:43 CDT DISPATCH M4-T005 harness=claude-subagent why=patient order view and access, serial on BE-4/BE-9; worktree .claude/worktrees/m4-t005
+2026-10-10 13:49 CDT VERIFY M4-T005 squashed: scope-guard OK (3 paths); Done-when 4/4; make check OK (49 unit); M4 acceptance 32/43, no regressions
+2026-10-10 13:49 CDT DISPATCH M4-T006 harness=claude-subagent why=sign-in and idle sign-out, parallel with T007 (disjoint Owns)
+2026-10-10 13:49 CDT DISPATCH M4-T007 harness=claude-subagent why=reviewer views, parallel with T006 (disjoint Owns)
+2026-10-10 13:56 CDT VERIFY M4-T007 squashed: scope-guard OK (8 paths); Done-when 5/5; make check OK (71 unit); milestone-review notes: EP-25 sorts by id only (LLD pagination says time DESC, id DESC); pages unrendered in a browser
+2026-10-10 13:57 CDT DISPATCH M4-review-T006 harness=claude-verifier why=per-task review for sign-in (pass 4, review plan approved)
+2026-10-10 14:02 CDT RESULT M4-review-T006 verifier pass 4: 11 rows (2 P1: R2 idle countdown never mounted (AppShell outside T006 Owns), R3 EP-15 rate limit not built; 3 P2: R4 next= check weaker than Nuxt plus error mapping, R5 countdown not refreshed by API activity, R6 no tests for next, redirect, sign-out; 6 P3); saved .handoff/reviews/M4-pass4.md
+2026-10-10 14:02 CDT FAIL slice-tasks M4: T006 Owns omitted app/components/AppShell.vue (FE-1 owns ST-2) and a migration path for the EP-15 rate-limit counter its Ask assigned
+2026-10-10 14:16 CDT DISPATCH M4-T006 relaunch harness=claude-subagent why=review pass4 fixes with widened Owns; milestone merged into task branch
+2026-10-10 14:33 CDT DISPATCH M4-review-T006b harness=claude-verifier why=review the T006 relaunch (pass 5, human yes)
+2026-10-10 14:38 CDT RESULT M4-review-T006b verifier pass 5: 6 rows (1 P1: R2 rate-limit address is the socket peer, all users share one bucket behind Railway proxy; 2 P2: R3 check-then-insert lets parallel bursts past 10, R4 countdown blind to other tabs and clock skew; 3 P3); saved .handoff/reviews/M4-pass5.md
+2026-10-10 14:54 CDT DISPATCH M4-T006 relaunch-2 harness=claude-subagent why=review pass5 R1-R4
+2026-10-10 15:00 CDT VERIFY M4-T006 squashed: scope-guard OK (12 paths); Done-when 4/4; make check OK (96 unit); M4 acceptance 39/43 (only T008 cancel red). Milestone-review notes: pass5 R5, R6; EP-17 idle re-check moves last_seen_at (worker Q1, accept for M4); patient home /orders has no page in M4; ship-milestone must set TRUST_PROXY=1 and confirm Railway X-Forwarded-For
+2026-10-10 15:00 CDT DISPATCH M4-T008 harness=claude-subagent why=cancel, serial on BE-9 and S2 components
+2026-10-10 15:05 CDT VERIFY M4-T008 squashed: scope-guard OK (2 paths); Done-when 4/4; make check OK (96 unit); M4 acceptance 43/43 on the milestone branch. Milestone-review notes: cancel of an in_checkout order with an ended hold allowed (assumed from SM-1, untested); cancel-vs-checkout race untested
+2026-10-10 15:05 CDT DISPATCH M4-T009 harness=claude-subagent why=seam: acceptance suite joins make check
+2026-10-10 15:07 CDT FAIL slice-tasks M4: T009 Done-when (grep "tests/acceptance" Makefile) already passed on base because the test-acceptance recipe contains that path; it could not fail. Worker stopped as human_review
+2026-10-10 15:08 CDT DISPATCH M4-T009 relaunch harness=claude-subagent why=stronger Done-when
+2026-10-10 15:12 CDT VERIFY M4-T009 squashed as 9f8295d: scope-guard OK (1 path); make -n check names tests/acceptance (exit 0); make check OK (96 unit + 43 M4 acceptance)
+2026-10-10 15:12 CDT DISPATCH M4-review-milestone harness=claude-verifier why=milestone review covering T004, T005, T007, T008, T009 and noted items (pass 6, review plan approved)
+2026-10-10 15:18 CDT RESULT M4-review-milestone verifier pass 6: 15 rows (1 P1: R2 cancel allowed on in_checkout with an ended hold races a processing payment, against T008 Must-not-change; 2 P2: R3 sign-in link drops next= and patient home /orders has no page, R4 S1 below-floor message names only the first product; 12 P3); saved .handoff/reviews/M4-pass6.md
+2026-10-10 15:19 CDT DISPATCH M4-T010 harness=claude-subagent why=milestone review fixes before G5
+2026-10-10 15:25 CDT VERIFY M4-T010 squashed as 72ad7fa: scope-guard OK (4 paths); Done-when exit 0 (greps + 43 acceptance); make check OK (96 unit + 43 M4 acceptance). M4 build complete (T001-T010)
+2026-10-10 15:46 CDT RESULT check-security M4 @0d19347: 4 pass, 10 fail; findings 1 critical, 2 high (npm advisories in nuxt tooling, reachability unknown), 6 medium, 2 low; 0 secrets (grep heuristic, unverified); docs/security/CHECKLIST.md committed
+2026-10-10 15:47 CDT VERIFY SEC-1 investigate (Q1): npx nuxi build exit 0; .output/server/node_modules holds 33 runtime packages, none of simple-git, @simple-git/argv-parser, node-forge, braces, micromatch, listhen; the only "simple-git" text is the unrelated simple-git-hooks devDependency name in fnv1a-64 and nostics package.json. Advisory code is build/dev-only, not in the shipped server
+2026-10-10 15:52 CDT DISPATCH M4-T011 harness=claude-subagent why=G5 security hardening (SEC-4, 6, 7, 8, 9, 11)
+2026-10-10 15:52 CDT FAIL supervisor: dispatched M4-T011 before the slice-tasks analyze pass passed (after: missing T003, T006, T009, now fixed; 11 tasks exceeds the 10-task milestone limit, needs the human)
+2026-10-10 16:07 CDT DISPATCH M4-review-T011 harness=claude-verifier why=security hardening review (pass 7, human yes)
+2026-10-10 16:13 CDT RESULT M4-review-T011 verifier pass 7: 8 rows (1 P1 R1 CSP-hash test cannot fail against built output; 3 P2 R3 openapi payOrder lacks 429, R4 built-in error pages blocked by CSP, R5 no-cache on 404; 4 P3). Supervisor ran the built app (nuxi build; node .output/server; curl /sign-in): the one inline script hash equals the CSP script-src hash, 0 inline styles, nosniff/Referrer-Policy/HSTS present, /api/session 401 with Cache-Control no-store
+2026-10-10 16:15 CDT VERIFY M4-T011 squashed as 1dafd61: scope-guard OK (10 paths); Done-when exit 0; make check OK (108 unit + 43 M4 acceptance); built app CSP hash equals rendered inline script
+2026-10-10 16:19 CDT RESULT ship-milestone M4 demo @13a816a: NOT deployed; blocking GAP-1 (no /healthz), GAP-2 (no /version); GAP-3 demo seed (follow-up); runbook targets new web-v2 + postgres-v2, v1 app untouched; make check unaffected
+2026-10-10 16:20 CDT DISPATCH M4-T901 harness=claude-subagent why=GAP-1 healthz
+2026-10-10 16:20 CDT DISPATCH M4-T902 harness=claude-subagent why=GAP-2 version
+2026-10-10 16:20 CDT DISPATCH M4-T903 harness=claude-subagent why=GAP-3 demo seed (parallel, disjoint Owns)
+2026-10-10 16:28 CDT VERIFY M4-T902 squashed bab8381: scope-guard OK (2 paths); make check OK; built app GET /version 200 {commit,built_at} no-store from cwd build-info.json
+2026-10-10 16:28 CDT VERIFY M4-T901 squashed 77cc879: scope-guard OK (2 paths); make check OK; built app GET /healthz 200 ok (db up) and 503 unavailable (db down), no-store, log shows only error class and code
+2026-10-10 16:28 CDT VERIFY M4-T903 squashed: scope-guard OK (2 paths); make check OK; loader refuses without flags (exit 1); with DEMO_RESET=yes and a generated password at SCRYPT_COST 16384 loads 2 practices, 9 users, 3 products on the local test DB, password not in output
+2026-10-10 16:36 CDT RAILWAY setup (standing yes 16:3x): renamed v1 database back to Postgres (it had been renamed to postgres-v2 by mistake); added a new database and renamed it postgres-v2 (deployed 2026-10-10 16:36, image postgres-ssl:18); web-v2 linked; v1 app still answers 302
+2026-10-10 16:51 CDT VERIFY railway-setup.sh run by the human: postgres-v2 has the 5 migrations recorded, 14 tables, supplements_app has INSERT,SELECT on ledger_entries and no DELETE on orders or order_lines, demo world loaded (2 practices, 9 users, 3 products, 0 orders), password hashes scrypt N=16384
+2026-10-10 16:56 CDT DEPLOY M4 demo 1130822 to web-v2 production (deployment 59c086de SUCCESS); smoke GREEN 7/0 with TLS verified; /version commit 11308222f1ea
+2026-10-10 17:05 CDT FAIL process: commits were per step, not per decision or result, and nothing was pushed or opened as a PR per milestone; history landed on main unreadable. Route to route-failure: commit grouping per decision/result, PR per milestone with TL;DR + filled template, auto-merge on standing yes, and a hook to commit software-factory-kit improvements to its repo
+2026-10-10 17:24 CDT MERGE M1 !1 (8ddfc80), M2 !2 (371224a), M3 !3 (8377ce0) to main with merge commits; main mirrored to GitHub; main tree equals original 5a984b8; M4 still local (old history, rebuild on milestone/m3-design pending)
+2026-10-10 17:28 CDT HISTORY M4 rebuilt as 20 grouped commits on milestone/m3-design (89 originals kept at backup/m4-tracer-bullet); final tree identical; app files identical to deployed 1130822; make check OK (122 unit + 43 acceptance)

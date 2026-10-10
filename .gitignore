@@ -3,6 +3,7 @@
 .env
 .env.backup
 .env.production
+/.env.railway
 .phpactor.json
 .phpunit.result.cache
 /.codex
@@ -36,3 +37,7 @@ Thumbs.db
 .handoff/runs/*/events.jsonl
 .handoff/runs/*/stderr.log
 docs/demo/raw/
+# Nuxt build output and helper-agent worktrees
+/.nuxt
+/.output
+/.claude/worktrees/

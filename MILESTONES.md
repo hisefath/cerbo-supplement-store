@@ -16,3 +16,4 @@ LLD); `slice-tasks` adds each implementation milestone's row at G4; the supervis
 | M1 | Research: brief + cited research (docs only) | — | D18-D23 | — | in-progress | — | — | — | — |
 | M2 | Product: PRD + clarifications (docs only) | — | — | — | planned | — | — | — | — |
 | M3 | Design: HLD, LLD, DB design, API contract, diagrams (docs only) | — | — | — | planned | — | — | — | — |
+| M4 | Each person signs in; provider sends an order, patient pays once, the split is recorded and shown to the cent | 11 tasks: T001–T011 | D33, D36, D39, D40, D41, D42, D44 | — | in-progress | G1@998ed94 G2@fea2e18 G3@5a984b8 | — | — | — |

@@ -1,0 +1,559 @@
+diff --git a/db/migrations/1760000011000_pay-attempt-limits.sql b/db/migrations/1760000011000_pay-attempt-limits.sql
+new file mode 100644
+index 0000000..f111931
+--- /dev/null
++++ b/db/migrations/1760000011000_pay-attempt-limits.sql
+@@ -0,0 +1,21 @@
++-- Up Migration
++-- M4-T011 EP-23 pay rate limit (SEC-9, TH-3): more than 10 payment attempts in 15 minutes for one person or one
++-- address answers 429 /problems/rate-limited, the same pattern as sign_in_attempts (1760000006000). One row per counted
++-- attempt; BE-10 counts the last 15 minutes, and BE-10 and the prune-attempts task delete older rows (SEC-11).
++-- Runs as supplements_owner (Q-3, Q-4).
++
++create table pay_rate_attempts (
++  id bigint generated always as identity constraint pk_pay_rate_attempts primary key,
++  user_id bigint not null,
++  ip text not null,
++  attempted_at timestamptz not null default now()
++);
++create index ix_pay_rate_attempts_user on pay_rate_attempts (user_id, attempted_at);
++create index ix_pay_rate_attempts_ip on pay_rate_attempts (ip, attempted_at);
++create index ix_pay_rate_attempts_attempted_at on pay_rate_attempts (attempted_at);
++
++-- BE-10 records, counts and prunes attempts; the prune-attempts task prunes them.
++grant select, insert, delete on pay_rate_attempts to supplements_app;
++
++-- Down Migration
++drop table pay_rate_attempts;
+diff --git a/nuxt.config.ts b/nuxt.config.ts
+index f27b4ea..ea6fc0b 100644
+--- a/nuxt.config.ts
++++ b/nuxt.config.ts
+@@ -1,5 +1,50 @@
+ // Nuxt 4 app shell (journal D44). Pages and server routes arrive with the M4 tasks.
++import { createHash, randomUUID } from 'node:crypto'
++
++// One id per build, fixed here so the one inline script Nuxt renders (its runtime config) is known at build time and
++// the CSP can allow exactly that script by hash instead of 'unsafe-inline'.
++const buildId = randomUUID()
++// ponytail: this mirrors Nuxt's renderPayloadJsonScript for an empty public runtime config and the default app paths.
++// Adding public runtime config or NUXT_APP_* overrides changes the script: update this string, or client JS is blocked.
++export const NUXT_CONFIG_SCRIPT = `window.__NUXT__={};window.__NUXT__.config={public:{},app:{baseURL:"/",buildId:"${buildId}",buildAssetsDir:"/_nuxt/",cdnURL:""}}`
++const configScriptHash = `'sha256-${createHash('sha256').update(NUXT_CONFIG_SCRIPT).digest('base64')}'`
++
++// SEC-4: sent on every response. Scripts and styles come from the app's own origin (plus the one config script above).
++const SECURITY_HEADERS = {
++  'Content-Security-Policy': [
++    "default-src 'self'",
++    `script-src 'self' ${configScriptHash}`,
++    "style-src 'self'",
++    "object-src 'none'",
++    "base-uri 'self'",
++    "form-action 'self'",
++    "frame-ancestors 'self'",
++  ].join('; '),
++  'X-Content-Type-Options': 'nosniff',
++  'Referrer-Policy': 'strict-origin-when-cross-origin',
++  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
++}
++
++// SEC-8: order, session and operations data is never kept by a shared browser or proxy.
++const NO_STORE = { headers: { 'Cache-Control': 'no-store' } }
++
+ export default defineNuxtConfig({
+   compatibilityDate: '2026-08-01',
+   devtools: { enabled: false },
++  buildId,
++  // No other inline script or style, so the CSP needs no 'unsafe-inline': CSS ships as files, no inline import map.
++  features: { inlineStyles: false },
++  experimental: { entryImportMap: false },
++  // Every build sends them. The dev server injects scripts and styles inline (Vite HMR), so `npm run dev` goes without.
++  $production: { routeRules: { '/**': { headers: SECURITY_HEADERS } } },
++  routeRules: {
++    '/api/**': NO_STORE,
++    '/orders/**': NO_STORE, // S2
++    '/ops/**': NO_STORE, // S3, S4
++  },
++  nitro: {
++    // SEC-11: server/tasks/prune-attempts.ts deletes rate-limit rows older than 15 minutes, even with no traffic.
++    experimental: { tasks: true },
++    scheduledTasks: { '*/15 * * * *': ['prune-attempts'] },
++  },
+ })
+diff --git a/server/api/orders/[orderId]/payments.post.ts b/server/api/orders/[orderId]/payments.post.ts
+index a52ddde..d2151c0 100644
+--- a/server/api/orders/[orderId]/payments.post.ts
++++ b/server/api/orders/[orderId]/payments.post.ts
+@@ -1,10 +1,10 @@
+ // EP-23 POST /api/orders/{orderId}/payments (payOrder): the patient pays with the test payment (FR-006, FR-007).
+ // The Idempotency-Key header is required; a repeat gets the first payment's result without charging again (BE-5,
+-// FR-008).
++// FR-008). More than 10 attempts in 15 minutes for one person or address is 429 (SEC-9); a replay is not counted.
+ import { getRouterParam, setResponseStatus } from 'h3'
+ import { guard } from '../../../services/idempotency'
+-import { pay } from '../../../services/payments'
+-import { requireViewer } from '../../../services/session'
++import { countPayAttempt, pay } from '../../../services/payments'
++import { clientAddress, requireViewer } from '../../../services/session'
+ import { defineApiHandler, ProblemError } from '../../../utils/problem'
+ 
+ export default defineApiHandler(async (event) => {
+@@ -12,6 +12,7 @@ export default defineApiHandler(async (event) => {
+   const id = getRouterParam(event, 'orderId') ?? ''
+   if (!/^\d{1,18}$/.test(id)) throw new ProblemError('not-found')
+   return guard(event, viewer.userId, 'POST /api/orders/{orderId}/payments', { orderId: id }, async (key) => {
++    await countPayAttempt(viewer.userId, clientAddress(event))
+     const receipt = await pay(viewer, BigInt(id), key)
+     setResponseStatus(event, 201)
+     return receipt
+diff --git a/server/services/payment-gateway.ts b/server/services/payment-gateway.ts
+index 3eab221..7be8fb2 100644
+--- a/server/services/payment-gateway.ts
++++ b/server/services/payment-gateway.ts
+@@ -1,5 +1,7 @@
+ // BE-11 PaymentGateway (lld.md §2, SEAM-3): the one seam a real payment provider will replace. The stub moves no real
+ // money (FR-007) and answers by PAYMENT_STUB_MODE, read per call: succeed (the default), decline or no_answer.
++import { errorFacts } from '../utils/problem'
++
+ export interface ChargeRequest {
+   orderId: bigint
+   amountCents: number
+@@ -19,7 +21,7 @@ export async function answerWithin(answer: Promise<ChargeResult>, ms = 10_000):
+   try {
+     return await Promise.race([answer, timeout])
+   } catch (e) {
+-    console.error('payment gateway error, counted as no_answer', e)
++    console.error('payment gateway error, counted as no_answer', errorFacts(e))
+     return NO_ANSWER
+   } finally {
+     clearTimeout(timer)
+diff --git a/server/services/payments.ts b/server/services/payments.ts
+index c9eb528..6ef171e 100644
+--- a/server/services/payments.ts
++++ b/server/services/payments.ts
+@@ -3,7 +3,8 @@
+ // reserved and released only in M5 (D42).
+ import { sql } from 'kysely'
+ import { useDb } from '../utils/db'
+-import { ProblemError } from '../utils/problem'
++import { errorFacts, ProblemError } from '../utils/problem'
++import { now } from './clock'
+ import { assertIsOrderPatient } from './access-policy'
+ import { allocateFee, assertSplitBalances, payoutCents, platformFeeCents, SplitMismatch, type Split } from './money'
+ import type { OrderLine } from './orders'
+@@ -43,6 +44,47 @@ export function computeSplit(lines: SplitLine[]): { split: Split; feeSharesCents
+   }
+ }
+ 
++// SEC-9 (TH-3): EP-23 is rate-limited like EP-15 sign-in (session.ts countAttempt): more than 10 payment attempts in
++// 15 minutes for one person or one address answers 429 /problems/rate-limited.
++const MAX_PAY_ATTEMPTS = 10
++const PAY_WINDOW_MS = 15 * 60 * 1000
++const PAY_LOCK = 6023 // advisory-lock class for EP-23 attempt keys (two-int form: its own key space)
++
++/**
++ * Refuses the payment attempt (429) when its person or address already has 10 in the window; otherwise records it.
++ * Locks the person and the address first, so parallel attempts count and record one at a time. EP-23 calls it inside
++ * the idempotency guard, so a replayed stored response is never counted.
++ */
++export async function countPayAttempt(userId: bigint, ip: string): Promise<void> {
++  const t = now()
++  const since = new Date(t.getTime() - PAY_WINDOW_MS)
++  const user = userId.toString()
++  await useDb()
++    .transaction()
++    .execute(async (trx) => {
++      // always person then address, so two attempts can never wait on each other in a circle
++      for (const key of [`user:${user}`, `ip:${ip}`])
++        await sql`select pg_advisory_xact_lock(${PAY_LOCK}, hashtext(${key}))`.execute(trx)
++      const recent = await trx
++        .selectFrom('pay_rate_attempts')
++        .select(['user_id', 'ip', 'attempted_at'])
++        .where('attempted_at', '>', since)
++        .where((eb) => eb.or([eb('user_id', '=', user), eb('ip', '=', ip)]))
++        .orderBy('attempted_at')
++        .execute()
++      let retryAt = 0
++      for (const mine of [recent.filter((a) => String(a.user_id) === user), recent.filter((a) => a.ip === ip)]) {
++        // the next attempt is allowed once all but the newest 9 have left the window
++        if (mine.length >= MAX_PAY_ATTEMPTS)
++          retryAt = Math.max(retryAt, mine[mine.length - MAX_PAY_ATTEMPTS]!.attempted_at.getTime() + PAY_WINDOW_MS)
++      }
++      if (retryAt)
++        throw new ProblemError('rate-limited', { retryAfterSeconds: Math.ceil((retryAt - t.getTime()) / 1000) })
++      await trx.insertInto('pay_rate_attempts').values({ user_id: user, ip, attempted_at: t }).execute()
++      await trx.deleteFrom('pay_rate_attempts').where('attempted_at', '<=', since).execute()
++    })
++}
++
+ export async function pay(viewer: Viewer, orderId: bigint, idempotencyKey: string): Promise<Receipt> {
+   const db = useDb()
+ 
+@@ -114,7 +156,7 @@ export async function pay(viewer: Viewer, orderId: bigint, idempotencyKey: strin
+     }
+     paidAt = await recordPayment(order, lines, split, feeSharesCents, attemptId)
+   } catch (e) {
+-    await closeAttempt(attemptId).catch((err) => console.error('could not close payment attempt', attemptId, err))
++    await closeAttempt(attemptId).catch((err) => console.error('could not close payment attempt', attemptId, errorFacts(err)))
+     throw e
+   }
+ 
+diff --git a/server/services/session.ts b/server/services/session.ts
+index d9f9cb9..7975508 100644
+--- a/server/services/session.ts
++++ b/server/services/session.ts
+@@ -20,6 +20,7 @@ export interface Viewer {
+ 
+ export const SESSION_COOKIE = 'session'
+ const IDLE_MS = 15 * 60 * 1000
++const ABSOLUTE_MS = 12 * 60 * 60 * 1000
+ 
+ const scryptAsync = promisify(scrypt) as (
+   password: string,
+@@ -33,6 +34,9 @@ const hashToken = (token: string): Buffer => createHash('sha256').update(token).
+ /** Sessions last seen at or before this time are idle (BE-20 Clock, NFR-008). */
+ export const idleCutoff = (): Date => new Date(now().getTime() - IDLE_MS)
+ 
++/** SEC-6: the absolute session lifetime. Sessions created at or before this time are over, however active. */
++export const absoluteCutoff = (): Date => new Date(now().getTime() - ABSOLUTE_MS)
++
+ // Compared against when the email is unknown. It uses the configured cost (SEAM-6 SCRYPT_COST, read per call), so
+ // an unknown email takes as long as a known email with a wrong password. 16384 is Node's own scrypt default.
+ const dummyHash = (): string =>
+@@ -129,15 +133,17 @@ export async function signIn(email: string, password: string, ip: string): Promi
+   const ok = await verifyPassword(password, user?.password_hash ?? dummyHash())
+   if (!user || !ok) throw new ProblemError('sign-in-failed')
+   const cookieToken = randomBytes(32).toString('base64url')
++  const signedInAt = now() // BE-20 time for both, so the absolute lifetime follows the same clock as the idle limit
+   const s = await db
+     .insertInto('sessions')
+-    .values({ token_hash: hashToken(cookieToken), user_id: user.id, last_seen_at: now() })
++    .values({ token_hash: hashToken(cookieToken), user_id: user.id, created_at: signedInAt, last_seen_at: signedInAt })
+     .returning('last_seen_at')
+     .executeTakeFirstOrThrow()
+   return { viewer: toViewer(user, s.last_seen_at), cookieToken }
+ }
+ 
+-/** The viewer, after moving last_seen_at forward; null when missing, ended or idle 15 minutes or more. */
++/** The viewer, after moving last_seen_at forward; null (and the session ended) when missing, ended, idle 15 minutes
++ *  or more, or past its absolute lifetime of 12 hours from sign-in. */
+ export async function resolve(cookieToken: string | undefined): Promise<Viewer | null> {
+   if (!cookieToken) return null
+   const db = useDb()
+@@ -148,6 +154,7 @@ export async function resolve(cookieToken: string | undefined): Promise<Viewer |
+     .where('token_hash', '=', tokenHash)
+     .where('ended_at', 'is', null)
+     .where('last_seen_at', '>', idleCutoff())
++    .where('created_at', '>', absoluteCutoff())
+     .returning(['user_id', 'last_seen_at'])
+     .executeTakeFirst()
+   if (!live) {
+diff --git a/server/tasks/prune-attempts.ts b/server/tasks/prune-attempts.ts
+new file mode 100644
+index 0000000..78912d0
+--- /dev/null
++++ b/server/tasks/prune-attempts.ts
+@@ -0,0 +1,18 @@
++// SEC-11: sign-in (EP-15) and payment (EP-23) attempt rows are kept only for the 15-minute rate-limit window. The
++// services prune on each attempt; this Nitro scheduled task (nuxt.config.ts scheduledTasks) prunes even when nobody
++// signs in or pays.
++import { now } from '../services/clock'
++import { useDb } from '../utils/db'
++
++const WINDOW_MS = 15 * 60 * 1000
++
++export default defineTask({
++  meta: { name: 'prune-attempts', description: 'Delete sign-in and payment attempts older than 15 minutes' },
++  async run() {
++    const db = useDb()
++    const since = new Date(now().getTime() - WINDOW_MS)
++    await db.deleteFrom('sign_in_attempts').where('attempted_at', '<=', since).execute()
++    await db.deleteFrom('pay_rate_attempts').where('attempted_at', '<=', since).execute()
++    return { result: 'ok' }
++  },
++})
+diff --git a/server/utils/db-types.ts b/server/utils/db-types.ts
+index d568eff..252bc16 100644
+--- a/server/utils/db-types.ts
++++ b/server/utils/db-types.ts
+@@ -131,6 +131,13 @@ export interface SignInAttemptsTable {
+   attempted_at: DefaultTimestamp
+ }
+ 
++export interface PayRateAttemptsTable {
++  id: Id
++  user_id: Int8
++  ip: string
++  attempted_at: DefaultTimestamp
++}
++
+ export interface Database {
+   practices: PracticesTable
+   users: UsersTable
+@@ -144,4 +151,5 @@ export interface Database {
+   ledger_entries: LedgerEntriesTable
+   idempotency_keys: IdempotencyKeysTable
+   sign_in_attempts: SignInAttemptsTable
++  pay_rate_attempts: PayRateAttemptsTable
+ }
+diff --git a/server/utils/problem.ts b/server/utils/problem.ts
+index 1b2d3f6..b4112c6 100644
+--- a/server/utils/problem.ts
++++ b/server/utils/problem.ts
+@@ -55,6 +55,18 @@ export async function parseBody<T>(event: H3Event, schema: ZodType<T>): Promise<
+   return parsed.data
+ }
+ 
++/** What a log may say about an error (NFR-010, SEC-7): its class name, plus a PostgreSQL error code and constraint
++ *  name when present. Never the error itself or its message: a constraint error's message holds the failing row. */
++export function errorFacts(err: unknown): { error: string; code?: string; constraint?: string } {
++  if (err === null || typeof err !== 'object') return { error: err === null ? 'null' : typeof err }
++  const { code, constraint } = err as { code?: unknown; constraint?: unknown }
++  return {
++    error: err.constructor?.name ?? 'Object',
++    ...(typeof code === 'string' && { code }),
++    ...(typeof constraint === 'string' && { constraint }),
++  }
++}
++
+ function sendProblem(event: H3Event, slug: ProblemSlug, extensions: Record<string, unknown> = {}) {
+   const [status, title] = TITLES[slug]
+   setResponseStatus(event, status)
+@@ -70,7 +82,7 @@ export function defineApiHandler<T>(fn: (event: H3Event<EventHandlerRequest>) =>
+     } catch (err) {
+       if (err instanceof ProblemError) return sendProblem(event, err.slug, err.extensions) as T
+       const instance = `urn:uuid:${randomUUID()}`
+-      console.error('unexpected error', instance, err)
++      console.error('unexpected error', instance, errorFacts(err))
+       return sendProblem(event, 'internal', { instance }) as T
+     }
+   })
+diff --git a/tests/unit/hardening.test.ts b/tests/unit/hardening.test.ts
+new file mode 100644
+index 0000000..033e6ff
+--- /dev/null
++++ b/tests/unit/hardening.test.ts
+@@ -0,0 +1,223 @@
++// M4-T011 security hardening before G5: SEC-4 and SEC-8 headers, SEC-6 absolute session lifetime, SEC-7 safe error
++// logs, SEC-9 EP-23 rate limit, SEC-11 attempt retention. No database: a fake Kysely driver records the SQL.
++import { createApp, createRouter, toWebHandler } from 'h3'
++import { Kysely, PostgresAdapter, PostgresIntrospector, PostgresQueryCompiler, type CompiledQuery } from 'kysely'
++import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
++import { freezeClock } from '../../server/services/clock'
++import { requestHash } from '../../server/services/idempotency'
++import { answerWithin } from '../../server/services/payment-gateway'
++import { countPayAttempt } from '../../server/services/payments'
++import { resolve } from '../../server/services/session'
++import { defineApiHandler, errorFacts, ProblemError } from '../../server/utils/problem'
++import payHandler from '../../server/api/orders/[orderId]/payments.post'
++
++const fake = vi.hoisted(() => ({
++  queries: [] as { sql: string; parameters: readonly unknown[] }[],
++  answer: (_sql: string): unknown[] => [],
++}))
++vi.mock('../../server/utils/db', () => ({
++  useDb: () =>
++    new Kysely<any>({
++      dialect: {
++        createAdapter: () => new PostgresAdapter(),
++        createQueryCompiler: () => new PostgresQueryCompiler(),
++        createIntrospector: (db) => new PostgresIntrospector(db),
++        createDriver: () => ({
++          init: async () => {},
++          acquireConnection: async () => ({
++            executeQuery: async (q: CompiledQuery) => {
++              fake.queries.push({ sql: q.sql, parameters: q.parameters })
++              return { rows: fake.answer(q.sql) as any[] }
++            },
++            streamQuery: () => {
++              throw new Error('not used')
++            },
++          }),
++          beginTransaction: async () => void fake.queries.push({ sql: 'begin', parameters: [] }),
++          commitTransaction: async () => void fake.queries.push({ sql: 'commit', parameters: [] }),
++          rollbackTransaction: async () => void fake.queries.push({ sql: 'rollback', parameters: [] }),
++          releaseConnection: async () => {},
++          destroy: async () => {},
++        }),
++      },
++    }),
++}))
++
++const MIN = 60 * 1000
++const T0 = new Date('2026-10-10T12:00:00Z')
++
++beforeEach(() => {
++  fake.queries.length = 0
++  fake.answer = () => []
++  freezeClock(T0)
++})
++afterEach(() => {
++  freezeClock(null)
++  vi.restoreAllMocks()
++  vi.unstubAllGlobals()
++})
++
++describe('SEC-4, SEC-8, SEC-11: nuxt.config.ts', () => {
++  async function config() {
++    vi.stubGlobal('defineNuxtConfig', (c: unknown) => c)
++    return (await import('../../nuxt.config')).default as any
++  }
++
++  it('every response carries CSP with frame-ancestors, nosniff, a referrer policy and HSTS', async () => {
++    const c = await config()
++    const h = c.$production.routeRules['/**'].headers
++    const csp: string = h['Content-Security-Policy']
++    expect(csp).toContain("frame-ancestors 'self'")
++    expect(csp).toContain("default-src 'self'")
++    expect(csp).toContain("style-src 'self';")
++    expect(csp).not.toContain('unsafe-')
++    // the one inline script Nuxt renders (its runtime config, for this build's id) is allowed by hash, nothing else
++    const { createHash } = await import('node:crypto')
++    const { NUXT_CONFIG_SCRIPT } = await import('../../nuxt.config')
++    expect(NUXT_CONFIG_SCRIPT).toContain(`buildId:"${c.buildId}"`)
++    expect(csp).toContain(`script-src 'self' 'sha256-${createHash('sha256').update(NUXT_CONFIG_SCRIPT).digest('base64')}';`)
++    expect(c.features.inlineStyles).toBe(false)
++    expect(c.experimental.entryImportMap).toBe(false)
++    expect(h['X-Content-Type-Options']).toBe('nosniff')
++    expect(h['Referrer-Policy']).toBe('strict-origin-when-cross-origin')
++    expect(h['Strict-Transport-Security']).toBe('max-age=31536000; includeSubDomains')
++  })
++
++  it('API, order (S2) and operations (S3, S4) responses are no-store', async () => {
++    const rules = (await config()).routeRules
++    for (const path of ['/api/**', '/orders/**', '/ops/**']) expect(rules[path].headers['Cache-Control'], path).toBe('no-store')
++  })
++
++  it('the attempt-pruning task runs at least hourly', async () => {
++    const nitro = (await config()).nitro
++    expect(nitro.experimental.tasks).toBe(true)
++    const [cron, tasks] = Object.entries(nitro.scheduledTasks)[0]! as [string, string[]]
++    expect(cron).toBe('*/15 * * * *')
++    expect(tasks).toEqual(['prune-attempts'])
++  })
++})
++
++describe('SEC-6: absolute session lifetime of 12 hours', () => {
++  it('a session created 12 hours ago or more is not live however recently it was used, and is ended', async () => {
++    const out = await resolve('token')
++    expect(out).toBeNull()
++    const live = fake.queries[0]!
++    expect(live.sql).toContain('"created_at" >')
++    expect(live.parameters).toContainEqual(new Date(T0.getTime() - 12 * 60 * MIN))
++    expect(live.parameters).toContainEqual(new Date(T0.getTime() - 15 * MIN))
++    expect(fake.queries[1]!.sql).toMatch(/^update "sessions" set "ended_at"/)
++  })
++})
++
++describe('SEC-7: logs never carry the error object or its message', () => {
++  const dbError = () =>
++    Object.assign(new Error('new row violates check constraint "ck_orders_payout_nonneg": Failing row contains (1001, 4999, Ana Ruiz)'), {
++      code: '23514',
++      constraint: 'ck_orders_payout_nonneg',
++    })
++  const logged = (spy: { mock: { calls: unknown[][] } }) => JSON.stringify(spy.mock.calls)
++
++  it('errorFacts keeps the class name, PostgreSQL code and constraint only', () => {
++    expect(errorFacts(dbError())).toEqual({ error: 'Error', code: '23514', constraint: 'ck_orders_payout_nonneg' })
++    class TypeOops extends Error {}
++    expect(errorFacts(new TypeOops('Ana Ruiz'))).toEqual({ error: 'TypeOops' })
++    expect(errorFacts('a string with 4999')).toEqual({ error: 'string' })
++    expect(errorFacts(null)).toEqual({ error: 'null' })
++  })
++
++  it('the unexpected-error log writes the instance id and facts, not the row', async () => {
++    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
++    const res = await toWebHandler(createApp().use(defineApiHandler(async () => { throw dbError() })))(new Request('http://localhost/x'))
++    const body = await res.json()
++    expect(res.status).toBe(500)
++    const text = logged(spy)
++    expect(text).toContain(body.instance)
++    expect(text).toContain('23514')
++    expect(text).not.toContain('Failing row')
++    expect(text).not.toContain('Ana Ruiz')
++    expect(spy.mock.calls.flat().some((a) => a instanceof Error)).toBe(false)
++  })
++
++  it('the gateway exception log does not carry the error', async () => {
++    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
++    expect(await answerWithin(Promise.reject(new Error('card 4242 for Ana Ruiz')))).toEqual({ outcome: 'failed', reason: 'no_answer' })
++    expect(logged(spy)).not.toContain('Ana Ruiz')
++    expect(spy.mock.calls.flat().some((a) => a instanceof Error)).toBe(false)
++  })
++})
++
++describe('SEC-9: EP-23 rate limit, more than 10 payment attempts in 15 minutes for one person or one address', () => {
++  const attempts = (n: number, who: { user_id?: string; ip?: string }) =>
++    Array.from({ length: n }, (_, i) => ({
++      user_id: who.user_id ?? '99',
++      ip: who.ip ?? '10.0.0.9',
++      attempted_at: new Date(T0.getTime() - (14 - i) * MIN),
++    }))
++  const rows = (r: unknown[]) => (fake.answer = (s) => (s.startsWith('select') && s.includes('"pay_rate_attempts"') ? r : []))
++
++  it('the 10th attempt is recorded; locks come first, all in one transaction', async () => {
++    rows(attempts(9, { user_id: '7' }))
++    await countPayAttempt(7n, '10.0.0.1')
++    const sqls = fake.queries.map((q) => q.sql)
++    expect(sqls[0]).toBe('begin')
++    expect(sqls[1]).toContain('pg_advisory_xact_lock')
++    expect(sqls[2]).toContain('pg_advisory_xact_lock')
++    expect(sqls[3]).toMatch(/^select .* from "pay_rate_attempts"/)
++    expect(sqls).toContainEqual(expect.stringMatching(/^insert into "pay_rate_attempts"/))
++    expect(sqls.at(-1)).toBe('commit')
++  })
++
++  for (const [who, extra] of [
++    ['one person', { user_id: '7' }],
++    ['one address', { ip: '10.0.0.1' }],
++  ] as const) {
++    it(`the 11th attempt for ${who} is 429 rate-limited with retryAfterSeconds, nothing recorded`, async () => {
++      rows(attempts(10, extra))
++      const err = await countPayAttempt(7n, '10.0.0.1').catch((e) => e)
++      expect(err).toBeInstanceOf(ProblemError)
++      expect(err.slug).toBe('rate-limited')
++      expect(err.extensions.retryAfterSeconds).toBe(60) // the oldest of 10 leaves the window at T0 + 1 min
++      expect(fake.queries.some((q) => q.sql.startsWith('insert'))).toBe(false)
++      expect(fake.queries.at(-1)!.sql).toBe('rollback')
++    })
++  }
++
++  it('a replayed idempotent response is not counted', async () => {
++    const receipt = { order_id: 1001, amount_paid_cents: 4999 }
++    fake.answer = (s) =>
++      s.startsWith('update "sessions" set "last_seen_at"')
++        ? [{ user_id: '7', last_seen_at: T0 }]
++        : s.startsWith('select') && s.includes('"users"')
++          ? [{ id: '7', display_name: 'Ana', role: 'patient', practice_id: '3' }]
++          : s.startsWith('select') && s.includes('"idempotency_keys"')
++            ? [{
++                route: 'POST /api/orders/{orderId}/payments',
++                request_hash: requestHash({ orderId: '1001' }),
++                status: 'completed',
++                response_status: 201,
++                response_body: receipt,
++                abandoned: false,
++              }]
++            : []
++    const res = await toWebHandler(createApp().use(createRouter().post('/api/orders/:orderId/payments', payHandler)))(
++      new Request('http://localhost/api/orders/1001/payments', {
++        method: 'POST',
++        headers: { cookie: 'session=abc', 'idempotency-key': 'k1' },
++      }),
++    )
++    expect(res.status).toBe(201)
++    expect(fake.queries.some((q) => q.sql.includes('pay_rate_attempts'))).toBe(false)
++  })
++})
++
++describe('SEC-11: scheduled pruning of attempt rows', () => {
++  it('deletes sign-in and payment attempts older than 15 minutes', async () => {
++    vi.stubGlobal('defineTask', (t: unknown) => t)
++    const task = (await import('../../server/tasks/prune-attempts')).default as any
++    expect(task.meta.name).toBe('prune-attempts')
++    await task.run({})
++    const deletes = fake.queries.filter((q) => q.sql.startsWith('delete'))
++    expect(deletes.map((d) => d.sql.match(/from "(\w+)"/)![1]).sort()).toEqual(['pay_rate_attempts', 'sign_in_attempts'])
++    for (const d of deletes) expect(d.parameters).toEqual([new Date(T0.getTime() - 15 * MIN)])
++  })
++})
