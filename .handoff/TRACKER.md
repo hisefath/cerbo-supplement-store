@@ -7,11 +7,11 @@ several harnesses read it and the repo is public.
 ## Resume
 
 <!-- Rewritten as the LAST edit of every supervisor move. Times come from `date`. -->
-- **As of:** 2026-10-10 10:45 CDT
-- **In flight:** G3 on docs/architecture/lld.md@6733116 (revised: D42 payment timing, Q-7). D38-D41 answered (provisional, on 9af3b07; lld.md changed only in Decisions and Open questions since); D42 presented; then closing G3 binds every answer to 6733116.
-- **Next:** human answers D42, then closing G3. After G3: clarify-spec (LLD Q-1 cancel, Q-2 fee split, Q-7 Later scope), AGENTS.md stack diff (human-only), define-acceptance M4.
-- **Waiting on:** human: D42 verdict.
-- **Verified:** 6733116 embed-diagrams 18 in sync; make check OK; id checks clean
+- **As of:** 2026-10-10 11:56 CDT
+- **In flight:** define-acceptance M4 STOP sent (acceptance part of G4): specs/M4-tracer-bullet/acceptance.md@695b94b, 43 red ATs. G3 for lld.md@5a984b8 (D38 → Nuxt 4 revise) still needs re-approval.
+- **Next:** human answers the acceptance decision (Approve / Revise / Stop) and G3 for lld.md@5a984b8; then /slice-tasks. After G4: design-lld catch-up for acceptance Q-1 to Q-4; open Q-5 to Q-9 decided at G4.
+- **Waiting on:** human: acceptance verdict.
+- **Verified:** 695b94b npx vitest run tests/acceptance/M4 → exit 1, 43 failed, all missing table practices
 
 ## Tasks
 
@@ -83,6 +83,8 @@ several harnesses read it and the repo is public.
 | 2026-10-10 11:23 CDT | G3 (re-approval after revise for FR-066 to FR-069) | docs/architecture/lld.md@48545f9 + contracts/openapi.yaml + diagrams | "approve, then /define-acceptance" |
 | 2026-10-10 11:30 CDT | G3 Revise D38 (Nuxt 3 → Nuxt 4: the npm registry shows 4 is the current major; D38 named 3 from memory) | docs/architecture/lld.md@48545f9 D38 | "a" |
 | 2026-10-10 11:32 CDT | toolchain bootstrap: add dependencies (package.json pins listed in chat), docker test database, app shell, Makefile targets, .gitignore lines, and the AGENTS.md Commands + Stack diff (human-only edit) | chat proposal 2026-10-10 11:3x | "approve, then /define-acceptance" |
+| 2026-10-10 11:59 CDT | G3 (re-approval after Revise "a": D38 → Nuxt 4, journal D44) | docs/architecture/lld.md@5a984b8 | "approve G3 and acceptance, then /slice-tasks" |
+| 2026-10-10 11:59 CDT | G4 acceptance part: M4 definition of done, incl. Q-1 to Q-4 answers and the 7 recommended waivers (EDGE-003, 009, 015, 016, 042, 046, 047); Q-5 to Q-9 stay open to closing G4 | specs/M4-tracer-bullet/acceptance.md@695b94b | "approve G3 and acceptance, then /slice-tasks" |
 
 ## Log
 
@@ -198,3 +200,5 @@ several harnesses read it and the repo is public.
 2026-10-10 11:23 CDT GATE G3 re-approved docs/architecture/lld.md@48545f9; next define-acceptance M4
 2026-10-10 11:30 CDT FAIL design-lld D38 named "Nuxt 3" from model memory; npm registry check at bootstrap showed Nuxt 4 is the current major (4.6.1; 3.21.11 maintenance). Route at M1 close (version claims need a registry check). AI_USAGE: AI was out of date.
 2026-10-10 11:34 CDT VERIFY bootstrap @d5f5e1a: npm install 684 packages exit 0; PostgreSQL 16.15 test db reachable on 127.0.0.1:54329; vitest 5.0.1; make check OK. Note: user's ~/.docker/config.json has credsStore=desktop while the context is colima, so image pulls need a clean DOCKER_CONFIG (not changed).
+2026-10-10 11:56 CDT VERIFY define-acceptance M4 @695b94b: npx vitest run tests/acceptance/M4 exit=1, 43 failed (43), all "relation practices does not exist" (missing: table, lld.md §1); -t M4_AT_041 exit 1 names it; -t M4_AT_999 exit 0 (Q-5); tsc 0 errors; Done-when checks clean
+2026-10-10 11:59 CDT GATE G3 re-approved lld.md@5a984b8; acceptance (G4 part) approved at 695b94b; next slice-tasks M4
