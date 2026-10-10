@@ -1,584 +1,1125 @@
-diff --git a/app/components/AppShell.vue b/app/components/AppShell.vue
-index abcb63b..494a68f 100644
---- a/app/components/AppShell.vue
-+++ b/app/components/AppShell.vue
-@@ -1,5 +1,5 @@
--<!-- FE-1 AppShell (lld.md §3): fetches the signed-in viewer (ST-1, EP-17), provides it to pages, and shows the help
--     footer. The idle countdown (ST-2) and the signed-out redirect arrive with the sign-in page (M4-T006). -->
-+<!-- FE-1 AppShell (lld.md §3): fetches the signed-in viewer (ST-1, EP-17), provides it to pages, runs the idle
-+     countdown (ST-2) while someone is signed in, and shows the help footer. -->
- <script setup lang="ts">
- const { data: viewer } = await useFetch('/api/session', { key: 'viewer' })
- provide('viewer', viewer)
-@@ -8,6 +8,7 @@ const staff = computed(() => !!viewer.value && viewer.value.role !== 'patient')
+=== COMMIT a3a582b feat(m4/t004): send refuses empty orders and orders below the price floor
+
+diff --git a/server/api/orders/index.post.ts b/server/api/orders/index.post.ts
+index bd208bc..7e6c120 100644
+--- a/server/api/orders/index.post.ts
++++ b/server/api/orders/index.post.ts
+@@ -10,7 +10,7 @@ import { defineApiHandler, parseBody } from '../../utils/problem'
  
- <template>
-   <div class="shell">
-+    <IdleCountdown v-if="viewer" />
-     <main>
-       <slot />
-     </main>
-diff --git a/app/components/IdleCountdown.vue b/app/components/IdleCountdown.vue
-index f59108e..ac51c71 100644
---- a/app/components/IdleCountdown.vue
-+++ b/app/components/IdleCountdown.vue
-@@ -1,26 +1,52 @@
--<!-- ST-2 idle countdown (lld.md §3, owned by FE-1 AppShell): when the signed-in viewer's idle_expires_at (ST-1) passes
--     with no request moving it, opens the sign-in page with the idle message. It only shows that page sooner; the
--     server's 15-minute rule (BE-3) decides. Renders nothing. -->
-+<!-- ST-2 idle countdown (lld.md §3, owned by FE-1 AppShell): when 15 minutes pass with no request moving the server's
-+     last_seen_at, opens the sign-in page with the idle message (FR-041). It starts from the viewer's idle_expires_at
-+     (ST-1) and restarts on each of the person's own API calls, because each one moves last_seen_at (BE-3.resolve).
-+     It only shows that page sooner; the server's 15-minute rule decides. Renders nothing. -->
- <script setup lang="ts">
- import type { Ref } from 'vue'
- 
-+const IDLE_MS = 15 * 60 * 1000
- const viewer = inject<Ref<{ idle_expires_at: string } | null | undefined>>('viewer', ref(null))
- const route = useRoute()
- let timer: ReturnType<typeof setTimeout> | undefined
-+let observer: PerformanceObserver | undefined
- 
--function arm() {
-+function armAt(expiresAt: number) {
-   clearTimeout(timer)
--  const at = viewer.value?.idle_expires_at
--  if (!at) return
--  // one second late, so the server agrees the session is idle when the next page asks
-+  // one second late, so the server agrees the session is idle when the sign-in page asks
-   timer = setTimeout(() => {
--    navigateTo(`/sign-in?next=${encodeURIComponent(route.fullPath)}&idle=1`)
--  }, Math.max(0, new Date(at).getTime() - Date.now()) + 1000)
-+    clearNuxtData('viewer') // the old viewer is gone; the sign-in page fetches ST-1 again
-+    navigateTo({ path: '/sign-in', query: { next: route.fullPath, idle: '1' } })
-+  }, Math.max(0, expiresAt - Date.now()) + 1000)
- }
- 
--onMounted(arm)
-+function arm() {
-+  const at = viewer.value?.idle_expires_at
-+  if (at) armAt(new Date(at).getTime())
-+  else clearTimeout(timer)
-+}
-+
-+// Resource timing sees every fetch the page makes, so no API call has to know about the countdown. A 401 means the
-+// session already ended, so it restarts nothing. The countdown runs from when the answer arrived, never earlier than
-+// the server's own clock started it.
-+function onRequests(list: PerformanceObserverEntryList) {
-+  for (const e of list.getEntries() as PerformanceResourceTiming[]) {
-+    const url = new URL(e.name)
-+    if (url.origin !== location.origin || !url.pathname.startsWith('/api/') || e.responseStatus === 401) continue
-+    if (viewer.value) armAt(performance.timeOrigin + e.responseEnd + IDLE_MS)
-+  }
-+}
-+
-+onMounted(() => {
-+  arm()
-+  observer = new PerformanceObserver(onRequests)
-+  observer.observe({ type: 'resource' })
-+})
- watch(() => viewer.value?.idle_expires_at, arm)
--onBeforeUnmount(() => clearTimeout(timer))
-+onBeforeUnmount(() => {
-+  clearTimeout(timer)
-+  observer?.disconnect()
-+})
- </script>
- 
- <template>
-diff --git a/app/middleware/auth.global.ts b/app/middleware/auth.global.ts
-index 30f6c48..d5a8f81 100644
---- a/app/middleware/auth.global.ts
-+++ b/app/middleware/auth.global.ts
-@@ -1,9 +1,24 @@
- // BE-2 PageGuards (lld.md §2, SEQ-7 steps 1-2): every page except sign-in (EP-1) and the order notice (EP-2) needs a
- // live session. Signed out: 303 to /sign-in?next=<the page asked for> and none of the page's contents (FR-040). The
- // server's 15-minute rule decides (BE-3 via EP-17); a session that existed and ended adds `idle=1`, so the sign-in
--// page explains it (FR-041). Wrong roles are refused by each page's own API call (BE-4) and shown as that page's
--// Permission denied state.
-+// page explains it (FR-041). A session check that fails for any other reason also goes to sign-in (fail closed).
-+// Wrong roles are refused by each page's own API call (BE-4) and shown as that page's Permission denied state.
- const PUBLIC = [/^\/sign-in$/, /^\/notices\/[^/]+$/]
-+const BASE = 'http://same-site.invalid'
-+
-+/** `next` when it is a path on this site, else null. Parsed as a browser would ("/\t/x" is "//x"), so no off-site
-+ *  redirect: "/orders/1001" yes; "//evil.example", "/\evil.example", "/\t/evil.example", "https://…" no. */
-+export function safeNext(next: unknown): string | null {
-+  if (typeof next !== 'string' || !next.startsWith('/')) return null
-+  let url: URL
-+  try {
-+    url = new URL(next, BASE)
-+  } catch {
-+    return null
-+  }
-+  const path = url.pathname + url.search + url.hash
-+  return url.origin === BASE && !path.startsWith('//') ? path : null
-+}
- 
- export default defineNuxtRouteMiddleware(async (to) => {
-   if (PUBLIC.some((p) => p.test(to.path))) return
-@@ -11,7 +26,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
-   try {
-     await useRequestFetch()('/api/session')
-   } catch (err) {
--    if ((err as { statusCode?: number }).statusCode !== 401) return // not a sign-in problem; the page shows its own error
--    return navigateTo({ path: '/sign-in', query: { next: to.fullPath, ...(hadSession ? { idle: '1' } : {}) } }, { redirectCode: 303 })
-+    const idle = hadSession && (err as { statusCode?: number })?.statusCode === 401
-+    return navigateTo({ path: '/sign-in', query: { next: to.fullPath, ...(idle ? { idle: '1' } : {}) } }, { redirectCode: 303 })
-   }
+ const SendOrderRequest = z.strictObject({
+   patient_id: z.int().positive(),
+-  lines: z.array(z.strictObject({ product_id: z.int().positive(), quantity: z.int().min(1) })).min(1),
++  lines: z.array(z.strictObject({ product_id: z.int().positive(), quantity: z.int().min(1) })), // an empty order is refused once, in BE-9.sendOrder (FR-003)
  })
-diff --git a/app/pages/sign-in.vue b/app/pages/sign-in.vue
-index 418f404..2be2ba6 100644
---- a/app/pages/sign-in.vue
-+++ b/app/pages/sign-in.vue
-@@ -1,21 +1,22 @@
- <!-- FE-2 SignInPage (S8, EP-1; lld.md §3, SEQ-7): email and password through EP-15, then the page asked for (`next`)
-      or the role's home. Public: the page guard (BE-2) lets everyone open it. -->
- <script setup lang="ts">
-+import { safeNext } from '~/middleware/auth.global'
-+
- interface Me { role: string }
  
- const route = useRoute()
-+// Each role's home (flows.md F7 step 2): a patient her orders, a provider the practice dashboard, a reviewer Paid
-+// orders. Finance, SRE and analyst roles open the one operations page their role is for.
- const HOME: Record<string, string> = {
-+  patient: '/orders',
-   provider: '/practice/dashboard',
-   operations_specialist: '/ops/orders',
--  finance_lead: '/ops/finance',
-+  finance_lead: '/ops/orders',
-   sre: '/ops/system',
-   data_analyst: '/ops/health',
- }
--// Only same-site paths: "/x" yes, "//evil.example" or "/\evil.example" no (open redirect).
--const next = computed(() => {
--  const n = route.query.next
--  return typeof n === 'string' && /^\/(?![/\\])/.test(n) ? n : null
--})
-+const next = computed(() => safeNext(route.query.next))
- const idle = computed(() =>
-   route.query.idle
-     ? `You were signed out after 15 minutes without activity.${next.value?.startsWith('/orders/') ? ' Sign in to return to your order.' : ''}`
-@@ -38,10 +39,9 @@ async function submit() {
-   error.value = null
-   pending.value = true
-   const timer = setTimeout(() => (slow.value = true), 10_000)
-+  let me: Me
-   try {
--    const me = await $fetch<Me>('/api/session', { method: 'POST', body: { email: email.value.trim(), password: password.value } })
--    clearNuxtData('viewer') // ST-1 is fetched again for the signed-in person
--    await navigateTo(next.value ?? HOME[me.role] ?? '/', { replace: true })
-+    me = await $fetch<Me>('/api/session', { method: 'POST', body: { email: email.value.trim(), password: password.value } })
-   } catch (err) {
-     const { statusCode: status, data } = err as { statusCode?: number; data?: { title?: string } }
-     password.value = ''
-@@ -53,11 +53,20 @@ async function submit() {
-           : status
-             ? "We couldn't sign you in right now. Try again in a moment."
-             : "You're offline. Try again when you're back online."
-+    pending.value = false
-+    return
-   } finally {
-     clearTimeout(timer)
--    pending.value = false
-     slow.value = false
-   }
-+  // Signed in: from here a failure is the next page's own, never a sign-in error. The button stays busy while the
-+  // next page opens, so a second press can't sign in twice.
-+  clearNuxtData('viewer') // ST-1 is fetched again for the signed-in person
-+  try {
-+    await navigateTo(next.value ?? HOME[me.role] ?? '/', { replace: true })
-+  } finally {
-+    pending.value = false
-+  }
- }
- </script>
- 
-diff --git a/db/migrations/1760000006000_sign-in-attempts.sql b/db/migrations/1760000006000_sign-in-attempts.sql
-new file mode 100644
-index 0000000..8f119f2
---- /dev/null
-+++ b/db/migrations/1760000006000_sign-in-attempts.sql
-@@ -0,0 +1,20 @@
-+-- Up Migration
-+-- M4-T006 EP-15 sign-in rate limit (lld.md §4 `/problems/rate-limited`: more than 10 sign-in attempts in 15 minutes
-+-- for one email or one address). One row per counted attempt; BE-3 counts the last 15 minutes and deletes older rows.
-+-- Runs as supplements_owner (Q-3, Q-4).
-+
-+create table sign_in_attempts (
-+  id bigint generated always as identity constraint pk_sign_in_attempts primary key,
-+  email text not null,
-+  ip text not null,
-+  attempted_at timestamptz not null default now()
-+);
-+create index ix_sign_in_attempts_email on sign_in_attempts (email, attempted_at);
-+create index ix_sign_in_attempts_ip on sign_in_attempts (ip, attempted_at);
-+create index ix_sign_in_attempts_attempted_at on sign_in_attempts (attempted_at);
-+
-+-- BE-3 records, counts and prunes attempts.
-+grant select, insert, delete on sign_in_attempts to supplements_app;
-+
-+-- Down Migration
-+drop table sign_in_attempts;
-diff --git a/server/services/session.ts b/server/services/session.ts
-index 60b6917..86f574c 100644
---- a/server/services/session.ts
-+++ b/server/services/session.ts
-@@ -67,10 +67,37 @@ export function toViewer(u: { id: string; display_name: string; role: string; pr
-   }
+ export default defineApiHandler(async (event) => {
+diff --git a/server/services/money.ts b/server/services/money.ts
+index 6d6ac17..7f9b5fa 100644
+--- a/server/services/money.ts
++++ b/server/services/money.ts
+@@ -60,6 +60,17 @@ export function lowestAllowedPriceCents(unitCostCents: number): number {
+   return p
  }
  
--// ponytail: no sign-in rate limit yet (lld §4 says 10 tries / 15 min per email or address); no table holds the
--// counts and counting every attempt would refuse the acceptance suite's repeated sign-ins. See result.md Questions.
--export async function signIn(email: string, password: string, _ip: string): Promise<{ viewer: Viewer; cookieToken: string }> {
-+// lld.md §4 /problems/rate-limited: more than 10 sign-in attempts in 15 minutes for one email or one address.
-+const MAX_ATTEMPTS = 10
-+const ATTEMPT_WINDOW_MS = 15 * 60 * 1000
-+
-+/** Refuses the attempt (429) when its email or address already has 10 in the window; otherwise records it. */
-+async function countAttempt(email: string, ip: string): Promise<void> {
-+  const db = useDb()
-+  const t = now()
-+  const since = new Date(t.getTime() - ATTEMPT_WINDOW_MS)
-+  const recent = await db
-+    .selectFrom('sign_in_attempts')
-+    .select(['email', 'ip', 'attempted_at'])
-+    .where('attempted_at', '>', since)
-+    .where((eb) => eb.or([eb('email', '=', email), eb('ip', '=', ip)]))
-+    .orderBy('attempted_at')
-+    .execute()
-+  let retryAt = 0
-+  for (const mine of [recent.filter((a) => a.email === email), recent.filter((a) => a.ip === ip)]) {
-+    // the next try is allowed once all but the newest 9 have left the window
-+    if (mine.length >= MAX_ATTEMPTS)
-+      retryAt = Math.max(retryAt, mine[mine.length - MAX_ATTEMPTS]!.attempted_at.getTime() + ATTEMPT_WINDOW_MS)
-+  }
-+  if (retryAt) throw new ProblemError('rate-limited', { retryAfterSeconds: Math.ceil((retryAt - t.getTime()) / 1000) })
-+  // ponytail: count-then-insert can let a burst of parallel tries past 10 by a few; a lock per key if that matters.
-+  await db.insertInto('sign_in_attempts').values({ email, ip, attempted_at: t }).execute()
-+  await db.deleteFrom('sign_in_attempts').where('attempted_at', '<=', since).execute()
++/** The products that make an order's payout after its fee fall below $0.00 (FR-004): each one priced below its
++ *  floor. When every product is at or above its floor but the one order fee still rounds the payout below $0.00
++ *  (e.g. 2 x 66c at a 66c cost: fee 1c), every product is named, since no single one is at fault. */
++export function belowFloorProductIds<T>(lines: { id: T; unitPriceCents: number; unitCostCents: number; quantity: number }[]): T[] {
++  const below = lines.filter((l) => l.unitPriceCents < lowestAllowedPriceCents(l.unitCostCents)).map((l) => l.id)
++  if (below.length > 0) return below
++  const total = lines.reduce((s, l) => s + l.unitPriceCents * l.quantity, 0)
++  const cost = lines.reduce((s, l) => s + l.unitCostCents * l.quantity, 0)
++  return payoutCents(total, cost, platformFeeCents(total)) < 0 ? lines.map((l) => l.id) : []
 +}
 +
-+export async function signIn(email: string, password: string, ip: string): Promise<{ viewer: Viewer; cookieToken: string }> {
+ /** The unit cost behind a lowest allowed price: the payout at the floor is exactly $0.00, because the payout grows
+  *  by at most one cent per cent of price. Lets the order builder show the payout live from the Catalog (SEQ-1 step 5),
+  *  which carries the floor but not the cost. */
+diff --git a/server/services/orders.ts b/server/services/orders.ts
+index d85d89a..da8dc3c 100644
+--- a/server/services/orders.ts
++++ b/server/services/orders.ts
+@@ -6,7 +6,7 @@ import { ProblemError } from '../utils/problem'
+ import { assertCanActOnPatient, assertIsOrderPatient } from './access-policy'
+ import { currentPrices, loadPatient } from './catalog'
+ import { sendOrderNotice } from './messaging'
+-import { payoutCents, platformFeeCents } from './money'
++import { belowFloorProductIds, lowestAllowedPriceCents, payoutCents, platformFeeCents } from './money'
+ import type { Viewer } from './session'
+ 
+ export interface SendOrderInput {
+@@ -40,7 +40,7 @@ export async function sendOrder(viewer: Viewer, input: SendOrderInput): Promise<
+   // One line per product, quantities added (LINV-4).
+   const quantities = new Map<bigint, number>()
+   for (const l of input.lines) quantities.set(l.productId, (quantities.get(l.productId) ?? 0) + l.quantity)
+-  if (quantities.size === 0) throw new ProblemError('validation', { errors: [{ pointer: '#/lines', detail: 'Add at least one supplement.' }] })
++  if (quantities.size === 0) throw new ProblemError('validation', { errors: [{ pointer: '#/lines', detail: 'This order has no items. Add at least one supplement.' }] })
+   const productIds = [...quantities.keys()]
+ 
    const db = useDb()
-+  await countAttempt(email.toLowerCase(), ip)
-   const user = await db
-     .selectFrom('users')
-     .select(['id', 'display_name', 'role', 'practice_id', 'password_hash'])
-diff --git a/server/utils/db-types.ts b/server/utils/db-types.ts
-index df946f3..d568eff 100644
---- a/server/utils/db-types.ts
-+++ b/server/utils/db-types.ts
-@@ -123,6 +123,14 @@ export interface IdempotencyKeysTable {
-   expires_at: Timestamp
- }
- 
-+export interface SignInAttemptsTable {
-+  id: Id
-+  /** lower-cased */
-+  email: string
-+  ip: string
-+  attempted_at: DefaultTimestamp
-+}
-+
- export interface Database {
-   practices: PracticesTable
-   users: UsersTable
-@@ -135,4 +143,5 @@ export interface Database {
-   payment_attempts: PaymentAttemptsTable
-   ledger_entries: LedgerEntriesTable
-   idempotency_keys: IdempotencyKeysTable
-+  sign_in_attempts: SignInAttemptsTable
- }
-diff --git a/server/utils/problem.ts b/server/utils/problem.ts
-index fd41284..1b2d3f6 100644
---- a/server/utils/problem.ts
-+++ b/server/utils/problem.ts
-@@ -1,7 +1,7 @@
- // RFC 9457 problem details (lld.md §4 Problem types). Services throw ProblemError; defineApiHandler turns it into an
- // application/problem+json response, and any unexpected error into /problems/internal.
- import { randomUUID } from 'node:crypto'
--import { defineEventHandler, readBody, setResponseHeader, setResponseStatus, type EventHandlerRequest, type H3Event } from 'h3'
-+import { defineEventHandler, getRequestHeader, readBody, setResponseHeader, setResponseStatus, type EventHandlerRequest, type H3Event } from 'h3'
- import type { ZodError, ZodType } from 'zod'
- 
- const TITLES = {
-@@ -45,9 +45,11 @@ export function validationProblem(err: ZodError): ProblemError {
+@@ -71,6 +71,14 @@ export async function sendOrder(viewer: Viewer, input: SendOrderInput): Promise<
+     const unit = prices.get(id)!
+     return { id, name: p.name, quantity, unit, total: unit * quantity, cost: p.unit_cost_cents * quantity }
    })
- }
- 
--/** The JSON body parsed by `schema`, or 422 /problems/validation (also for a body that is not JSON). */
-+/** The JSON body parsed by `schema`, or 422 /problems/validation (also for a body that is not JSON). Only an
-+ *  `application/json` body is read (openapi requestBody), so a cross-site text/plain or form post is refused. */
- export async function parseBody<T>(event: H3Event, schema: ZodType<T>): Promise<T> {
--  const raw = await readBody(event).catch(() => undefined)
-+  const type = getRequestHeader(event, 'content-type')?.split(';')[0]?.trim().toLowerCase()
-+  const raw = type === 'application/json' ? await readBody(event).catch(() => undefined) : undefined
-   const parsed = schema.safeParse(raw)
-   if (!parsed.success) throw validationProblem(parsed.error)
-   return parsed.data
-diff --git a/tests/unit/session.test.ts b/tests/unit/session.test.ts
-index 429e6a8..29969e2 100644
---- a/tests/unit/session.test.ts
-+++ b/tests/unit/session.test.ts
-@@ -1,10 +1,56 @@
--// BE-3 SessionService and BE-20 Clock (lld.md §2, SEQ-7, SEAM-1, SEAM-6): the pure parts of sign-in and idle sign-out.
--import { randomBytes, scryptSync } from 'node:crypto'
--import { afterEach, describe, expect, it } from 'vitest'
-+// BE-3 SessionService, BE-20 Clock, EP-15 rate limit, EP-16 sign-out and BE-2's `next=` check (lld.md §2, §4, SEQ-7,
-+// SEAM-1, SEAM-6). No database: a fake Kysely driver records the SQL and answers each statement from `answer`.
-+import { createHash, randomBytes, scryptSync } from 'node:crypto'
-+import { createApp, toWebHandler } from 'h3'
-+import { Kysely, PostgresAdapter, PostgresIntrospector, PostgresQueryCompiler, type CompiledQuery } from 'kysely'
-+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
- import { freezeClock, now } from '../../server/services/clock'
--import { idleCutoff, toMe, toViewer, verifyPassword } from '../../server/services/session'
-+import { idleCutoff, signIn, signOut, toMe, toViewer, verifyPassword } from '../../server/services/session'
-+import { ProblemError } from '../../server/utils/problem'
-+import signOutHandler from '../../server/api/session/index.delete'
-+import signInHandler from '../../server/api/session/index.post'
-+
-+const fake = vi.hoisted(() => ({
-+  queries: [] as { sql: string; parameters: readonly unknown[] }[],
-+  answer: (_sql: string): unknown[] => [],
-+}))
-+vi.mock('../../server/utils/db', () => ({
-+  useDb: () =>
-+    new Kysely<any>({
-+      dialect: {
-+        createAdapter: () => new PostgresAdapter(),
-+        createQueryCompiler: () => new PostgresQueryCompiler(),
-+        createIntrospector: (db) => new PostgresIntrospector(db),
-+        createDriver: () => ({
-+          init: async () => {},
-+          acquireConnection: async () => ({
-+            executeQuery: async (q: CompiledQuery) => {
-+              fake.queries.push({ sql: q.sql, parameters: q.parameters })
-+              return { rows: fake.answer(q.sql) as any[] }
-+            },
-+            streamQuery: () => {
-+              throw new Error('not used')
-+            },
-+          }),
-+          beginTransaction: async () => {},
-+          commitTransaction: async () => {},
-+          rollbackTransaction: async () => {},
-+          releaseConnection: async () => {},
-+          destroy: async () => {},
-+        }),
-+      },
-+    }),
-+}))
- 
- const MIN = 60 * 1000
-+const T0 = new Date('2026-10-10T12:00:00Z')
-+const sha256 = (s: string) => createHash('sha256').update(s).digest()
-+const sqlOf = (start: string) => fake.queries.filter((q) => q.sql.startsWith(start))
-+
-+beforeEach(() => {
-+  fake.queries.length = 0
-+  fake.answer = () => []
-+})
- 
- function hashFor(password: string, N = 1024, r = 8, p = 1): string {
-   const salt = randomBytes(16)
-@@ -71,3 +117,198 @@ describe('idle limit: 15 minutes (FR-041, NFR-008, AE-039)', () => {
-     expect(toMe(toViewer({ id: '9', display_name: 'Omar', role: 'sre', practice_id: null }, lastSeen)).practice_id).toBeNull()
++  // FR-004: no order whose payout after the fee would be below $0.00; no transaction is opened (SEQ-1).
++  const belowFloor = belowFloorProductIds(lines.map((l) => ({ id: l.id, unitPriceCents: l.unit, unitCostCents: byId.get(l.id)!.unit_cost_cents, quantity: l.quantity })))
++  if (belowFloor.length > 0) {
++    throw new ProblemError('below-price-floor', {
++      productIds: belowFloor.map(Number),
++      lowestAllowedPriceCents: lowestAllowedPriceCents(byId.get(belowFloor[0]!)!.unit_cost_cents),
++    })
++  }
+   const total = lines.reduce((s, l) => s + l.total, 0)
+   const cost = lines.reduce((s, l) => s + l.cost, 0)
+   const fee = platformFeeCents(total)
+diff --git a/tests/unit/money.test.ts b/tests/unit/money.test.ts
+index 00314d2..add8b32 100644
+--- a/tests/unit/money.test.ts
++++ b/tests/unit/money.test.ts
+@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
+ import {
+   allocateFee,
+   assertSplitBalances,
++  belowFloorProductIds,
+   defaultPriceCents,
+   lowestAllowedPriceCents,
+   payoutCents,
+@@ -87,3 +88,20 @@ describe('unitCostFromLowestAllowedPrice: inverts lowestAllowedPriceCents exactl
+     }
    })
  })
 +
-+describe('EP-15 rate limit: more than 10 attempts in 15 minutes for one email or one address (lld.md §4)', () => {
-+  const chen = { id: '2', display_name: 'Dr. Chen', role: 'provider', practice_id: '3', password_hash: hashFor('pw') }
-+  const attempts = (n: number, who: { email?: string; ip?: string }, firstMinAgo = 14) =>
-+    Array.from({ length: n }, (_, i) => ({
-+      email: who.email ?? 'other@example.test',
-+      ip: who.ip ?? '10.0.0.9',
-+      attempted_at: new Date(T0.getTime() - (firstMinAgo - i) * MIN),
-+    }))
-+  function world(rows: ReturnType<typeof attempts>) {
-+    fake.answer = (s) =>
-+      s.startsWith('select') && s.includes('"sign_in_attempts"')
-+        ? rows
-+        : s.startsWith('select') && s.includes('"users"')
-+          ? [chen]
-+          : s.startsWith('insert into "sessions"')
-+            ? [{ last_seen_at: now() }]
-+            : []
++describe('belowFloorProductIds: what refuses an order whose payout would be below $0.00 (FR-004)', () => {
++  const line = (id: number, unitPriceCents: number, unitCostCents: number, quantity = 1) => ({ id, unitPriceCents, unitCostCents, quantity })
++  it('AE-003: priced at its $12.00 cost -> named', () => expect(belowFloorProductIds([line(2, 1200, 1200)])).toEqual([2]))
++  it('$12.08 for a $12.00 cost is named, $12.09 (payout $0.00) is not', () => {
++    expect(belowFloorProductIds([line(2, 1208, 1200)])).toEqual([2])
++    expect(belowFloorProductIds([line(2, 1209, 1200)])).toEqual([])
++  })
++  it('names only the products below their floor', () =>
++    expect(belowFloorProductIds([line(1, 1800, 900, 2), line(2, 1200, 1200), line(3, 3000, 1500)])).toEqual([2]))
++  it('AE-001 order is fine', () => expect(belowFloorProductIds([line(1, 1800, 900, 2), line(2, 2400, 1200)])).toEqual([]))
++  it('every product at its floor but the one order fee rounds up below $0.00 -> names every product', () => {
++    // 66c at a 66c cost: fee(66) = 0, payout 0. Two units: fee(132) = 1, payout -1.
++    expect(belowFloorProductIds([line(7, 66, 66, 2)])).toEqual([7])
++  })
++  it('no lines -> nothing named', () => expect(belowFloorProductIds([])).toEqual([]))
++})
+=== COMMIT 67a0315 feat(m4/t005): patient opens her own order (EP-21 getOrder, S2 page)
+
+diff --git a/app/pages/orders/[orderId].vue b/app/pages/orders/[orderId].vue
+new file mode 100644
+index 0000000..6c747bb
+--- /dev/null
++++ b/app/pages/orders/[orderId].vue
+@@ -0,0 +1,93 @@
++<!-- FE-7 PatientOrderPage (S2, EP-4): the patient reviews her order (EP-21), then FE-8 holds prices and pays, then
++     FE-9 shows the receipt. Someone else's order shows only "We can't find this order." (FR-009). -->
++<script setup lang="ts">
++import type { Receipt, ReceiptLine } from '~/components/checkout/ReceiptView.vue'
++import type { Problem } from '~/components/ProblemMessage.vue'
++
++interface OrderView {
++  order_id: number
++  status: string
++  practice_name: string
++  provider_display_name: string
++  lines: ReceiptLine[]
++  total_cents: number
++  price_changes: { product_id: number; name: string; old_price_cents: number; new_price_cents: number }[]
++  prices_held_until: string | null
++  paid_at: string | null
++  is_test_payment: true
++}
++
++const route = useRoute()
++const orderId = Number(route.params.orderId)
++const { data: order, error, refresh, status } = await useFetch<OrderView>(`/api/orders/${orderId}`) // ST-8
++const receipt = ref<Receipt | null>(null)
++// ponytail: FE-8 emits no "checkout started" event, so step 1 stays above the checkout instead of being replaced by
++// it; Back remounts FE-8 (a new step 1 press). Upgrade: FE-8 emits `started`, then hide this section on it.
++const checkoutKey = ref(0)
++
++useHead({ title: 'Your supplement order' })
++const dollars = (c: number) => `$${(c / 100).toFixed(2)}`
++const shownReceipt = computed<Receipt | null>(() => {
++  if (receipt.value) return receipt.value
++  const o = order.value
++  if (o?.status !== 'paid' || !o.paid_at) return null
++  return { order_id: o.order_id, amount_paid_cents: o.total_cents, paid_at: o.paid_at, lines: o.lines, is_test_payment: true }
++})
++const canPay = computed(() => ['sent', 'in_checkout', 'payment_failed'].includes(order.value?.status ?? ''))
++async function back() {
++  checkoutKey.value++
++  await refresh()
++}
++</script>
++
++<template>
++  <AppShell>
++    <main class="order">
++      <p v-if="status === 'pending'" role="status">Loading your order…</p>
++      <ProblemMessage
++        v-else-if="error"
++        :problem="(error.data as Problem) ?? null"
++        :copy="{ 'not-found': 'We can\'t find this order.', unauthenticated: 'You were signed out after 15 minutes without activity. Sign in to return to your order.' }"
++        @retry="refresh"
++      />
++      <ReceiptView v-else-if="shownReceipt" :receipt="shownReceipt" />
++      <template v-else-if="order">
++        <section aria-labelledby="order-heading">
++          <h1 id="order-heading">Your supplement order</h1>
++          <p>From {{ order.provider_display_name }}, {{ order.practice_name }}</p>
++          <p v-if="order.status === 'cancelled'" role="status">This order was cancelled by your practice.</p>
++          <p v-if="order.status === 'needs_review'" role="status">We couldn't complete this payment. No money was taken. Your practice will contact you.</p>
++          <p v-if="order.status === 'in_checkout' && !order.prices_held_until" role="status">Your 30-minute price hold ended. These are the current prices.</p>
++          <ul class="notices">
++            <li v-for="c in order.price_changes" :key="c.product_id">
++              <span aria-hidden="true">(i)</span> {{ c.name }} price changed: {{ dollars(c.old_price_cents) }} to {{ dollars(c.new_price_cents) }}.
++            </li>
++          </ul>
++          <ul class="lines">
++            <li v-for="l in order.lines" :key="l.product_id">
++              <span class="name">{{ l.name }}</span>
++              <span>{{ l.quantity }} x {{ dollars(l.unit_price_cents) }}</span>
++              <span>{{ dollars(l.line_total_cents) }}</span>
++            </li>
++          </ul>
++          <dl class="total">
++            <dt>Total due</dt>
++            <dd>{{ dollars(order.total_cents) }}</dd>
++          </dl>
++        </section>
++        <CheckoutStep v-if="canPay" :key="checkoutKey" :order="order" @back="back" @paid="(r: Receipt) => (receipt = r)" />
++      </template>
++      <p class="help">Questions? Contact your practice.</p>
++    </main>
++  </AppShell>
++</template>
++
++<style scoped>
++.order { max-width: 560px; margin: 0 auto; }
++.notices, .lines { list-style: none; padding: 0; }
++.lines li { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; padding: 4px 0; }
++.name { overflow-wrap: anywhere; }
++.total { display: grid; grid-template-columns: 1fr auto; border-top: 1px solid #333; padding-top: 4px; }
++.total dd { margin: 0; font-weight: 600; }
++.help { color: #444; }
++</style>
+diff --git a/server/api/orders/[orderId]/index.get.ts b/server/api/orders/[orderId]/index.get.ts
+new file mode 100644
+index 0000000..be8fe07
+--- /dev/null
++++ b/server/api/orders/[orderId]/index.get.ts
+@@ -0,0 +1,13 @@
++// EP-21 GET /api/orders/{orderId} (getOrder): the order's patient or a provider of its practice sees the order;
++// anyone else gets 404 /problems/not-found, never 403 (FR-009). No PATCH or PUT exists on an order (FR-068).
++import { getRouterParam } from 'h3'
++import { getOrderForViewer } from '../../../services/orders'
++import { requireViewer } from '../../../services/session'
++import { defineApiHandler, ProblemError } from '../../../utils/problem'
++
++export default defineApiHandler(async (event) => {
++  const viewer = await requireViewer(event)
++  const id = getRouterParam(event, 'orderId') ?? ''
++  if (!/^\d{1,18}$/.test(id)) throw new ProblemError('not-found')
++  return getOrderForViewer(viewer, BigInt(id))
++})
+diff --git a/server/services/orders.ts b/server/services/orders.ts
+index da8dc3c..15b96c8 100644
+--- a/server/services/orders.ts
++++ b/server/services/orders.ts
+@@ -1,9 +1,9 @@
+-// BE-9 OrderService (lld.md §2, SEQ-1, SEQ-2, SM-1): send an order and start its checkout. Later tasks add show and
+-// cancel here.
++// BE-9 OrderService (lld.md §2, SEQ-1, SEQ-2, SM-1): send, show and start checkout on an order. Later tasks add
++// cancel here. No method changes a sent order's lines (FR-068).
+ import { sql } from 'kysely'
+ import { useDb } from '../utils/db'
+ import { ProblemError } from '../utils/problem'
+-import { assertCanActOnPatient, assertIsOrderPatient } from './access-policy'
++import { assertCanActOnPatient, assertCanViewOrder, assertIsOrderPatient } from './access-policy'
+ import { currentPrices, loadPatient } from './catalog'
+ import { sendOrderNotice } from './messaging'
+ import { belowFloorProductIds, lowestAllowedPriceCents, payoutCents, platformFeeCents } from './money'
+@@ -173,3 +173,87 @@ export async function startCheckout(viewer: Viewer, orderId: bigint): Promise<Ch
+       return { order_id: Number(o.id), total_cents: total, prices_held_until: held.prices_held_until!.toISOString() }
+     })
+ }
++
++export interface PriceChangeNotice {
++  product_id: number
++  name: string
++  old_price_cents: number
++  new_price_cents: number
++}
++
++export interface OrderView {
++  order_id: number
++  status: string
++  practice_name: string
++  provider_display_name: string
++  lines: OrderLine[]
++  total_cents: number
++  price_changes: PriceChangeNotice[]
++  prices_held_until: string | null
++  paid_at: string | null
++  is_test_payment: true
++}
++
++/** EP-21 (FR-005, FR-009, FR-022, FR-037): the order's patient or a provider of its practice sees every line.
++ *  Paid: the paid prices. A live hold: the held prices. Otherwise today's prices, with a notice for each line whose
++ *  price moved since the order was sent. Anyone else, or an unknown id, gets not-found. */
++export async function getOrderForViewer(viewer: Viewer, orderId: bigint): Promise<OrderView> {
++  const db = useDb()
++  const o = await db
++    .selectFrom('orders')
++    .innerJoin('practices', 'practices.id', 'orders.practice_id')
++    .innerJoin('users as provider', 'provider.id', 'orders.provider_id')
++    .select([
++      'orders.id',
++      'orders.patient_id',
++      'orders.practice_id',
++      'orders.status',
++      'orders.prices_held_until',
++      'orders.paid_at',
++      'practices.name as practice_name',
++      'provider.display_name as provider_display_name',
++      sql<boolean>`orders.prices_held_until > now()`.as('hold_live'),
++    ])
++    .where('orders.id', '=', orderId.toString())
++    .executeTakeFirst()
++  if (!o) throw new ProblemError('not-found')
++  assertCanViewOrder(viewer, { patientId: BigInt(o.patient_id), practiceId: BigInt(o.practice_id) })
++
++  const rows = await db
++    .selectFrom('order_lines')
++    .select(['product_id', 'product_name', 'quantity', 'sent_unit_price_cents', 'held_unit_price_cents', 'paid_unit_price_cents'])
++    .where('order_id', '=', o.id)
++    .orderBy('id')
++    .execute()
++  // ponytail: a cancelled order shows its sent prices; M4-T008 owns the cancelled state and may want otherwise.
++  const priced = ['paid', 'cancelled', 'needs_review'].includes(o.status) || (o.status === 'in_checkout' && o.hold_live)
++  const current = priced ? new Map<bigint, number>() : await currentPrices(BigInt(o.practice_id), rows.map((r) => BigInt(r.product_id)))
++  const price = (r: (typeof rows)[number]): number => {
++    if (o.status === 'paid') return r.paid_unit_price_cents ?? r.sent_unit_price_cents
++    if (o.status === 'cancelled') return r.sent_unit_price_cents
++    if (priced) return r.held_unit_price_cents ?? r.sent_unit_price_cents
++    return current.get(BigInt(r.product_id)) ?? r.sent_unit_price_cents
++  }
++  const lines = rows.map((r) => {
++    const unit = price(r)
++    return { product_id: Number(r.product_id), name: r.product_name, quantity: r.quantity, unit_price_cents: unit, line_total_cents: unit * r.quantity }
++  })
++  const price_changes = priced
++    ? []
++    : rows
++        .map((r, i) => ({ product_id: Number(r.product_id), name: r.product_name, old_price_cents: r.sent_unit_price_cents, new_price_cents: lines[i]!.unit_price_cents }))
++        .filter((c) => c.old_price_cents !== c.new_price_cents)
++
++  return {
++    order_id: Number(o.id),
++    status: o.status,
++    practice_name: o.practice_name,
++    provider_display_name: o.provider_display_name,
++    lines,
++    total_cents: lines.reduce((s, l) => s + l.line_total_cents, 0),
++    price_changes,
++    prices_held_until: o.hold_live ? o.prices_held_until!.toISOString() : null,
++    paid_at: o.paid_at ? o.paid_at.toISOString() : null,
++    is_test_payment: true,
++  }
++}
+=== COMMIT 6a0e96f feat(m4/t007): reviewer sees where every cent of a paid order went
+
+diff --git a/app/components/ops/MoneyEquation.vue b/app/components/ops/MoneyEquation.vue
+new file mode 100644
+index 0000000..4807be9
+--- /dev/null
++++ b/app/components/ops/MoneyEquation.vue
+@@ -0,0 +1,36 @@
++<!-- FE-12 MoneyEquation (S4, S11): "$60.00 paid = $30.00 item cost + $29.55 provider payout + $0.45 platform fee" and
++     whether it adds up, in words (never color alone). Stateless. -->
++<script setup lang="ts">
++export interface Part {
++  label: string
++  cents: number
++}
++
++const props = defineProps<{ total: number; parts: Part[]; balanced: boolean }>()
++const dollars = (c: number) => `$${(c / 100).toFixed(2)}`
++const gap = computed(() => props.total - props.parts.reduce((s, p) => s + p.cents, 0))
++</script>
++
++<template>
++  <div class="equation">
++    <p>
++      <span class="term">{{ dollars(total) }} paid</span>
++      <template v-for="(p, i) in parts" :key="p.label">
++        <span> {{ i === 0 ? '=' : '+' }} </span><span class="term">{{ dollars(p.cents) }} {{ p.label }}</span>
++      </template>
++    </p>
++    <p v-if="balanced" role="status">Adds up: yes</p>
++    <p v-else role="status">
++      Adds up: no. The parts are {{ dollars(Math.abs(gap)) }} {{ gap > 0 ? 'short of' : 'over' }} the amount paid. This order is
++      on the review list.
++    </p>
++  </div>
++</template>
++
++<style scoped>
++.equation { font-size: 18px; margin: 16px 0; }
++.term { white-space: nowrap; }
++@media (max-width: 600px) {
++  .equation .term { display: block; }
++}
++</style>
+diff --git a/app/pages/ops/orders/[orderId].vue b/app/pages/ops/orders/[orderId].vue
+new file mode 100644
+index 0000000..e86b183
+--- /dev/null
++++ b/app/pages/ops/orders/[orderId].vue
+@@ -0,0 +1,113 @@
++<!-- FE-11 OrderBreakdownPage (S4, EP-6): where every cent of one paid order went (EP-26), with FE-12 MoneyEquation at
++     the top and each line's quantity, price and cost at payment below. Order number only, never the patient (FR-050). -->
++<script setup lang="ts">
++import type { Problem } from '~/components/ProblemMessage.vue'
++
++interface BreakdownLine {
++  name: string
++  quantity: number
++  unit_price_cents: number
++  unit_cost_cents: number
++  line_cost_cents: number
++  fee_share_cents: number
++}
++interface OrderBreakdown {
++  order_id: number
++  practice_name: string
++  provider_display_name: string
++  paid_at: string
++  amount_paid_cents: number
++  item_cost_cents: number
++  provider_payout_cents: number
++  platform_fee_cents: number
++  adds_up: boolean
++  lines: BreakdownLine[]
++}
++
++const route = useRoute()
++const orderId = Number(route.params.orderId)
++useHead({ title: `Order ${orderId}` })
++const { data: b, error, refresh, status } = await useFetch<OrderBreakdown>(`/api/ops/orders/${orderId}`) // ST-8
++
++const dollars = (c: number) => `$${(c / 100).toFixed(2)}`
++const paidAt = computed(() => {
++  if (!b.value) return ''
++  const d = new Date(b.value.paid_at)
++  return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
++})
++const parts = computed(() =>
++  b.value
++    ? [
++        { label: 'item cost', cents: b.value.item_cost_cents },
++        { label: 'provider payout', cents: b.value.provider_payout_cents },
++        { label: 'platform fee', cents: b.value.platform_fee_cents },
++      ]
++    : [],
++)
++// 0.75% of the amount in exact dollars, from integers only: amount × 75 is the fee in ten-thousandths of a cent.
++const feeNote = computed(() => {
++  if (!b.value) return ''
++  const amount = b.value.amount_paid_cents
++  const n = amount * 75
++  const fee = dollars(b.value.platform_fee_cents)
++  if (n % 10000 === 0) return `Fee: 0.75% of ${dollars(amount)} = ${fee}, rounded half-up once per order`
++  const cents = Math.floor(n / 10000)
++  const rest = String(n % 10000).padStart(4, '0').replace(/0+$/, '')
++  const exact = `$${Math.floor(cents / 100)}.${String(cents % 100).padStart(2, '0')}${rest}`
++  return `Fee: 0.75% of ${dollars(amount)} = ${exact}, rounded half-up to ${fee}.`
++})
++</script>
++
++<template>
++  <AppShell>
++    <section class="breakdown" aria-labelledby="breakdown-heading">
++      <h1 id="breakdown-heading">Order {{ orderId }}</h1>
++      <template v-if="status === 'pending'">
++        <p role="status">Loading order {{ orderId }}…</p>
++      </template>
++      <ProblemMessage
++        v-else-if="error"
++        :problem="(error.data as Problem) ?? null"
++        :copy="{
++          forbidden: 'Only platform reviewers can see order breakdowns.',
++          'not-found': `We can't find order ${orderId}.`,
++          internal: `We couldn't load order ${orderId}. Try again.`,
++        }"
++        @retry="refresh"
++      />
++      <template v-else-if="b">
++        <p>{{ b.practice_name }} · {{ b.provider_display_name }} · paid {{ paidAt }}</p>
++        <OpsMoneyEquation :total="b.amount_paid_cents" :parts="parts" :balanced="b.adds_up" />
++        <table class="lines">
++          <thead>
++            <tr><th scope="col">Item</th><th scope="col">Qty</th><th scope="col">Unit price</th><th scope="col">Unit cost</th><th scope="col">Line cost</th></tr>
++          </thead>
++          <tbody>
++            <tr v-for="l in b.lines" :key="l.name">
++              <td>{{ l.name }}</td>
++              <td>{{ l.quantity }}</td>
++              <td>{{ dollars(l.unit_price_cents) }}</td>
++              <td>{{ dollars(l.unit_cost_cents) }}</td>
++              <td>{{ dollars(l.line_cost_cents) }}</td>
++            </tr>
++          </tbody>
++        </table>
++        <p class="fee">{{ feeNote }}</p>
++      </template>
++      <NuxtLink to="/ops/orders" class="back">Back to paid orders</NuxtLink>
++    </section>
++  </AppShell>
++</template>
++
++<style scoped>
++.lines { width: 100%; border-collapse: collapse; }
++.lines th, .lines td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #ddd; overflow-wrap: anywhere; }
++.lines td:not(:first-child), .lines th:not(:first-child) { text-align: right; }
++.fee { color: #444; }
++.back { display: inline-block; min-height: 24px; margin-top: 8px; }
++@media (max-width: 600px) {
++  .lines thead { display: none; }
++  .lines tr { display: block; border: 1px solid #ddd; margin-bottom: 8px; padding: 4px; }
++  .lines td { display: block; border: 0; padding: 2px 4px; text-align: left !important; }
++}
++</style>
+diff --git a/app/pages/ops/orders/index.vue b/app/pages/ops/orders/index.vue
+new file mode 100644
+index 0000000..190c0ab
+--- /dev/null
++++ b/app/pages/ops/orders/index.vue
+@@ -0,0 +1,121 @@
++<!-- FE-10 OpsOrderListPage (S3, EP-5): paid orders (or the review list) by order number, newest first, from EP-25.
++     Filter, number search and cursor live in the URL (ST-5). No patient name or contact detail (FR-050). -->
++<script setup lang="ts">
++import type { Problem } from '~/components/ProblemMessage.vue'
++
++interface OpsOrderSummary {
++  order_id: number
++  practice_name: string
++  provider_display_name: string
++  amount_paid_cents: number
++  status: string
++  paid_at: string | null
++}
++interface OpsOrderPage {
++  data: OpsOrderSummary[]
++  needs_review_count: number
++  next_cursor: string | null
++}
++
++useHead({ title: 'Paid orders' })
++const route = useRoute()
++const router = useRouter()
++const one = (v: unknown) => (typeof v === 'string' && v !== '' ? v : undefined)
++const query = computed(() => ({
++  status: one(route.query.status) === 'needs_review' ? 'needs_review' : 'paid',
++  number: one(route.query.number),
++  cursor: one(route.query.cursor),
++}))
++const { data: page, error, refresh, status } = await useFetch<OpsOrderPage>('/api/ops/orders', { query }) // ST-8
++
++const search = ref(query.value.number ?? '')
++const searchError = ref('')
++function find() {
++  const n = search.value.trim()
++  if (n !== '' && !/^\d+$/.test(n)) {
++    searchError.value = 'Order numbers are digits only, like 1042.'
++    return
++  }
++  searchError.value = ''
++  router.push({ query: { status: query.value.status, ...(n ? { number: n } : {}) } })
++}
++const tab = (s: 'paid' | 'needs_review') => ({ query: { status: s } })
++
++const dollars = (c: number) => `$${(c / 100).toFixed(2)}`
++const day = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '')
++const emptyText = computed(() => {
++  if (query.value.number) return `No order ${query.value.number}. Check the number and try again.`
++  return query.value.status === 'paid' ? 'No paid orders yet.' : 'Nothing needs review.'
++})
++</script>
++
++<template>
++  <AppShell>
++    <section class="ops-orders" aria-labelledby="ops-orders-heading">
++      <h1 id="ops-orders-heading">Paid orders</h1>
++      <nav class="tabs" aria-label="Order lists">
++        <NuxtLink :to="tab('paid')" :aria-current="query.status === 'paid' ? 'page' : undefined">Paid</NuxtLink>
++        <NuxtLink :to="tab('needs_review')" :aria-current="query.status === 'needs_review' ? 'page' : undefined">
++          Needs review ({{ page?.needs_review_count ?? 0 }})
++        </NuxtLink>
++      </nav>
++      <form class="find" @submit.prevent="find">
++        <label for="order-number">Find an order by number</label>
++        <input id="order-number" v-model="search" inputmode="numeric" aria-describedby="order-number-help order-number-error" />
++        <button type="submit">Find</button>
++        <p id="order-number-help" class="helper">Digits only, like 1042.</p>
++        <p v-if="searchError" id="order-number-error" role="alert">{{ searchError }}</p>
++      </form>
++
++      <p v-if="status === 'pending'" role="status">Loading orders…</p>
++      <ProblemMessage
++        v-else-if="error"
++        :problem="(error.data as Problem) ?? null"
++        :copy="{ forbidden: 'Only platform reviewers can see paid orders.', internal: 'We couldn\'t load orders. Try again.' }"
++        @retry="refresh"
++      />
++      <template v-else-if="page">
++        <p v-if="page.data.length === 0">{{ emptyText }}</p>
++        <template v-else>
++          <p role="status">Showing {{ page.data.length }} {{ query.status === 'paid' ? 'paid orders' : 'orders that need review' }}.</p>
++          <table class="list">
++            <thead>
++              <tr><th scope="col">Order</th><th scope="col">Practice</th><th scope="col">Provider</th><th scope="col">Amount</th><th scope="col">Paid at</th></tr>
++            </thead>
++            <tbody>
++              <tr v-for="o in page.data" :key="o.order_id">
++                <td>
++                  <NuxtLink :to="`/ops/orders/${o.order_id}`" :aria-label="`Order ${o.order_id}, ${dollars(o.amount_paid_cents)}, paid ${day(o.paid_at)}`">
++                    {{ o.order_id }}
++                  </NuxtLink>
++                </td>
++                <td>{{ o.practice_name }}</td>
++                <td>{{ o.provider_display_name }}</td>
++                <td>{{ dollars(o.amount_paid_cents) }}</td>
++                <td>{{ day(o.paid_at) }}</td>
++              </tr>
++            </tbody>
++          </table>
++          <NuxtLink v-if="page.next_cursor" :to="{ query: { status: query.status, cursor: page.next_cursor } }">Show 25 more</NuxtLink>
++        </template>
++      </template>
++    </section>
++  </AppShell>
++</template>
++
++<style scoped>
++.tabs { display: flex; gap: 16px; margin: 8px 0; }
++.tabs a { min-height: 24px; padding: 4px 0; }
++.tabs a[aria-current='page'] { font-weight: 600; text-decoration: underline; }
++.find { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0 16px; }
++.find label { flex-basis: 100%; }
++.helper { flex-basis: 100%; margin: 0; color: #444; font-size: 14px; }
++.list { width: 100%; border-collapse: collapse; }
++.list th, .list td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #ddd; overflow-wrap: anywhere; }
++.list a { display: inline-block; min-height: 24px; }
++@media (max-width: 600px) {
++  .list thead { display: none; }
++  .list tr { display: block; border: 1px solid #ddd; margin-bottom: 8px; padding: 4px; }
++  .list td { display: block; border: 0; padding: 2px 4px; }
++}
++</style>
+diff --git a/server/api/ops/orders/[orderId].get.ts b/server/api/ops/orders/[orderId].get.ts
+new file mode 100644
+index 0000000..6aabd01
+--- /dev/null
++++ b/server/api/ops/orders/[orderId].get.ts
+@@ -0,0 +1,15 @@
++// EP-26 GET /api/ops/orders/{orderId} (getOrderBreakdown): where every cent of one paid order went. The SRE, the data
++// analyst and patients get 403 /problems/forbidden with no amounts (FR-050, FR-058, INV-7).
++import { getRouterParam } from 'h3'
++import { assertRole, ORDER_REVIEWER_ROLES } from '../../../services/access-policy'
++import { getBreakdown } from '../../../services/ops-order-queries'
++import { requireViewer } from '../../../services/session'
++import { defineApiHandler, ProblemError } from '../../../utils/problem'
++
++export default defineApiHandler(async (event) => {
++  const viewer = await requireViewer(event)
++  assertRole(viewer, ORDER_REVIEWER_ROLES)
++  const id = getRouterParam(event, 'orderId') ?? ''
++  if (!/^\d{1,18}$/.test(id)) throw new ProblemError('not-found')
++  return getBreakdown(viewer, BigInt(id))
++})
+diff --git a/server/api/ops/orders/index.get.ts b/server/api/ops/orders/index.get.ts
+new file mode 100644
+index 0000000..e17d07f
+--- /dev/null
++++ b/server/api/ops/orders/index.get.ts
+@@ -0,0 +1,13 @@
++// EP-25 GET /api/ops/orders (listOpsOrders): paid orders or the review list by order number, for platform reviewers
++// only (operations_specialist, finance_lead); no patient name or contact detail (FR-050, NFR-012).
++import { getQuery } from 'h3'
++import { assertRole, ORDER_REVIEWER_ROLES } from '../../../services/access-policy'
++import { listOrders, parseOpsOrderFilter } from '../../../services/ops-order-queries'
++import { requireViewer } from '../../../services/session'
++import { defineApiHandler } from '../../../utils/problem'
++
++export default defineApiHandler(async (event) => {
++  const viewer = await requireViewer(event)
++  assertRole(viewer, ORDER_REVIEWER_ROLES)
++  return listOrders(viewer, parseOpsOrderFilter(getQuery(event)))
++})
+diff --git a/server/services/access-policy.ts b/server/services/access-policy.ts
+index 9406c22..3ed1af9 100644
+--- a/server/services/access-policy.ts
++++ b/server/services/access-policy.ts
+@@ -41,3 +41,6 @@ export function assertCanActOnPatient(viewer: Viewer, patient: PatientRef | unde
+ export function assertIsOrderPatient(viewer: Viewer, order: OrderOwnership): void {
+   if (!(viewer.role === 'patient' && viewer.userId === order.patientId)) throw new ProblemError('not-found')
+ }
++
++/** Platform reviewers: who may open the paid-order list and an order breakdown (EP-5, EP-6, EP-25, EP-26, FR-052). */
++export const ORDER_REVIEWER_ROLES: Role[] = ['operations_specialist', 'finance_lead']
+diff --git a/server/services/ops-order-queries.ts b/server/services/ops-order-queries.ts
+new file mode 100644
+index 0000000..4e80f6d
+--- /dev/null
++++ b/server/services/ops-order-queries.ts
+@@ -0,0 +1,202 @@
++// BE-14 OpsOrderQueries (lld.md §2, SEQ-3): operations staff see orders and breakdowns by order number only. No
++// query here selects a patient column or joins the patient's user row (FR-050, NFR-012).
++import { z } from 'zod'
++import { useDb } from '../utils/db'
++import { ProblemError, validationProblem } from '../utils/problem'
++import { assertRole, ORDER_REVIEWER_ROLES } from './access-policy'
++import type { Viewer } from './session'
++
++export interface OpsOrderFilter {
++  status: 'paid' | 'needs_review'
++  number?: bigint
++  cursor?: string
++  limit: number
++}
++
++export interface OpsOrderSummary {
++  order_id: number
++  practice_name: string
++  provider_display_name: string
++  amount_paid_cents: number
++  status: string
++  paid_at: string | null
++}
++
++export interface OpsOrderPage {
++  data: OpsOrderSummary[]
++  needs_review_count: number
++  next_cursor: string | null
++}
++
++export interface BreakdownLine {
++  name: string
++  quantity: number
++  unit_price_cents: number
++  unit_cost_cents: number
++  line_cost_cents: number
++  fee_share_cents: number
++}
++
++export interface OrderBreakdown {
++  order_id: number
++  practice_name: string
++  provider_display_name: string
++  paid_at: string
++  amount_paid_cents: number
++  item_cost_cents: number
++  provider_payout_cents: number
++  platform_fee_cents: number
++  adds_up: boolean
++  lines: BreakdownLine[]
++}
++
++// ponytail: the cursor is the last order number only, since the list is "by number, newest first" (SEQ-3 step 1);
++// add the time to it if the list ever sorts by paid_at.
++export const encodeCursor = (lastId: bigint): string => Buffer.from(`o:${lastId}`).toString('base64url')
++
++export function decodeCursor(cursor: string): bigint | null {
++  const m = /^o:(\d{1,18})$/.exec(Buffer.from(cursor, 'base64url').toString())
++  return m ? BigInt(m[1]!) : null
++}
++
++const FilterQuery = z.object({
++  status: z.enum(['paid', 'needs_review']).default('paid'),
++  number: z.string().regex(/^\d{1,18}$/, 'Order numbers are digits only, like 1042.').optional(),
++  cursor: z.string().refine((c) => decodeCursor(c) !== null, 'Not a cursor from this list.').optional(),
++  limit: z.string().regex(/^\d+$/).transform(Number).pipe(z.int().min(1).max(100)).default(25),
++})
++
++/** EP-25's query string, or 422 /problems/validation. */
++export function parseOpsOrderFilter(query: Record<string, unknown>): OpsOrderFilter {
++  const parsed = FilterQuery.safeParse(query)
++  if (!parsed.success) throw validationProblem(parsed.error)
++  const { status, number, cursor, limit } = parsed.data
++  return { status, limit, ...(number === undefined ? {} : { number: BigInt(number) }), ...(cursor === undefined ? {} : { cursor }) }
++}
++
++/** EP-25: paid orders (or the review list) by number, newest first, plus the review count. */
++export async function listOrders(viewer: Viewer, filter: OpsOrderFilter): Promise<OpsOrderPage> {
++  assertRole(viewer, ORDER_REVIEWER_ROLES)
++  const db = useDb()
++  let q = db
++    .selectFrom('orders')
++    .innerJoin('practices', 'practices.id', 'orders.practice_id')
++    .innerJoin('users as provider', 'provider.id', 'orders.provider_id')
++    .select([
++      'orders.id',
++      'orders.status',
++      'orders.paid_at',
++      'orders.amount_paid_cents',
++      'practices.name as practice_name',
++      'provider.display_name as provider_display_name',
++    ])
++    .where('orders.status', '=', filter.status)
++  if (filter.number !== undefined) q = q.where('orders.id', '=', filter.number.toString())
++  if (filter.cursor !== undefined) q = q.where('orders.id', '<', decodeCursor(filter.cursor)!.toString())
++  const rows = await q.orderBy('orders.id', 'desc').limit(filter.limit + 1).execute()
++  const page = rows.slice(0, filter.limit)
++
++  const review = await db
++    .selectFrom('orders')
++    .select((eb) => eb.fn.countAll<string>().as('n'))
++    .where('status', '=', 'needs_review')
++    .executeTakeFirstOrThrow()
++
++  return {
++    data: page.map((r) => ({
++      order_id: Number(r.id),
++      practice_name: r.practice_name,
++      provider_display_name: r.provider_display_name,
++      amount_paid_cents: r.amount_paid_cents ?? 0,
++      status: r.status,
++      paid_at: r.paid_at ? r.paid_at.toISOString() : null,
++    })),
++    needs_review_count: Number(review.n),
++    next_cursor: rows.length > filter.limit ? encodeCursor(BigInt(page[page.length - 1]!.id)) : null,
++  }
++}
++
++interface PaidOrderRow {
++  id: string
++  practice_name: string
++  provider_display_name: string
++  paid_at: Date
++  amount_paid_cents: number
++  item_cost_cents: number
++  provider_payout_cents: number
++  platform_fee_cents: number
++}
++
++interface PaidLineRow {
++  product_name: string
++  quantity: number
++  paid_unit_price_cents: number
++  unit_cost_cents_at_payment: number
++  fee_share_cents: number
++}
++
++/** The breakdown from the order's paid snapshot: each line's cost is the cost when it was paid (FR-036). */
++export function toBreakdown(o: PaidOrderRow, lines: PaidLineRow[]): OrderBreakdown {
++  return {
++    order_id: Number(o.id),
++    practice_name: o.practice_name,
++    provider_display_name: o.provider_display_name,
++    paid_at: o.paid_at.toISOString(),
++    amount_paid_cents: o.amount_paid_cents,
++    item_cost_cents: o.item_cost_cents,
++    provider_payout_cents: o.provider_payout_cents,
++    platform_fee_cents: o.platform_fee_cents,
++    adds_up: o.amount_paid_cents === o.item_cost_cents + o.provider_payout_cents + o.platform_fee_cents,
++    lines: lines.map((l) => ({
++      name: l.product_name,
++      quantity: l.quantity,
++      unit_price_cents: l.paid_unit_price_cents,
++      unit_cost_cents: l.unit_cost_cents_at_payment,
++      line_cost_cents: l.unit_cost_cents_at_payment * l.quantity,
++      fee_share_cents: l.fee_share_cents,
++    })),
++  }
++}
++
++/** EP-26: where every cent of one paid order went. An unknown or unpaid order is not-found. */
++export async function getBreakdown(viewer: Viewer, orderId: bigint): Promise<OrderBreakdown> {
++  assertRole(viewer, ORDER_REVIEWER_ROLES)
++  const db = useDb()
++  const o = await db
++    .selectFrom('orders')
++    .innerJoin('practices', 'practices.id', 'orders.practice_id')
++    .innerJoin('users as provider', 'provider.id', 'orders.provider_id')
++    .select([
++      'orders.id',
++      'orders.paid_at',
++      'orders.amount_paid_cents',
++      'orders.item_cost_cents',
++      'orders.provider_payout_cents',
++      'orders.platform_fee_cents',
++      'practices.name as practice_name',
++      'provider.display_name as provider_display_name',
++    ])
++    .where('orders.id', '=', orderId.toString())
++    .where('orders.status', '=', 'paid')
++    .executeTakeFirst()
++  // ponytail: needs_review orders (no recorded split) are not shown here; the review list's breakdown is M6.
++  if (!o || !o.paid_at || o.amount_paid_cents === null || o.item_cost_cents === null || o.provider_payout_cents === null || o.platform_fee_cents === null) {
++    throw new ProblemError('not-found')
++  }
++  const lines = await db
++    .selectFrom('order_lines')
++    .select(['product_name', 'quantity', 'paid_unit_price_cents', 'unit_cost_cents_at_payment', 'fee_share_cents'])
++    .where('order_id', '=', o.id)
++    .orderBy('id')
++    .execute()
++  return toBreakdown(
++    { ...o, paid_at: o.paid_at, amount_paid_cents: o.amount_paid_cents, item_cost_cents: o.item_cost_cents, provider_payout_cents: o.provider_payout_cents, platform_fee_cents: o.platform_fee_cents },
++    lines.map((l) => ({
++      product_name: l.product_name,
++      quantity: l.quantity,
++      paid_unit_price_cents: l.paid_unit_price_cents ?? 0,
++      unit_cost_cents_at_payment: l.unit_cost_cents_at_payment ?? 0,
++      fee_share_cents: l.fee_share_cents ?? 0,
++    })),
++  )
++}
+diff --git a/tests/unit/ops-order-queries.test.ts b/tests/unit/ops-order-queries.test.ts
+new file mode 100644
+index 0000000..8efcf7e
+--- /dev/null
++++ b/tests/unit/ops-order-queries.test.ts
+@@ -0,0 +1,105 @@
++// BE-14 OpsOrderQueries pure parts (lld.md §2, SEQ-3): the list filter, the keyset cursor and the breakdown shape.
++import { describe, expect, it } from 'vitest'
++import { assertRole, ORDER_REVIEWER_ROLES } from '../../server/services/access-policy'
++import { decodeCursor, encodeCursor, parseOpsOrderFilter, toBreakdown } from '../../server/services/ops-order-queries'
++import type { Role, Viewer } from '../../server/services/session'
++import { ProblemError } from '../../server/utils/problem'
++
++const slugOf = (fn: () => unknown): string | undefined => {
++  try {
++    fn()
++  } catch (e) {
++    return e instanceof ProblemError ? e.slug : 'not a problem'
++  }
++  return undefined
++}
++
++describe('parseOpsOrderFilter: EP-25 query (status, number, cursor, limit)', () => {
++  it('defaults to paid orders, 25 per page', () => {
++    expect(parseOpsOrderFilter({})).toEqual({ status: 'paid', limit: 25 })
++  })
++  it('accepts needs_review, an order number, a cursor and a limit up to 100', () => {
++    const c = encodeCursor(1042n)
++    expect(parseOpsOrderFilter({ status: 'needs_review', number: '1042', cursor: c, limit: '100' })).toEqual({
++      status: 'needs_review',
++      number: 1042n,
++      cursor: c,
++      limit: 100,
++    })
++  })
++  it.each([
++    [{ status: 'sent' }],
++    [{ number: '10a2' }],
++    [{ number: '' }],
++    [{ limit: '0' }],
++    [{ limit: '101' }],
++    [{ limit: '2.5' }],
++    [{ cursor: 'not a cursor' }],
++  ])('refuses %j with /problems/validation', (q) => {
++    expect(slugOf(() => parseOpsOrderFilter(q))).toBe('validation')
++  })
++})
++
++describe('cursor: opaque, round-trips the last order number', () => {
++  it('round-trips', () => {
++    expect(decodeCursor(encodeCursor(1042n))).toBe(1042n)
++  })
++  it('a malformed cursor is null', () => {
++    expect(decodeCursor('@@@')).toBeNull()
++    expect(decodeCursor(Buffer.from('abc').toString('base64url'))).toBeNull()
++  })
++})
++
++describe('toBreakdown: AE-013 $60.00 paid = $30.00 + $29.55 + $0.45 with each line (FR-014, FR-036, FR-050)', () => {
++  const order = {
++    id: '1042',
++    practice_name: 'Willow Creek Wellness',
++    provider_display_name: 'Dr. Maya Chen',
++    paid_at: new Date('2026-10-13T19:30:00Z'),
++    amount_paid_cents: 6000,
++    item_cost_cents: 3000,
++    provider_payout_cents: 2955,
++    platform_fee_cents: 45,
++  }
++  const lines = [
++    { product_name: 'Vitamin D3 2000 IU', quantity: 2, paid_unit_price_cents: 1800, unit_cost_cents_at_payment: 900, fee_share_cents: 27 },
++    { product_name: 'Magnesium Glycinate', quantity: 1, paid_unit_price_cents: 2400, unit_cost_cents_at_payment: 1200, fee_share_cents: 18 },
++  ]
++
++  it('shows the equation, each line at its cost when paid, and that it adds up', () => {
++    expect(toBreakdown(order, lines)).toEqual({
++      order_id: 1042,
++      practice_name: 'Willow Creek Wellness',
++      provider_display_name: 'Dr. Maya Chen',
++      paid_at: '2026-10-13T19:30:00.000Z',
++      amount_paid_cents: 6000,
++      item_cost_cents: 3000,
++      provider_payout_cents: 2955,
++      platform_fee_cents: 45,
++      adds_up: true,
++      lines: [
++        { name: 'Vitamin D3 2000 IU', quantity: 2, unit_price_cents: 1800, unit_cost_cents: 900, line_cost_cents: 1800, fee_share_cents: 27 },
++        { name: 'Magnesium Glycinate', quantity: 1, unit_price_cents: 2400, unit_cost_cents: 1200, line_cost_cents: 1200, fee_share_cents: 18 },
++      ],
++    })
++  })
++  it('one cent short does not add up', () => {
++    expect(toBreakdown({ ...order, item_cost_cents: 2999 }, lines).adds_up).toBe(false)
++  })
++  it('carries no patient field (NFR-012)', () => {
++    expect(Object.keys(toBreakdown(order, lines)).some((k) => k.startsWith('patient'))).toBe(false)
++  })
++})
++
++describe('ORDER_REVIEWER_ROLES: only operations specialists and finance leads open ops orders (EP-25, EP-26)', () => {
++  const viewer = (role: Role): Viewer => ({ userId: 1n, displayName: 'x', role, practiceId: null, idleExpiresAt: new Date() })
++  it.each(['operations_specialist', 'finance_lead'] as Role[])('%s may', (role) => {
++    expect(slugOf(() => assertRole(viewer(role), ORDER_REVIEWER_ROLES))).toBeUndefined()
++  })
++  it.each(['sre', 'data_analyst', 'patient', 'provider', 'none'] as Role[])('%s is forbidden', (role) => {
++    expect(slugOf(() => assertRole(viewer(role), ORDER_REVIEWER_ROLES))).toBe('forbidden')
++  })
++  it('nobody signed in is unauthenticated', () => {
++    expect(slugOf(() => assertRole(null, ORDER_REVIEWER_ROLES))).toBe('unauthenticated')
++  })
++})
+=== COMMIT efc39d9 feat(m4/t008): provider cancels a sent or payment-failed order (EP-20)
+
+diff --git a/server/api/orders/[orderId]/cancel.post.ts b/server/api/orders/[orderId]/cancel.post.ts
+new file mode 100644
+index 0000000..96b95af
+--- /dev/null
++++ b/server/api/orders/[orderId]/cancel.post.ts
+@@ -0,0 +1,14 @@
++// EP-20 POST /api/orders/{orderId}/cancel (cancelOrder): a provider of the order's practice cancels a sent or
++// payment-failed order (FR-066); a live checkout or a paid order is refused with 409 (FR-067). Anyone else, or an
++// unknown id, gets 404 /problems/not-found (FR-009). No idempotency key: a repeat returns the cancelled order.
++import { getRouterParam } from 'h3'
++import { cancelOrder } from '../../../services/orders'
++import { requireViewer } from '../../../services/session'
++import { defineApiHandler, ProblemError } from '../../../utils/problem'
++
++export default defineApiHandler(async (event) => {
++  const viewer = await requireViewer(event)
++  const id = getRouterParam(event, 'orderId') ?? ''
++  if (!/^\d{1,18}$/.test(id)) throw new ProblemError('not-found')
++  return cancelOrder(viewer, BigInt(id))
++})
+diff --git a/server/services/orders.ts b/server/services/orders.ts
+index 15b96c8..21801df 100644
+--- a/server/services/orders.ts
++++ b/server/services/orders.ts
+@@ -1,5 +1,5 @@
+-// BE-9 OrderService (lld.md §2, SEQ-1, SEQ-2, SM-1): send, show and start checkout on an order. Later tasks add
+-// cancel here. No method changes a sent order's lines (FR-068).
++// BE-9 OrderService (lld.md §2, SEQ-1, SEQ-2, SEQ-5, SM-1): send, show, start checkout on and cancel an order.
++// No method changes a sent order's lines (FR-068).
+ import { sql } from 'kysely'
+ import { useDb } from '../utils/db'
+ import { ProblemError } from '../utils/problem'
+@@ -225,7 +225,7 @@ export async function getOrderForViewer(viewer: Viewer, orderId: bigint): Promis
+     .where('order_id', '=', o.id)
+     .orderBy('id')
+     .execute()
+-  // ponytail: a cancelled order shows its sent prices; M4-T008 owns the cancelled state and may want otherwise.
++  // A cancelled order shows its sent prices, frozen (SM-1), the same prices cancelOrder returns.
+   const priced = ['paid', 'cancelled', 'needs_review'].includes(o.status) || (o.status === 'in_checkout' && o.hold_live)
+   const current = priced ? new Map<bigint, number>() : await currentPrices(BigInt(o.practice_id), rows.map((r) => BigInt(r.product_id)))
+   const price = (r: (typeof rows)[number]): number => {
+@@ -257,3 +257,58 @@ export async function getOrderForViewer(viewer: Viewer, orderId: bigint): Promis
+     is_test_payment: true,
+   }
+ }
++
++/** EP-20 (FR-066, FR-067, SM-1): a provider of the order's practice cancels a sent or payment-failed order (or one
++ *  whose checkout hold has ended, which SM-1 returns to sent on any action). A live checkout, a paid or a
++ *  needs-review order is refused unchanged. Cancelling a cancelled order returns it unchanged (natural repeat). */
++export async function cancelOrder(viewer: Viewer, orderId: bigint): Promise<Order> {
++  const db = useDb()
++  const o = await db
++    .selectFrom('orders')
++    .select(['id', 'patient_id', 'practice_id', 'status', 'sent_at'])
++    .where('id', '=', orderId.toString())
++    .executeTakeFirst()
++  if (!o || viewer.role !== 'provider') throw new ProblemError('not-found')
++  assertCanViewOrder(viewer, { patientId: BigInt(o.patient_id), practiceId: BigInt(o.practice_id) })
++
++  if (o.status !== 'cancelled') {
++    // One conditional update: two racing requests (a cancel and a checkout start) can't both win (SM-1).
++    const done = await db
++      .updateTable('orders')
++      .set({ status: 'cancelled', cancelled_at: sql`now()` })
++      .where('id', '=', o.id)
++      .where((eb) =>
++        eb.or([eb('status', 'in', ['sent', 'payment_failed']), eb.and([eb('status', '=', 'in_checkout'), eb('prices_held_until', '<=', sql<Date>`now()`)])]),
++      )
++      .returning('id')
++      .executeTakeFirst()
++    if (!done) throw new ProblemError('invalid-transition')
 +  }
 +
-+  it('the 11th attempt for one email is refused with 429 rate-limited and when to retry; no password check, nothing recorded', async () => {
-+    freezeClock(T0)
-+    world(attempts(10, { email: 'chen@example.test' }))
-+    const err = await signIn('Chen@Example.test', 'pw', '10.0.0.1').catch((e) => e)
-+    expect(err).toBeInstanceOf(ProblemError)
-+    expect(err.slug).toBe('rate-limited')
-+    expect(err.extensions).toEqual({ retryAfterSeconds: 60 }) // the oldest of the 10 leaves the window in 1 minute
-+    expect(sqlOf('select').some((q) => q.sql.includes('"users"'))).toBe(false)
-+    expect(sqlOf('insert')).toEqual([])
-+  })
-+
-+  it('the 11th attempt from one address is refused too, whatever the email', async () => {
-+    freezeClock(T0)
-+    world(attempts(10, { ip: '10.0.0.1' }, 5))
-+    const err = await signIn('chen@example.test', 'pw', '10.0.0.1').catch((e) => e)
-+    expect(err.slug).toBe('rate-limited')
-+    expect(err.extensions).toEqual({ retryAfterSeconds: 10 * 60 })
-+  })
-+
-+  it('the 10th attempt goes through, is recorded (email lower-cased) and only the last 15 minutes count', async () => {
-+    freezeClock(T0)
-+    world(attempts(9, { email: 'chen@example.test', ip: '10.0.0.1' }))
-+    const { viewer } = await signIn('Chen@Example.test', 'pw', '10.0.0.1')
-+    expect(viewer.displayName).toBe('Dr. Chen')
-+    const [count] = sqlOf('select')
-+    expect(count.sql).toContain('"attempted_at" >')
-+    expect(count.parameters).toContainEqual(new Date(T0.getTime() - 15 * MIN))
-+    const [recorded] = sqlOf('insert into "sign_in_attempts"')
-+    expect(recorded.parameters).toEqual(expect.arrayContaining(['chen@example.test', '10.0.0.1']))
-+  })
-+
-+  it('a wrong password is still one recorded attempt and answers sign-in-failed', async () => {
-+    freezeClock(T0)
-+    world([])
-+    const err = await signIn('chen@example.test', 'wrong', '10.0.0.1').catch((e) => e)
-+    expect(err.slug).toBe('sign-in-failed')
-+    expect(sqlOf('insert into "sign_in_attempts"')).toHaveLength(1)
-+    expect(sqlOf('insert into "sessions"')).toEqual([])
-+  })
-+})
-+
-+describe('EP-15 reads only application/json bodies (no sign-in by a cross-site form post)', () => {
-+  const post = (type: string, body: string) =>
-+    toWebHandler(createApp().use(signInHandler))(
-+      new Request('http://localhost/api/session', { method: 'POST', headers: { 'content-type': type }, body }),
-+    )
-+  it('text/plain or a form post with valid JSON-looking content is 422 validation and never checked', async () => {
-+    const json = JSON.stringify({ email: 'chen@example.test', password: 'pw' })
-+    for (const [type, body] of [
-+      ['text/plain', json],
-+      ['text/plain;charset=UTF-8', json],
-+      ['application/x-www-form-urlencoded', 'email=chen%40example.test&password=pw'],
-+      ['multipart/form-data; boundary=x', '--x--'],
-+    ]) {
-+      const res = await post(type!, body!)
-+      expect(res.status, type).toBe(422)
-+      expect((await res.json()).type).toBe('/problems/validation')
-+    }
-+    expect(fake.queries).toEqual([])
-+  })
-+  it('application/json (any charset) is read', async () => {
-+    fake.answer = () => []
-+    const res = await post('application/json; charset=utf-8', JSON.stringify({ email: 'nobody@example.test', password: 'pw' }))
-+    expect((await res.json()).type).toBe('/problems/sign-in-failed')
-+  })
-+})
-+
-+describe('EP-16 DELETE /api/session: sign out (FR-041)', () => {
-+  const run = (cookie?: string) =>
-+    toWebHandler(createApp().use(signOutHandler))(
-+      new Request('http://localhost/api/session', { method: 'DELETE', headers: cookie ? { cookie } : {} }),
-+    )
-+
-+  it('204, the session cookie cleared and the session ended', async () => {
-+    freezeClock(T0)
-+    fake.answer = (s) =>
-+      s.startsWith('update "sessions" set "last_seen_at"')
-+        ? [{ user_id: '2', last_seen_at: T0 }]
-+        : s.startsWith('select')
-+          ? [{ id: '2', display_name: 'Dr. Chen', role: 'provider', practice_id: '3' }]
-+          : []
-+    const res = await run('session=tok-1')
-+    expect(res.status).toBe(204)
-+    expect(await res.text()).toBe('')
-+    const cleared = res.headers.getSetCookie().find((c) => c.startsWith('session='))
-+    expect(cleared).toMatch(/^session=;.*Max-Age=0/i)
-+    expect(cleared).toMatch(/HttpOnly/i)
-+    const ended = sqlOf('update "sessions" set "ended_at"')
-+    expect(ended).toHaveLength(1)
-+    expect(ended[0].sql).toContain('"ended_at" is null')
-+    expect(ended[0].parameters).toEqual([T0, sha256('tok-1')])
-+  })
-+
-+  it('401 unauthenticated when nobody is signed in, and nothing is ended', async () => {
-+    const res = await run()
-+    expect(res.status).toBe(401)
-+    expect((await res.json()).type).toBe('/problems/unauthenticated')
-+    expect(sqlOf('update')).toEqual([])
-+  })
-+
-+  it('signOut ends only a live session with that token', async () => {
-+    freezeClock(T0)
-+    await signOut('tok-2')
-+    expect(fake.queries).toEqual([
-+      { sql: 'update "sessions" set "ended_at" = $1 where "token_hash" = $2 and "ended_at" is null', parameters: [T0, sha256('tok-2')] },
-+    ])
-+  })
-+})
-+
-+describe('BE-2 page guard and the sign-in `next=` check', () => {
-+  const nav = vi.fn()
-+  let session: () => Promise<unknown>
-+  async function guard() {
-+    vi.stubGlobal('defineNuxtRouteMiddleware', (f: unknown) => f)
-+    vi.stubGlobal('useRequestFetch', () => () => session())
-+    vi.stubGlobal('navigateTo', nav)
-+    vi.stubGlobal('useCookie', () => ({ value: undefined }))
-+    vi.stubGlobal('useNuxtData', () => ({ data: { value: undefined } }))
-+    return import('../../app/middleware/auth.global')
++  const rows = await db
++    .selectFrom('order_lines')
++    .innerJoin('products', 'products.id', 'order_lines.product_id')
++    .select(['order_lines.product_id', 'order_lines.product_name', 'order_lines.quantity', 'order_lines.sent_unit_price_cents', 'products.unit_cost_cents'])
++    .where('order_lines.order_id', '=', o.id)
++    .orderBy('order_lines.id')
++    .execute()
++  const lines = rows.map((r) => ({
++    product_id: Number(r.product_id),
++    name: r.product_name,
++    quantity: r.quantity,
++    unit_price_cents: r.sent_unit_price_cents,
++    line_total_cents: r.sent_unit_price_cents * r.quantity,
++  }))
++  const total = lines.reduce((s, l) => s + l.line_total_cents, 0)
++  const cost = rows.reduce((s, r) => s + r.unit_cost_cents * r.quantity, 0)
++  const fee = platformFeeCents(total)
++  return {
++    order_id: Number(o.id),
++    status: 'cancelled',
++    lines,
++    total_cents: total,
++    platform_fee_cents: fee,
++    provider_payout_cents: payoutCents(total, cost, fee),
++    sent_at: o.sent_at.toISOString(),
 +  }
-+  afterEach(() => {
-+    vi.unstubAllGlobals()
-+    nav.mockReset()
-+  })
++}
+=== COMMIT 9f8295d feat(m4/t009): run the M4 acceptance suite as part of make check
+
+diff --git a/Makefile b/Makefile
+index 345f755..e40a16d 100644
+--- a/Makefile
++++ b/Makefile
+@@ -6,10 +6,10 @@
+ # Commands table in AGENTS.md). Until then they fail on purpose, so an unconfigured repo can never look green.
+ # Keep the target names: skills and hooks call `make check`, not the tools directly.
+ 
+-.PHONY: check lint types test setup db-test-up test-acceptance
++.PHONY: check lint types test setup db-test-up test-acceptance test-acceptance-m4
+ 
+-## check: lint + types + tests — the gate
+-check: lint types test
++## check: lint + types + tests + M4 acceptance suite — the gate
++check: lint types test test-acceptance-m4
+ 	@echo "make check: OK"
+ 
+ ## lint: workflow scripts must parse (docs-only phase: no product code yet; stack tools are added at M3 design)
+@@ -37,6 +37,10 @@ db-test-up:
+ test-acceptance:
+ 	npx vitest run --dir tests/acceptance
+ 
++## test-acceptance-m4: the M4 acceptance suite, part of check (needs `make db-test-up`)
++test-acceptance-m4:
++	npx vitest run --dir tests/acceptance/M4
 +
-+  it('accepts only same-site paths; anything a browser would take off-site is refused', async () => {
-+    const { safeNext } = await guard()
-+    expect(safeNext('/orders/1001')).toBe('/orders/1001')
-+    expect(safeNext('/ops/orders?status=paid#top')).toBe('/ops/orders?status=paid#top')
-+    for (const bad of [
-+      '//evil.example',
-+      '/\\evil.example',
-+      '/\t/evil.example',
-+      '/..//evil.example',
-+      '/\n/evil.example',
-+      '\\/evil.example',
-+      'https://evil.example/x',
-+      'javascript:alert(1)',
-+      'orders/1001',
-+      '',
-+      undefined,
-+      ['/orders/1'],
-+    ])
-+      expect(safeNext(bad), JSON.stringify(bad)).toBeNull()
-+  })
-+
-+  it('a signed-out visitor is sent to sign-in with next (303); a signed-in one passes', async () => {
-+    const { default: mw } = await guard()
-+    session = async () => ({ role: 'patient' })
-+    await (mw as any)({ path: '/orders/1001', fullPath: '/orders/1001' })
-+    expect(nav).not.toHaveBeenCalled()
-+    session = async () => Promise.reject({ statusCode: 401 })
-+    await (mw as any)({ path: '/orders/1001', fullPath: '/orders/1001' })
-+    expect(nav).toHaveBeenCalledWith({ path: '/sign-in', query: { next: '/orders/1001' } }, { redirectCode: 303 })
-+  })
-+
-+  it('fails closed: a session check that errors sends the person to sign-in, not to the page', async () => {
-+    const { default: mw } = await guard()
-+    session = async () => Promise.reject({ statusCode: 500 })
-+    await (mw as any)({ path: '/orders/1001', fullPath: '/orders/1001' })
-+    expect(nav).toHaveBeenCalledWith({ path: '/sign-in', query: { next: '/orders/1001' } }, { redirectCode: 303 })
-+    nav.mockReset()
-+    session = async () => Promise.reject(new TypeError('fetch failed'))
-+    await (mw as any)({ path: '/ops/orders', fullPath: '/ops/orders' })
-+    expect(nav).toHaveBeenCalledTimes(1)
-+  })
-+
-+  it('the sign-in and notice pages are public', async () => {
-+    const { default: mw } = await guard()
-+    session = async () => Promise.reject({ statusCode: 401 })
-+    await (mw as any)({ path: '/sign-in', fullPath: '/sign-in?next=/orders/1' })
-+    await (mw as any)({ path: '/notices/abc', fullPath: '/notices/abc' })
-+    expect(nav).not.toHaveBeenCalled()
-+  })
-+})
+ # --- Example: Laravel 13 / PHP 8.5 (Pint + Larastan/PHPStan + Pest or PHPUnit) -------------------------------
+ # Replace the three recipes above with these (recipe lines must start with a TAB):
+ #

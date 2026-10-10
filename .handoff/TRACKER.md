@@ -7,11 +7,11 @@ several harnesses read it and the repo is public.
 ## Resume
 
 <!-- Rewritten as the LAST edit of every supervisor move. Times come from `date`. -->
-- **As of:** 2026-10-10 15:05 CDT
-- **In flight:** M4-T009 (acceptance suite joins make check) from milestone@efc39d9. Done: T001-T008 (last: T008 efc39d9).
-- **Next:** T008 → verify → squash → T009 (acceptance joins make check) → milestone review (verifier over T004, T005, T007, T008, T009 + noted items) → report-milestone (G5). After M4: design-lld catch-up (helper unitCostFromLowestAllowedPrice; D47 SM-1 guard; FM-3 new-key retry; failure_reason NULL meaning; acceptance Q-1 to Q-4); define-acceptance re-run (D47 test); FM-7 reconcile owner; milestone review items pass2 R6, R7, pass3 R3, R5.
-- **Waiting on:** M4-T009 worker.
-- **Verified:** efc39d9 make check OK (96 unit); M4 acceptance 43/43
+- **As of:** 2026-10-10 15:13 CDT
+- **In flight:** M4 build complete: T001-T009 merged on milestone/m4-tracer-bullet (last 9f8295d). Milestone review (verifier pass 6) running over T004, T005, T007, T008, T009 and noted items.
+- **Next:** pass 6 dispositions with the human; then the human types /report-milestone (G5). After M4: design-lld catch-up (helper unitCostFromLowestAllowedPrice; D47 SM-1 guard; FM-3 new-key retry; failure_reason NULL meaning; acceptance Q-1 to Q-4); define-acceptance re-run (D47 test); FM-7 reconcile owner; milestone review items pass2 R6, R7, pass3 R3, R5.
+- **Waiting on:** milestone review (verifier pass 6).
+- **Verified:** 9f8295d make check OK (96 unit + 43 M4 acceptance, now inside the gate)
 
 ## Tasks
 
@@ -102,6 +102,7 @@ several harnesses read it and the repo is public.
 | 2026-10-10 14:16 CDT | G4 re-approval (Revise, option a): T006 Owns widened with app/components/AppShell.vue, db/migrations/1760000006000_sign-in-attempts.sql, server/utils/db-types.ts, server/utils/problem.ts; relaunch T006 to fix pass4 R2, R3, R4, R5, R6, R7, R8, R9, R10; R1, R11 to milestone review | specs/M4-tracer-bullet/tasks/T006.md@1fe3bc7 | "a, widen T006 Owns and relaunch" |
 | 2026-10-10 14:33 CDT | verifier pass 5 on the M4-T006 relaunch before squash | m4/t006-sign-in-and-idle-sign-out@610754e | "a, run the verifier on T006" |
 | 2026-10-10 14:54 CDT | T006 review pass5 dispositions, option a: relaunch T006 for R3 (parallel-safe limit), R4 (re-check EP-17 before redirect), R2 local half (TRUST_PROXY setting, no shared unknown-address count; ship-milestone sets and confirms the Railway header), R1 (or-vs-and test); R5, R6 to milestone review; supervisor checks the result without another verifier pass unless asked | specs/M4-tracer-bullet/tasks/T006.md@08a61ae | "a, one more T006 run" |
+| 2026-10-10 15:08 CDT | G4 re-approval (Revise, option a): T009 Done-when becomes make -n check / grep -q "tests/acceptance" && npx vitest run --dir tests/acceptance/M4 && make check; rerun T009 | specs/M4-tracer-bullet/tasks/T009.md@f6f3714 | "a, fix T009's check and rerun" |
 
 ## Log
 
@@ -254,3 +255,7 @@ several harnesses read it and the repo is public.
 2026-10-10 15:00 CDT DISPATCH M4-T008 harness=claude-subagent why=cancel, serial on BE-9 and S2 components
 2026-10-10 15:05 CDT VERIFY M4-T008 squashed: scope-guard OK (2 paths); Done-when 4/4; make check OK (96 unit); M4 acceptance 43/43 on the milestone branch. Milestone-review notes: cancel of an in_checkout order with an ended hold allowed (assumed from SM-1, untested); cancel-vs-checkout race untested
 2026-10-10 15:05 CDT DISPATCH M4-T009 harness=claude-subagent why=seam: acceptance suite joins make check
+2026-10-10 15:07 CDT FAIL slice-tasks M4: T009 Done-when (grep "tests/acceptance" Makefile) already passed on base because the test-acceptance recipe contains that path; it could not fail. Worker stopped as human_review
+2026-10-10 15:08 CDT DISPATCH M4-T009 relaunch harness=claude-subagent why=stronger Done-when
+2026-10-10 15:12 CDT VERIFY M4-T009 squashed as 9f8295d: scope-guard OK (1 path); make -n check names tests/acceptance (exit 0); make check OK (96 unit + 43 M4 acceptance)
+2026-10-10 15:12 CDT DISPATCH M4-review-milestone harness=claude-verifier why=milestone review covering T004, T005, T007, T008, T009 and noted items (pass 6, review plan approved)
