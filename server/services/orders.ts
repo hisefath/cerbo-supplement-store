@@ -1,9 +1,9 @@
-// BE-9 OrderService (lld.md §2, SEQ-1, SEQ-2, SM-1): send an order and start its checkout. Later tasks add show and
-// cancel here.
+// BE-9 OrderService (lld.md §2, SEQ-1, SEQ-2, SM-1): send, show and start checkout on an order. Later tasks add
+// cancel here. No method changes a sent order's lines (FR-068).
 import { sql } from 'kysely'
 import { useDb } from '../utils/db'
 import { ProblemError } from '../utils/problem'
-import { assertCanActOnPatient, assertIsOrderPatient } from './access-policy'
+import { assertCanActOnPatient, assertCanViewOrder, assertIsOrderPatient } from './access-policy'
 import { currentPrices, loadPatient } from './catalog'
 import { sendOrderNotice } from './messaging'
 import { belowFloorProductIds, lowestAllowedPriceCents, payoutCents, platformFeeCents } from './money'
@@ -172,4 +172,88 @@ export async function startCheckout(viewer: Viewer, orderId: bigint): Promise<Ch
         .executeTakeFirstOrThrow()
       return { order_id: Number(o.id), total_cents: total, prices_held_until: held.prices_held_until!.toISOString() }
     })
+}
+
+export interface PriceChangeNotice {
+  product_id: number
+  name: string
+  old_price_cents: number
+  new_price_cents: number
+}
+
+export interface OrderView {
+  order_id: number
+  status: string
+  practice_name: string
+  provider_display_name: string
+  lines: OrderLine[]
+  total_cents: number
+  price_changes: PriceChangeNotice[]
+  prices_held_until: string | null
+  paid_at: string | null
+  is_test_payment: true
+}
+
+/** EP-21 (FR-005, FR-009, FR-022, FR-037): the order's patient or a provider of its practice sees every line.
+ *  Paid: the paid prices. A live hold: the held prices. Otherwise today's prices, with a notice for each line whose
+ *  price moved since the order was sent. Anyone else, or an unknown id, gets not-found. */
+export async function getOrderForViewer(viewer: Viewer, orderId: bigint): Promise<OrderView> {
+  const db = useDb()
+  const o = await db
+    .selectFrom('orders')
+    .innerJoin('practices', 'practices.id', 'orders.practice_id')
+    .innerJoin('users as provider', 'provider.id', 'orders.provider_id')
+    .select([
+      'orders.id',
+      'orders.patient_id',
+      'orders.practice_id',
+      'orders.status',
+      'orders.prices_held_until',
+      'orders.paid_at',
+      'practices.name as practice_name',
+      'provider.display_name as provider_display_name',
+      sql<boolean>`orders.prices_held_until > now()`.as('hold_live'),
+    ])
+    .where('orders.id', '=', orderId.toString())
+    .executeTakeFirst()
+  if (!o) throw new ProblemError('not-found')
+  assertCanViewOrder(viewer, { patientId: BigInt(o.patient_id), practiceId: BigInt(o.practice_id) })
+
+  const rows = await db
+    .selectFrom('order_lines')
+    .select(['product_id', 'product_name', 'quantity', 'sent_unit_price_cents', 'held_unit_price_cents', 'paid_unit_price_cents'])
+    .where('order_id', '=', o.id)
+    .orderBy('id')
+    .execute()
+  // ponytail: a cancelled order shows its sent prices; M4-T008 owns the cancelled state and may want otherwise.
+  const priced = ['paid', 'cancelled', 'needs_review'].includes(o.status) || (o.status === 'in_checkout' && o.hold_live)
+  const current = priced ? new Map<bigint, number>() : await currentPrices(BigInt(o.practice_id), rows.map((r) => BigInt(r.product_id)))
+  const price = (r: (typeof rows)[number]): number => {
+    if (o.status === 'paid') return r.paid_unit_price_cents ?? r.sent_unit_price_cents
+    if (o.status === 'cancelled') return r.sent_unit_price_cents
+    if (priced) return r.held_unit_price_cents ?? r.sent_unit_price_cents
+    return current.get(BigInt(r.product_id)) ?? r.sent_unit_price_cents
+  }
+  const lines = rows.map((r) => {
+    const unit = price(r)
+    return { product_id: Number(r.product_id), name: r.product_name, quantity: r.quantity, unit_price_cents: unit, line_total_cents: unit * r.quantity }
+  })
+  const price_changes = priced
+    ? []
+    : rows
+        .map((r, i) => ({ product_id: Number(r.product_id), name: r.product_name, old_price_cents: r.sent_unit_price_cents, new_price_cents: lines[i]!.unit_price_cents }))
+        .filter((c) => c.old_price_cents !== c.new_price_cents)
+
+  return {
+    order_id: Number(o.id),
+    status: o.status,
+    practice_name: o.practice_name,
+    provider_display_name: o.provider_display_name,
+    lines,
+    total_cents: lines.reduce((s, l) => s + l.line_total_cents, 0),
+    price_changes,
+    prices_held_until: o.hold_live ? o.prices_held_until!.toISOString() : null,
+    paid_at: o.paid_at ? o.paid_at.toISOString() : null,
+    is_test_payment: true,
+  }
 }
