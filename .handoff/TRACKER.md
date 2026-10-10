@@ -145,6 +145,7 @@ several harnesses read it and the repo is public.
 | 2026-10-10 18:14 CDT | design approval (no G-L5; diffs still need their own H@hash yes): decision review views — topic + 3-level weight + one-liner per entry, generated docs/decisions/REVIEW.md (by topic, workflow history, by day), --check in make check, quiz-me review order, Cerbo backfill table D1-D64 | chat design card | "a, approve the design" |
 | 2026-10-10 18:23 CDT | G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) | H13@732be0c264af | "Approve, adopt H13 and H14" |
 | 2026-10-10 18:23 CDT | G-L5 (approval covers apply and project commit, incl. the D1-D64 backfill table) | H14@eb8d763f6268 | "Approve, adopt H13 and H14" |
+| 2026-10-10 18:28 CDT | G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) | H15@5fe6c05fbd96 | "Approve, adopt H15" |
 
 ## Log
 

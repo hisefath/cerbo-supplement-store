@@ -65,7 +65,7 @@ Weight: ●●● critical (hard to undo, or touches money, personal data or sig
 - ●●○ ~~D34~~ — Pages and logic deploy together as one app. (replaced by D36)
 - ●○○ ~~D7~~ — v1: outside services stubbed behind seams. (replaced by D22)
 
-### Process (25)
+### Process (26)
 
 - ●●● D18 — Restarted from scratch on a milestone branch with the gated workflow.
 - ●●● D22 — The v1 build in main is set aside: never read, cited or reused.
@@ -88,6 +88,7 @@ Weight: ●●● critical (hard to undo, or touches money, personal data or sig
 - ●○○ D61 — scope-guard reads brackets in Owns literally.
 - ●○○ D64 — Worker worktrees start from the milestone branch.
 - ●○○ D66 — D1 to D64 tagged in a side table; the ledger is untouched.
+- ●○○ D67 — The apply script's lookups no longer die of SIGPIPE on large proposals.
 - ●○○ ~~D9~~ — v1: diagrams as .mmd sources with embedded copies. (replaced by D22)
 - ●○○ ~~D10~~ — v1: changes from a design-review panel accepted. (replaced by D22)
 - ●○○ ~~D15~~ — v1: repo visibility stays the human's step. (replaced by D22)
@@ -109,11 +110,13 @@ Decisions that adopted a software-factory-kit change (H) and the finding (F) beh
 - 2026-10-10 · D64 · H11 · F12 — Worker worktrees start from the milestone branch.
 - 2026-10-10 · D65 · H13 · F25 — A generated topic-and-weight review sits beside the chronological ledger, checked by make check.
 - 2026-10-10 · D66 · H14 — D1 to D64 tagged in a side table; the ledger is untouched.
+- 2026-10-10 · D67 · H15 · F26 — The apply script's lookups no longer die of SIGPIPE on large proposals.
 
 ## By day
 
 ### 2026-10-10
 
+- D67 · Process · ●○○ — The apply script's lookups no longer die of SIGPIPE on large proposals.
 - D66 · Process · ●○○ — D1 to D64 tagged in a side table; the ledger is untouched.
 - D65 · Process · ●●○ — A generated topic-and-weight review sits beside the chronological ledger, checked by make check.
 - D64 · Process · ●○○ — Worker worktrees start from the milestone branch.

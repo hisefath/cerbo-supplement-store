@@ -755,3 +755,15 @@ Copy this block for each new entry (D-ids increase by one, starting at D1):
 - Cost accepted: backfill weights are the agent's judgement, approved as a whole; a correction is a new decision. · Reversibility: Type 2 two-way — edit the table through a new decision · Confidence: med
 - Revisit if: a backfill weight is disputed in a review or quiz-me session. · Evidence: HARNESS_CHANGELOG.md H14; docs/decisions/backfill-tags.md; D65; approval G-L5 (approval covers apply and project commit, incl. the D1-D64 backfill table) 2026-10-10 18:23 CDT · Interview line: "We tagged the 64 earlier decisions in a side table, so the review covers the whole history without rewriting the ledger."
 - Review: Topic Process · Weight ●○○ · One-liner: D1 to D64 tagged in a side table; the ledger is untouched.
+
+### D67 Apply script looks up fields without a pipe  [status: accepted]
+- Date 2026-10-10 18:28 CDT · phase 15 route-failure (G-L5) · milestone M4 · Decided by: human, G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) 2026-10-10 18:28 CDT: "Approve, adopt H15" · Proposed by: route-failure (Claude Code, claude-opus-5-5) · artifact: HARNESS_CHANGELOG.md H15@5fe6c05fbd96
+- Context and forces: apply-proposal.sh (D57) exited 141 after applying H13 and before testing or committing it, because sed piped into grep -m1 under pipefail dies of SIGPIPE on a large block (FINDINGS F26); the supervisor finished the apply by hand.
+- Options:
+  - Do nothing / simplest (shown as "C do nothing"): keep the pipeline — cost: every large proposal stops half-applied — rejected: the human chose to adopt H15
+  - A adopt H15: one awk per lookup, so no pipe can break (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: none — chosen
+  - B turn pipefail off in the script — cost: real pipe failures elsewhere go silent — rejected: hides other failures
+- Choice: A · Why: In the context of a factory apply script, facing an intermittent SIGPIPE on large proposals, we chose single-process awk lookups over disabling pipefail, to keep every other failure loud, accepting nothing extra.
+- Cost accepted: none beyond the rewritten lookups. · Reversibility: Type 2 two-way — revert the kit commit · Confidence: high
+- Revisit if: apply-proposal.sh stops with exit 141 again. · Evidence: software-factory-kit FINDINGS.md F26; HARNESS_CHANGELOG.md H15; kit commit 253662e; D57; approval G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) 2026-10-10 18:28 CDT · Interview line: "Under pipefail an early-exiting reader can kill its writer, so the apply script reads the file directly instead of through a pipe."
+- Review: Topic Process · Weight ●○○ · One-liner: The apply script's lookups no longer die of SIGPIPE on large proposals.
