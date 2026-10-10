@@ -131,6 +131,9 @@ several harnesses read it and the repo is public.
 | 2026-10-10 16:57 CDT | push milestone/m1-research and milestone/m4-tracer-bullet to origin (GitLab + GitHub mirror); main untouched | milestone/m4-tracer-bullet | "yes, push both branches" |
 | 2026-10-10 17:05 CDT | history plan: rebuild clean per-milestone branches from main (grouped commits per decision or result, one-line subjects), keep old branches as backup/*, push and merge M1, M2, M3 to main in order via GitLab MRs with merge commits; M4 stays local; MR body = TL;DR after the title, then a filled template describing changes and citing decisions and specs | milestone/m4-tracer-bullet | "yes approve the plan" (with: "yes should include a short tldr after the title, but also should include a good template for what we're doing in this PR, and answer the questions of the template after the tldr portion. we should describe the changes and reference the decisions and the specs that this PR is solving.") |
 | 2026-10-10 17:05 CDT | standing yes: merge milestone MRs automatically as we go; clean legible main history; brief one-line subjects and a TL;DR per PR | main | "yes do option b, and merge automatically as we do this, i just want a clean legible commit history to main detailing the changes in each milestone" |
+| 2026-10-10 17:28 CDT | M4 review pass 6 R7 disposition: keep (cancel vs checkout race already safe) | .handoff/reviews/M4-pass6.md | "a, keep R7 and R12, merge M4" |
+| 2026-10-10 17:28 CDT | M4 review pass 6 R12 disposition: keep (S2 copy built in T005, matches screens.md) | .handoff/reviews/M4-pass6.md | "a, keep R7 and R12, merge M4" |
+| 2026-10-10 17:28 CDT | G5 M4: merge milestone/m4-tracer-bullet to main via MR with a merge commit | milestone/m4-tracer-bullet@2604a27 | "a, keep R7 and R12, merge M4" |
 
 ## Log
 
@@ -309,3 +312,4 @@ several harnesses read it and the repo is public.
 2026-10-10 16:56 CDT DEPLOY M4 demo 1130822 to web-v2 production (deployment 59c086de SUCCESS); smoke GREEN 7/0 with TLS verified; /version commit 11308222f1ea
 2026-10-10 17:05 CDT FAIL process: commits were per step, not per decision or result, and nothing was pushed or opened as a PR per milestone; history landed on main unreadable. Route to route-failure: commit grouping per decision/result, PR per milestone with TL;DR + filled template, auto-merge on standing yes, and a hook to commit software-factory-kit improvements to its repo
 2026-10-10 17:24 CDT MERGE M1 !1 (8ddfc80), M2 !2 (371224a), M3 !3 (8377ce0) to main with merge commits; main mirrored to GitHub; main tree equals original 5a984b8; M4 still local (old history, rebuild on milestone/m3-design pending)
+2026-10-10 17:28 CDT HISTORY M4 rebuilt as 20 grouped commits on milestone/m3-design (89 originals kept at backup/m4-tracer-bullet); final tree identical; app files identical to deployed 1130822; make check OK (122 unit + 43 acceptance)
