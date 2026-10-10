@@ -1,0 +1,268 @@
+# Decision journal
+
+Why each design choice was made and what it cost (software-factory-kit WORKFLOW.md §9). Committed, append-only.
+
+- Written only by the `log-decision` skill, after every gate. It records decisions the **human** made; an entry is
+  never `accepted` without the human's quoted words.
+- Never renumber or delete an entry. Change your mind by adding a new D-row and marking the old one
+  `superseded-by D<m>`. Rejected options stay visible.
+- One-way (Type 1) decisions are also promoted to `docs/decisions/NNNN-<slug>.md`.
+- Who said yes, word for word, lives in `.handoff/TRACKER.md ## Approvals`; this file holds the reasoning.
+
+## Entry schema
+
+Copy this block for each new entry (D-ids increase by one, starting at D1):
+
+```markdown
+### D<n> <title>  [status: proposed | accepted | superseded-by D<m> | rejected]
+- Date (`date`) · phase · milestone · Decided by: human · Proposed by: <skill> (<harness>, <model>) · artifact@<sha>
+- Context and forces (FR/NFR ids)
+- Options: always includes "do nothing" and the agent's first proposal ("instead of")
+- Choice · Why (Y-statement: in context C, facing F, we chose X over Y to get Z, accepting W)
+- Cost accepted · Reversibility (Type 1 one-way / Type 2 two-way) · Confidence (low/med/high)
+- Revisit if · Evidence (file:line, R/S ids) · Interview line (one sentence you'd say out loud)
+```
+
+## Entries
+
+<!-- log-decision appends D1 below this line. -->
+
+> **D1–D17 are imported v1 decisions, all `proposed`.** They come from the private journal of the v1 build
+> (2026-10-05/06), when Claude worked autonomously and no human gate existed. Imported 2026-10-08 on the human's
+> instruction (`.handoff/TRACKER.md ## Approvals`, 22:34 CDT); the original is backed up outside the repo. None is
+> `accepted`: nobody approved them at a gate. The v2 gates (G1 PRD, G2 HLD, G3 LLD) re-decide each one by adding a
+> new D-row that accepts or supersedes it. Evidence points at the v1 tree on `main@778e788`.
+
+### D1 Stack: Laravel 13 / PHP 8.5  [status: superseded-by D22]
+- 2026-10-05 · v1 build · pre-factory · Decided by: nobody yet (agent choice, never gated) · Proposed by: v1 autonomous build (Claude Code, claude-opus-5-5) · artifact@778e788
+- Context: any stack allowed; 1–2 day slice graded on judgment, money correctness and clean seams. Cerbo's job posts list PHP/Laravel as the core stack (some Java/Spring).
+- Options: do nothing (n/a) · Python/Flask + SQLite (the agent's first proposal, smallest codebase) · Next.js + Prisma + Postgres · **Laravel + Blade**
+- Choice · Why: in a graded partner evaluation, facing reviewers who live in PHP/Laravel, chose Laravel over Python/Flask to remove translation cost and get transactions, row locks, migrations, validation, CSRF, a service container and a log mailer natively, accepting more skeleton files and a local PHP install.
+- Cost accepted: skeleton noise, brew install of PHP. · Reversibility: Type 1 once code exists (rewrite) · Confidence: high
+- Revisit if: Cerbo says the slice should be framework-agnostic or in Java. · Evidence: `composer.json`, `docs/ARCHITECTURE.md` §Stack
+- Interview line: "I built in Laravel because it's Cerbo's own stack, so their engineers read it in their idiom."
+
+### D2 Database: Postgres in prod, SQLite in dev/tests, suite run on both  [status: superseded-by D22]
+- 2026-10-05 · v1 build · pre-factory · Decided by: nobody yet · Proposed by: v1 autonomous build (Claude Code, claude-opus-5-5) · artifact@778e788
+- Context: the money flow relies on row locks, CHECK constraints and partial unique indexes; reviewers should be able to clone and run with no setup.
+- Options: do nothing (n/a) · Postgres everywhere (Docker locally) · SQLite everywhere (prod on a volume) · **split**
+- Choice · Why: chose Postgres in prod + SQLite locally over Postgres-everywhere to get zero-setup clones while prod keeps real locks and constraints, accepting two engines (CHECKs are Postgres-only behind a driver guard; SQLite uses `transaction_mode=IMMEDIATE` because it ignores `FOR UPDATE`).
+- Cost accepted: portability discipline; CHECKs not exercised on SQLite. · Reversibility: Type 2 · Confidence: med
+- Revisit if: a portability bug appears → Postgres everywhere. · Evidence: `config/database.php`, `database/migrations/2026_10_05_000000_create_store_tables.php`, `.github/workflows/tests.yml`
+- Interview line: "Prod gets Postgres guarantees; a reviewer gets a one-command SQLite setup; CI runs both."
+
+### D3 Fee: 75 bps of the order subtotal, once per order, half-up, borne by the provider  [status: superseded-by D22]
+- 2026-10-05 · v1 build · pre-factory · Decided by: nobody yet · Proposed by: v1 autonomous build (Claude Code, claude-opus-5-5) · artifact@778e788
+- Context: the brief says "take a 75 bps platform fee on the transaction"; base, rounding and bearer are unspecified.
+- Options: do nothing (n/a) · fee on margin · per-line fee summed · patient pays the fee on top · platform absorbs · **on subtotal, per order, half-up, out of provider payout**
+- Choice · Why: chose subtotal/per-order/half-up/provider-borne so the patient pays exactly the quoted price and payout is the residual (`subtotal = cogs + fee + payout` exact), accepting that at-cost dispensing gives a negative payout and is blocked.
+- Cost accepted: at-cost orders rejected (open product question). · Reversibility: Type 2 · Confidence: med
+- Revisit if: Cerbo wants the platform to absorb the fee for at-cost providers. · Evidence: `app/Money/Split.php`, `tests/Unit/SplitTest.php`
+- Interview line: "75 bps on the transaction means on the gross; the provider bears it so the patient pays exactly the quote."
+
+### D4 Persisted split on the order AND a settlement ledger  [status: superseded-by D22]
+- 2026-10-05 · v1 build · pre-factory · Decided by: nobody yet · Proposed by: v1 autonomous build (Claude Code, claude-opus-5-5) · artifact@778e788
+- Context: "see exactly where every cent went" for a paid order; refunds and payouts are future events.
+- Options: do nothing (split on order only) · ledger only · **both, cross-checked**
+- Choice · Why: chose both over order-only so the order holds the quote and the ledger holds what moved, with `ledger:verify` cross-checking them, accepting some duplication.
+- Cost accepted: two records of one fact. · Reversibility: Type 2 · Confidence: high
+- Revisit if: a real accounting system takes over the ledger. · Evidence: `app/Services/Ledger.php`, `routes/console.php`
+- Interview line: "The order row is the quote, the ledger is what happened; checking one against the other is the audit."
+
+### D5 Payment: reserve (txn) → charge (no txn) → settle (txn)  [status: superseded-by D22]
+- 2026-10-05 · v1 build · pre-factory · Decided by: nobody yet · Proposed by: v1 autonomous build (Claude Code, claude-opus-5-5) · artifact@778e788
+- Context: a real processor call takes 300 ms to seconds and can hang.
+- Options: do nothing (charge inside one transaction, the simple first draft) · **three short phases**
+- Choice · Why: chose reserve/charge/settle over one transaction so no DB lock is held across network I/O, accepting an intermediate `processing` state and a reconcile job for crashes (detected, not built).
+- Cost accepted: one extra state; stuck payments need reconciliation. · Reversibility: Type 2 · Confidence: high
+- Revisit if: the gateway gets webhooks (settle moves there). · Evidence: `app/Services/CheckoutService.php`
+- Interview line: "Never hold a database lock across a network call."
+
+### D6 Stock: column + movement log, conditional decrement, reserved at payment  [status: superseded-by D22]
+- 2026-10-05 · v1 build · pre-factory · Decided by: nobody yet · Proposed by: v1 autonomous build (Claude Code, claude-opus-5-5) · artifact@778e788
+- Context: the platform holds inventory; oversell and unpaid links holding stock are both risks.
+- Options: do nothing (no stock) · stock = Σ movements only · reserve at send · decrement after charge · **column + log, reserve at payment**
+- Choice · Why: chose an atomic `UPDATE … WHERE stock >= qty` plus a movement row, reserved at payment, so oversell is impossible and unpaid links hold nothing, accepting a column/log invariant to verify.
+- Cost accepted: `stock == Σ movements` must be checked. · Reversibility: Type 2 · Confidence: high
+- Revisit if: warehouses or lots are modelled. · Evidence: `app/Models/Product.php`, `scripts/race-check.sh`
+- Interview line: "The conditional decrement can't oversell, and every stock change leaves an audit row."
+
+### D7 Stubs and their seams  [status: superseded-by D22]
+- 2026-10-05 · v1 build · pre-factory · Decided by: nobody yet · Proposed by: v1 autonomous build (Claude Code, claude-opus-5-5) · artifact@778e788
+- Context: the brief says stub payments, auth, email and shipping but keep the seams clean.
+- Options: do nothing (inline fakes) · **interface/driver seams**: `PaymentGateway` + `FakePaymentGateway` (no card fields anywhere), an "acting as" auth switcher with real query scoping, a 40-char patient token link, Laravel's `log` mailer, a fulfillment log line
+- Choice · Why: chose explicit seams so a real adapter replaces one binding, accepting a public demo where anyone can act as a demo provider.
+- Cost accepted: stubbed auth on a public URL (demo data only). · Reversibility: Type 2 · Confidence: high
+- Revisit if: real auth or Stripe arrives. · Evidence: `app/Payments/`, `app/Http/Middleware/ActingProvider.php`
+- Interview line: "Authentication is stubbed, authorization is real."
+
+### D8 Deliberately out of scope  [status: superseded-by D22]
+- 2026-10-05 · v1 build · pre-factory · Decided by: nobody yet · Proposed by: v1 autonomous build (Claude Code, claude-opus-5-5) · artifact@778e788
+- Context: 1–2 day time box; the brief grades integrity over breadth.
+- Options: do nothing (build everything) · **cut drafts, refunds, payouts, recurring protocols, tax/shipping, catalog UX**
+- Choice · Why: cut breadth to prove the core flow, accepting that recurring protocols (the real volume lever) are absent.
+- Cost accepted: no refunds/payouts/recurring. · Reversibility: Type 2 · Confidence: high
+- Revisit if: a milestone has spare appetite. · Evidence: `docs/PRD.md` §10
+- Interview line: "I cut breadth to make the money path airtight."
+
+### D9 Diagrams as .mmd sources plus embedded copies  [status: superseded-by D22]
+- 2026-10-05 · v1 build · pre-factory · Decided by: nobody yet · Proposed by: v1 autonomous build (Claude Code, claude-opus-5-5) · artifact@778e788
+- Context: the human asked for a separate Mermaid syntax document.
+- Options: do nothing (inline only) · **`docs/diagrams/*.mmd` + embedded copies in SYSTEM_DESIGN.md**
+- Choice · Why: chose sources plus embeds so diagrams render on GitHub and paste into mermaid.live, accepting drift risk (regenerate, never edit both).
+- Cost accepted: two copies. · Reversibility: Type 2 · Confidence: med
+- Revisit if: v2 adopts the factory's `scripts/embed-diagrams.sh`, which supersedes this. · Evidence: `docs/diagrams/README.md`
+- Interview line: "One source per diagram, embedded by a script, validated by rendering."
+
+### D10 Design-review panel → accepted changes  [status: superseded-by D22]
+- 2026-10-05 · v1 build · pre-factory · Decided by: nobody yet · Proposed by: v1 design-review workflow (5 critics + 5 adversarial verifiers; 39 findings, 26 survived) · artifact@778e788
+- Context: the first audit was circular (it compared the stored split only to copies of itself).
+- Options: do nothing · accept all 26 · **accept most, reject 3**
+- Choice · Why: accepted recompute-from-snapshots, immutable order lines, `UNIQUE(payment_id, account)`, product lock order, trusted proxies, cancel, advisory stock check; rejected cutting the markup helper (brief says "price (or margin)"), cutting the client idempotency key (double-click on a decline) and dropping checkout movements.
+- Cost accepted: more code than the panel's minimum. · Reversibility: Type 2 · Confidence: med
+- Revisit if: v2 PRD drops margin entry. · Evidence: `docs/AI_USAGE.md`
+- Interview line: "I let reviewers attack the design, then overrode three cuts with reasons."
+
+### D11 One stock path: `Product::adjustStock()`  [status: superseded-by D22]
+- 2026-10-05 · v1 build · pre-factory · Decided by: nobody yet · Proposed by: v1 autonomous build (Claude Code, claude-opus-5-5) · artifact@778e788
+- Context: seed, checkout reserve/release and the dashboard all change stock.
+- Options: do nothing (each caller writes SQL) · a service class · **one model method (atomic relative UPDATE + movement in one txn)**
+- Choice · Why: chose one method so every stock change is atomic and audited, accepting an active-record method on the model.
+- Cost accepted: model holds a little logic. · Reversibility: Type 2 · Confidence: high
+- Revisit if: inventory becomes its own module. · Evidence: `app/Models/Product.php`
+- Interview line: "Stock changes in exactly one place, so the invariant has one guardian."
+
+### D12 Cancel built (scope add)  [status: superseded-by D22]
+- 2026-10-05 · v1 build · pre-factory · Decided by: nobody yet · Proposed by: v1 design-review panel · artifact@778e788
+- Context: a sent link could not be withdrawn.
+- Options: do nothing · **cancel unpaid orders under the same row lock as pay**
+- Choice · Why: chose cancel (~15 lines + a test) so cancel and pay can't both win, accepting a fourth state.
+- Cost accepted: one more status. · Reversibility: Type 2 · Confidence: high
+- Revisit if: refunds arrive (cancel of paid orders). · Evidence: `app/Services/OrderService.php`
+- Interview line: "Cancel takes the same lock as pay, so only one can win."
+
+### D13 Deploy: Railway + Dockerfile (FrankenPHP) + Railway Postgres  [status: superseded-by D22]
+- 2026-10-05 · v1 build · pre-factory · Decided by: nobody yet (the deploy itself ran on the human's standing autonomy instruction) · Proposed by: v1 autonomous build (Claude Code, claude-opus-5-5) · artifact@778e788
+- Context: a deployed URL is a hard deliverable.
+- Options: do nothing · Railpack auto-detect · **Dockerfile (FrankenPHP 1.12, PHP 8.5)**
+- Choice · Why: chose a Dockerfile for reproducibility and portability; boot runs migrate → seed (no-op unless empty) → caches → serve, accepting Railway-specific env wiring and an always-on cost.
+- Cost accepted: one small service + Postgres on the human's account. · Reversibility: Type 2 · Confidence: high
+- Revisit if: cost or vendor changes. · Evidence: `Dockerfile`
+- Interview line: "One reproducible image; the platform is swappable."
+
+### D14 Neutral branding on the public demo  [status: superseded-by D22]
+- 2026-10-05 · v1 build · pre-factory · Decided by: nobody yet · Proposed by: v1 autonomous build (Claude Code, claude-opus-5-5) · artifact@778e788
+- Context: a public URL with the partner's name could pass for an official product.
+- Options: do nothing (`cerbo-…` domain, "Cerbo keeps" copy) · **neutral domain + "platform" copy + not-affiliated footer**
+- Choice · Why: chose neutral branding so the demo can't be mistaken for Cerbo's, accepting a less "on-brand" demo.
+- Cost accepted: none material. · Reversibility: Type 2 · Confidence: high
+- Revisit if: Cerbo asks to brand it. · Evidence: `resources/views/layout.blade.php`
+- Interview line: "It's a demo for Cerbo, never presented as Cerbo."
+
+### D15 GitLab visibility is the human's step  [status: superseded-by D22]
+- 2026-10-05 · v1 build · pre-factory · Decided by: nobody yet · Proposed by: v1 autonomous build (Claude Code, claude-opus-5-5) · artifact@778e788
+- Context: push-to-create makes a private project; the only GitLab token is a project bot for another project.
+- Options: do nothing (stay private) · sign in as the human (never) · **hand the one click to the human**
+- Choice · Why: left visibility to the human, accepting that GitLab links 404 for others until flipped.
+- Cost accepted: blocked links until flipped. · Reversibility: Type 2 · Confidence: high
+- Revisit if: a scoped token appears. · Evidence: README links
+- Interview line: "Visibility changes are human-only."
+
+### D16 Code-review panel → accepted changes  [status: superseded-by D22]
+- 2026-10-06 · v1 build · pre-factory · Decided by: nobody yet · Proposed by: v1 code-review workflow (5 lenses + adversarial verifiers; 32 findings, 15 survived) · artifact@778e788
+- Context: a double-clicked "Send" created two payable orders; the audit missed money captured but never booked.
+- Options: do nothing · **accept: idempotent send (`request_key`), canonical product keys, movement-vs-line and captured-but-unbooked audit checks, snapshot-consistent verify, trusted proxies narrowed to proto/for, PHP ≥ 8.4** · decline: removing the skeleton's `shouldRenderJsonWhen`, a ledger `payment_id` check
+- Choice · Why: accepted the integrity fixes, declined skeleton churn and a redundant check, accepting a second migration.
+- Cost accepted: more audit code. · Reversibility: Type 2 · Confidence: med
+- Revisit if: v2 design changes the send flow. · Evidence: `docs/AI_USAGE.md` §Code review
+- Interview line: "Send is idempotent too, so a double-click can't create two payable links."
+
+### D17 Never edit a migration that already ran in prod  [status: superseded-by D22]
+- 2026-10-06 · v1 build · pre-factory · Decided by: nobody yet · Proposed by: v1 autonomous build (self-caught mistake) · artifact@778e788
+- Context: a column was added by editing the original migration after production had run it.
+- Options: do nothing (boot migrate never adds the column; order creation breaks) · reset prod · **new nullable+unique migration, upgrade path replayed from git**
+- Choice · Why: chose a forward migration so prod upgrades cleanly, accepting nullable history rows.
+- Cost accepted: nullable `request_key` for pre-existing rows. · Reversibility: Type 2 · Confidence: high
+- Revisit if: never; this is a standing rule. · Evidence: `database/migrations/2026_10_06_000000_add_request_key_to_orders.php`
+- Interview line: "Migrations that ran in production are immutable; fixes go forward."
+
+### D18 Restart from scratch on a milestone branch  [status: accepted]
+- 2026-10-09 16:27 CDT · phase 0 (setup) · M1 · Decided by: human, decision 2026-10-08 23:59 CDT: "what ever is in the cerbo repo right now, we should start from scratch on a new branch, and follow the new ai workflow from the start" · Proposed by: supervisor (Claude Code, claude-opus-5-5), listed as an open question, no options card · artifact@main 778e788 → commit 8949ae4
+- Context and forces: v2 redo of a graded partner project under software-factory-kit; v1 had no human gates; the human wants to practice the workflow end to end. Keeping v1 code on the branch would make it brownfield (adds `audit-codebase`).
+- Options:
+  - Do nothing — ⚠ not offered at the gate (keep v1 on the branch: brownfield, audit-codebase before write-prd)
+  - Delete v1 at the first implementation milestone (agent's first proposal — no instead-of recorded) — rejected: the human wanted a clean start now
+  - Delete everything tracked except `.gitignore` now, keep v1 in `main@778e788` — chosen
+- Choice · Why: in a redo meant to practise the whole workflow, facing a v1 built without gates, we chose a clean greenfield branch over keeping v1 as brownfield to run every phase from sharpen-brief, accepting that v1 code is reachable only through history.
+- Cost accepted: v1 is no longer browsable on the branch; the first milestone merge removes it from main's tip (history keeps it). · Reversibility: Type 2 (`git checkout 778e788 -- <path>`) · Confidence: high
+- Revisit if: a v1 component is worth reusing (bring it forward via a task that owns it). · Evidence: commit 8949ae4; approval decision 2026-10-08 23:59 CDT · Interview line: "I restarted on a branch so every v2 decision passes a gate, while git history keeps v1 one checkout away."
+
+### D19 Docs-only rules until the stack is designed  [status: accepted]
+- 2026-10-09 16:27 CDT · phase 0 (G-init) · M1 · Decided by: human, G-init 2026-10-09 16:26 CDT: "lets do 1, because i want a clean start, and to work through the new ai workflow end to end." · Proposed by: supervisor (Claude Code, claude-opus-5-5) · artifact@1ed9fd1 (AGENTS.md, Makefile)
+- Context and forces: after D18 no stack exists; `make check` must be a real green/red gate the pre-push hook can pass for docs milestones.
+- Options:
+  - Do nothing / simplest (shown as "Stop / do nothing") — rejected: scaffold uncommitted, nothing can start
+  - Docs-only rules: project named, stack "decided at M3", `make check` = script syntax + diagram embed sync (agent's recommendation; agent's first proposal — no instead-of recorded) — chosen
+  - Keep the Laravel commands — rejected: presumes the M3 design decision; `make check` stays red, nothing pushes
+  - Revise — rejected: not needed
+- Choice · Why: in a clean restart, facing an undecided stack, we chose docs-only checks over keeping Laravel commands so the rulebook states only decided facts, accepting a light `make check` until code exists.
+- Cost accepted: `make check` proves little until M3 adds stack tools. · Reversibility: Type 2 · Confidence: high
+- Revisit if: the M3 design gate picks a stack (add its lint/types/test to `make check`). · Evidence: AGENTS.md, Makefile @1ed9fd1; approval G-init 2026-10-09 16:26 CDT · Interview line: "The rulebook only states what's decided, so checks cover docs until the stack is chosen."
+
+### D20 Route harness findings F1-F3 at M1 close  [status: accepted]
+- 2026-10-09 16:32 CDT · phase 0 (setup) · M1 · Decided by: human, 2026-10-09 16:32 CDT: "for the decision, 1, then /sharpen-brief after" · Proposed by: supervisor (Claude Code, claude-opus-5-5) · artifact@7cf0d04 (.handoff/TRACKER.md ## Log)
+- Context and forces: three real workflow failures (F1 log-decision can't create a missing journal; F2 G-init approves uncommitted files; F3 a decision asked without an options card). Skill edits are human-only and go through route-failure → G-L5.
+- Options:
+  - Do nothing — rejected: the next brownfield repo hits F1 again
+  - At M1 close, via the milestone-close chain (agent's recommendation; agent's first proposal — no instead-of recorded) — chosen
+  - Now, before sharpen-brief — rejected: jumps ahead of the workflow; none of F1-F3 blocks M1
+- Choice · Why: in a project run to practise the workflow, facing three non-blocking skill gaps, we chose to route them at M1 close over fixing now to practise route-failure in its proper place, accepting unfixed skills for a few hours.
+- Cost accepted: workarounds stay until M1 closes. · Reversibility: Type 2 · Confidence: high
+- Revisit if: a finding blocks M1 work. · Evidence: .handoff/TRACKER.md ## Log F1-F3 · Interview line: "Fixes to the factory come from logged failures, batched at milestone close and approved at their own gate."
+
+### D21 Adopt North Star metrics and partner lens (H1)  [status: accepted]
+- 2026-10-09 17:28 CDT · route-failure (G-L5) · M1 · Decided by: human, G-L5 2026-10-09 17:21 CDT 2026-10-09 17:27 CDT: "approved" · Proposed by: route-failure (Claude Code, claude-opus-5-5) · artifact: software-factory-kit HARNESS_CHANGELOG.md H1@19d8e18b0765 (applied ee2e6a2)
+- Context and forces: the human asked every project to start from a North Star metric and the hiring partner's view (Byron Mackay, "Defining Metrics", 2026-09-15); the Cerbo portal's stack list contradicted v1's Laravel pick, a partner signal no phase had captured. Kit FINDINGS F3.
+- Options:
+  - Do nothing / simplest (shown as "Stop / reject") — rejected: future projects repeat the gap
+  - Approve H1: shared docs/METRICS.md + sections in sharpen-brief, gather-evidence, write-prd (agent's recommendation; agent's first proposal — no instead-of recorded) — chosen
+  - Revise (e.g. partner lens as its own skill) — rejected: not asked for
+  - Put everything in sharpen-brief only (offered earlier as option 2) — rejected: the brief would set targets the PRD gate should own
+- Choice · Why: in a factory reused on every hiring-partner project, facing briefs that proved engineering but not value, we chose candidates in the brief, evidence in research and a locked metric tree in the PRD over one bloated skill, to keep one job per phase, accepting two more brief sections per project.
+- Cost accepted: more to fill in every brief and PRD. · Reversibility: Type 2 (revert ee2e6a2) · Confidence: high
+- Revisit if: briefs routinely leave NS-01 as ⚠ after research, or the PRD's metric tree gets ignored downstream. · Evidence: software-factory-kit FINDINGS.md F3, docs/METRICS.md; approval G-L5 2026-10-09 17:21 CDT 2026-10-09 17:27 CDT · Interview line: "My factory makes every project name one North Star in the partner's business terms before design, because proving value is the job, not building."
+
+### D22 Set the one-shot build in main aside  [status: accepted]
+- 2026-10-09 18:19 CDT · sharpen-brief (M1) · M1 · Decided by: human, 2026-10-09 18:19 CDT: "actually the whole laravel thing, i dont want, since we're started from scratch. whatevers in main branch, just dont worry about it" and "for anything to do with the main branch, we should just say how we did the project in a one shot manner before, because ai is so powerful, and wanted to see if it would work, but then scratched that and started again with a full auditable work flow with me being very intimately involved in the planning stage as ai can catch whats broken but cant catch whats wrong, and solving the wrong problem is highly probable for a non deterministic model." · Proposed by: human · artifact@main 778e788
+- Context and forces: D1–D17 (v1, proposed) kept pulling v1 choices (Laravel, its payment design) into v2 research and design; the human wants v2 decided from evidence alone.
+- Options:
+  - Do nothing — ⚠ not offered at the gate (keep D1–D17 as proposed inputs to G2/G3)
+  - Keep D1–D17 as candidate inputs for M3 design (agent's first proposal — no instead-of recorded) — rejected: v2 should start from evidence, not from an ungated one-shot build
+  - Set main aside entirely; describe it only as the earlier one-shot experiment — chosen
+- Choice · Why: in a redo meant to show an auditable, human-gated process, facing seventeen ungated v1 decisions, we chose to set main aside over reusing its choices, so every v2 decision passes a gate on fresh evidence, accepting that good v1 ideas must be re-derived.
+- Cost accepted: v1 work is not reused. · Reversibility: Type 2 · Confidence: high
+- Revisit if: never for this project. · Evidence: AGENTS.md "Project specifics"; brief P-02 withdrawn · Interview line: "I first let AI one-shot it to see if it could; it built something that worked, but AI catches what's broken, not what's wrong, so I restarted with me gating every planning decision."
+
+### D23 Full track for the M1 brief  [status: accepted]
+- 2026-10-09 18:22 CDT · sharpen-brief (G0) · M1 · Decided by: human, G0 2026-10-09 18:22 CDT: "approve" · Proposed by: sharpen-brief (Claude Code, claude-opus-5-5) · artifact@e8c6621 (specs/M1-in-ehr-supplement-orders/brief.md)
+- Context and forces: graded hiring-partner project restarted clean (D18, D22); problem, North Star candidate (in-house GMV per practice per period), 24 requirements and 7 research questions in the brief; deadline waived by the human.
+- Options:
+  - Do nothing — rejected: no rebuild, no practice, no auditable record
+  - Full: every phase from brief to ship with gates (agent's recommendation; agent's first proposal — no instead-of recorded) — chosen
+  - Standard — rejected: no v2 PRD exists to start from
+  - Fix — rejected: touches money and the data model
+- Choice · Why: in a graded partner project meant to practise the whole workflow, facing a high risk of solving the wrong problem, we chose Full over shortcuts to get a gated, auditable record from brief to ship, accepting more documents before code.
+- Cost accepted: slower start; many gates. · Reversibility: Type 2 (a track may move up, never down) · Confidence: high
+- Revisit if: appetite changes (a deadline appears). · Evidence: brief §Track; approval G0 2026-10-09 18:22 CDT · Interview line: "I ran the full gated track because the expensive failure is building the wrong thing, and gates are where I catch that."
+
+### D24 Adopt market, competitor and load-profile research (H3)  [status: accepted]
+- 2026-10-09 19:42 CDT · route-failure (G-L5) · M1 · Decided by: human, G-L5 2026-10-09 19:42 CDT: "approve, then /gather-evidence" · Proposed by: route-failure (Claude Code, claude-opus-5-5) · artifact: software-factory-kit HARNESS_CHANGELOG.md H3@255e96814097 (applied 071beeb)
+- Context and forces: the human paused write-prd after Q2: success targets and later system sizing had no market or usage evidence (kit FINDINGS F4). The human then added competitors and their users, expected share, usage timing for maintenance windows, and load for instance sizing, throughput and stack choices.
+- Options:
+  - Do nothing / simplest (shown as "Stop / reject") — rejected: targets and sizing would be guessed
+  - Approve H3: market-research reference (competitors, ICP, TAM/SAM/SOM bottom-up, share, clusters, usage and load profile) + required brief questions + checks (agent's recommendation; agent's first proposal was H2 without competitors and load, superseded after the human's Revise) — chosen
+  - H2 (market and ICP only) — rejected by the human's Revise: missed competitors, usage timing and load
+  - Revise again — rejected: not asked for
+- Choice · Why: in a factory reused across hiring-partner projects, facing PRD targets and design sizing with no evidence, we chose a bottom-up market and load method with stated formulas and ranges over guessed round numbers, so targets and machine sizing trace to evidence, accepting two more required brief questions and a heavier research pass.
+- Cost accepted: longer research before the PRD. · Reversibility: Type 2 (revert 071beeb) · Confidence: high
+- Revisit if: market questions routinely end as gaps with no public data. · Evidence: software-factory-kit FINDINGS.md F4, skills/gather-evidence/references/market-research.md; approval G-L5 2026-10-09 19:42 CDT · Interview line: "Before designing, I size the market and the expected load bottom-up with stated assumptions, so my targets and my machine sizing come from evidence, not round numbers."
