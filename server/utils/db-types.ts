@@ -110,6 +110,19 @@ export interface LedgerEntriesTable {
   occurred_at: Timestamp
 }
 
+export interface IdempotencyKeysTable {
+  user_id: Int8
+  key: string
+  route: string
+  request_hash: Buffer
+  status: Generated<string>
+  response_status: number | null
+  /** jsonb: written as JSON text, read back parsed */
+  response_body: ColumnType<unknown, string | null, string | null>
+  created_at: DefaultTimestamp
+  expires_at: Timestamp
+}
+
 export interface Database {
   practices: PracticesTable
   users: UsersTable
@@ -121,4 +134,5 @@ export interface Database {
   notices: NoticesTable
   payment_attempts: PaymentAttemptsTable
   ledger_entries: LedgerEntriesTable
+  idempotency_keys: IdempotencyKeysTable
 }

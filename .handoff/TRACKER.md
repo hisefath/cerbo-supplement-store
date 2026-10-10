@@ -7,11 +7,11 @@ several harnesses read it and the repo is public.
 ## Resume
 
 <!-- Rewritten as the LAST edit of every supervisor move. Times come from `date`. -->
-- **As of:** 2026-10-10 12:34 CDT
-- **In flight:** M4-T002 (payments, split, DB guards) dispatched in .claude/worktrees/m4-t002 from milestone/m4-tracer-bullet@f1cc496. M4-T001 done (61c966a).
-- **Next:** on T002 result: verify → squash → dispatch T003. Routed review items: R8 → T004 (one empty-order check), R4 → design-lld catch-up after M4; R3, R5, R6 filed.
-- **Waiting on:** M4-T002 worker.
-- **Verified:** f1cc496 make check OK (typecheck, 22 unit tests, embeds); T001 Done-when 6/6
+- **As of:** 2026-10-10 13:02 CDT
+- **In flight:** M4-T003 (exactly-once pay and send, failures, review R1/R4/R5) dispatched in .claude/worktrees/m4-t003 from milestone/m4-tracer-bullet@acc8a6b. Done: T001 (61c966a), T002 (eb3f87d).
+- **Next:** on T003 result: verify → squash → T004. Per-task verifier passes used: 2 of 2 without the human's word; ask before a third. Follow-ups after M4: design-lld catch-up (R4 helper unitCostFromLowestAllowedPrice, D47 SM-1 guard, Q-1 to Q-4), define-acceptance re-run for a D47 test, close-out fixes pass2 R6, R7; filed pass1 R3, R5, R6.
+- **Waiting on:** M4-T003 worker.
+- **Verified:** eb3f87d make check OK (31 unit); M4 acceptance 23/43 passing, no regressions
 
 ## Tasks
 
@@ -94,6 +94,10 @@ several harnesses read it and the repo is public.
 | 2026-10-10 12:33 CDT | supervisor commits M4-T001 relaunch fixes R2 (session.ts dummy-hash cost) and R7 (remove assertCanChangeRole, StaffRef) after the worker's git add was denied | m4/t001-provider-sends-a-supplement-order worktree: server/services/session.ts, server/services/access-policy.ts | "a, commit both" |
 | 2026-10-10 12:36 CDT | human-only edit: AGENTS.md Commands row for make check (unit-test command now uses --dir) | AGENTS.md | "update AGENTS.md make check row" |
 | 2026-10-10 12:45 CDT | G4 re-approval (Revise, option a): Owns entries server/api/orders/[orderId]/… → server/api/orders/*/… in T002, T003, T005, T008; supervisor commits T002's finished work | specs/M4-tracer-bullet/tasks@fdf9d40 | "a, fix the four Owns lines" |
+| 2026-10-10 12:51 CDT | M4-T002 review dispositions, option a: squash T002; add R1 (fail the attempt on any throw after tx1), R4 (lock order then lines; conditional attempt updates), R5 (freeze succeeded attempts) to T003 Ask (G4 re-approval for T003); R6, R7 noted for milestone close-out; R3 keep; R2 separate decision | .handoff/reviews/M4-pass2.md; m4/t002-patient-pays-once-split-recorded@9786e98; specs/M4-tracer-bullet/tasks/T003.md | "a, then bring me R2" |
+| 2026-10-10 13:01 CDT | R2 decision (review M4-pass2): a negative payout at payment time moves the order to needs_review before charging (option A) | server/services/payments.ts@eb3f87d; .handoff/reviews/M4-pass2.md R2 | "a, then start T003" |
+| 2026-10-10 13:15 CDT | verifier pass 3 on M4-T003 before squash; review plan for the rest of M4: per-task verifier only for T006 (sign-in), one milestone review covering T004, T005, T007, T008 (and T009) | m4/t003-pay-and-send-exactly-once@54536f0 | "a, and yes to that review plan" |
+| 2026-10-10 13:28 CDT | M4-T003 review dispositions (pass 3), option a: relaunch T003 to fix R1 (store only successes; release the key on every problem and 5xx, per lld.md BE-5), R2 (failure_reason only declined or no_answer; FM-3 same-key retry), R4 (10 s gateway timeout as no_answer); R3, R5 to the milestone review | .handoff/reviews/M4-pass3.md; m4/t003-pay-and-send-exactly-once@54536f0 | "a, relaunch T003 with R1, R2, R4" |
 
 ## Log
 
@@ -221,3 +225,7 @@ several harnesses read it and the repo is public.
 2026-10-10 12:34 CDT DISPATCH M4-T002 harness=claude-subagent why=riskiest slice (payments, ledger, DB guards), watched on Claude; worktree .claude/worktrees/m4-t002 from milestone/m4-tracer-bullet@f1cc496
 2026-10-10 12:42 CDT FAIL slice-tasks M4: Owns entries used literal Nuxt route folders [orderId], which scope-guard reads as a glob character class, so they can never match; T002 build green but uncommitted (human_review)
 2026-10-10 12:45 CDT DISPATCH M4-review-T002 harness=claude-verifier why=per-task review before squash (pass 2)
+2026-10-10 12:49 CDT RESULT M4-review-T002 verifier pass 2: 7 rows (0 P0/P1; 2 P2: R1 attempt stuck in processing after a throw between tx1 and tx2, R2 unapproved needs_review transition on negative payout; 5 P3); saved .handoff/reviews/M4-pass2.md; awaiting dispositions
+2026-10-10 13:01 CDT DISPATCH M4-T003 harness=claude-subagent why=payment correctness (idempotency, races, failures, R1/R4/R5); worktree .claude/worktrees/m4-t003 from milestone/m4-tracer-bullet@acc8a6b
+2026-10-10 13:15 CDT DISPATCH M4-review-T003 harness=claude-verifier why=per-task review before squash (pass 3, human yes)
+2026-10-10 13:19 CDT RESULT M4-review-T003 verifier pass 3: 5 rows (1 P1: R1 idempotency guard stores and replays 4xx problems and the 502 instead of releasing the key, contrary to lld.md BE-5 release and SEQ-1/SEQ-2 alternatives (confirmed by supervisor at lld.md:898, :1502, :1510, :1617); 4 P3); saved .handoff/reviews/M4-pass3.md

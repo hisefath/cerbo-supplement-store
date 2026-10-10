@@ -86,78 +86,37 @@ export async function pay(viewer: Viewer, orderId: bigint, idempotencyKey: strin
       await trx.updateTable('orders').set({ status: 'needs_review' }).where('id', '=', o.id).execute()
       return null
     }
+    // LINV-6: a second payment while one is processing loses on uq_payment_attempts_one_processing.
     const attempt = await trx
       .insertInto('payment_attempts')
       .values({ order_id: o.id, idempotency_key: idempotencyKey, amount_cents: split.amountPaidCents })
       .returning('id')
       .executeTakeFirstOrThrow()
+      .catch((e: unknown) => {
+        throw (e as { code?: string }).code === '23505' ? new ProblemError('invalid-transition') : e
+      })
     return { order: o, lines, split, feeSharesCents, attemptId: attempt.id }
   })
   if (!prepared) throw new ProblemError('order-under-review')
   const { order, lines, split, feeSharesCents, attemptId } = prepared
 
-  const result = await charge({ orderId, amountCents: split.amountPaidCents, idempotencyKey })
-
-  if (result.outcome === 'failed') {
-    await db.transaction().execute(async (trx) => {
-      await trx
-        .updateTable('payment_attempts')
-        .set({ status: 'failed', failure_reason: result.reason, finished_at: sql`now()` })
-        .where('id', '=', attemptId)
-        .execute()
-      await trx.updateTable('orders').set({ status: 'payment_failed' }).where('id', '=', order.id).where('status', '=', 'in_checkout').execute()
-    })
-    throw new ProblemError('payment-failed')
-  }
-
-  // Transaction 2: the split, the paid lines, four ledger entries, attempt succeeded, order paid. The deferred
-  // ct_ledger_entries_balance check runs at commit.
-  const paidAt = await db.transaction().execute(async (trx) => {
-    for (const [i, l] of lines.entries()) {
-      await trx
-        .updateTable('order_lines')
-        .set({ paid_unit_price_cents: l.held_unit_price_cents, unit_cost_cents_at_payment: l.unit_cost_cents, fee_share_cents: feeSharesCents[i]! })
-        .where('id', '=', l.id)
-        .execute()
+  // FM-3: a failure that is not the gateway's answer (a configuration error, a database error, the order no longer
+  // in_checkout) rolls transaction 2 back and leaves the order as it is. The attempt is closed without a reason, so the
+  // next Pay is not blocked by uq_payment_attempts_one_processing (R1). A gateway exception or no answer within 10 s is
+  // the gateway's no_answer (BE-11).
+  let paidAt: Date
+  try {
+    const result = await charge({ orderId, amountCents: split.amountPaidCents, idempotencyKey })
+    if (result.outcome === 'failed') {
+      // SM-1, SM-2, FR-035: the gateway's failure marks the attempt failed and the order payment_failed.
+      await failAttempt(attemptId, order.id, result.reason)
+      throw new ProblemError('payment-failed')
     }
-    const paid = await trx
-      .updateTable('orders')
-      .set({
-        status: 'paid',
-        paid_at: sql`now()`,
-        amount_paid_cents: split.amountPaidCents,
-        item_cost_cents: split.itemCostCents,
-        provider_payout_cents: split.providerPayoutCents,
-        platform_fee_cents: split.platformFeeCents,
-      })
-      .where('id', '=', order.id)
-      .where('status', '=', 'in_checkout')
-      .returning('paid_at')
-      .executeTakeFirst()
-    if (!paid) throw new ProblemError('invalid-transition')
-    const entries = [
-      ['patient_payment', split.amountPaidCents],
-      ['item_cost', split.itemCostCents],
-      ['provider_payout', split.providerPayoutCents],
-      ['platform_fee', split.platformFeeCents],
-    ] as const
-    await trx
-      .insertInto('ledger_entries')
-      .values(
-        entries.map(([category, amount_cents]) => ({
-          order_id: order.id,
-          payment_attempt_id: attemptId,
-          practice_id: order.practice_id,
-          provider_id: order.provider_id,
-          category,
-          amount_cents,
-          occurred_at: paid.paid_at!,
-        })),
-      )
-      .execute()
-    await trx.updateTable('payment_attempts').set({ status: 'succeeded', finished_at: paid.paid_at! }).where('id', '=', attemptId).execute()
-    return paid.paid_at!
-  })
+    paidAt = await recordPayment(order, lines, split, feeSharesCents, attemptId)
+  } catch (e) {
+    await closeAttempt(attemptId).catch((err) => console.error('could not close payment attempt', attemptId, err))
+    throw e
+  }
 
   return {
     order_id: Number(order.id),
@@ -172,4 +131,96 @@ export async function pay(viewer: Viewer, orderId: bigint, idempotencyKey: strin
     })),
     is_test_payment: true,
   }
+}
+
+/** SM-2 processing -> failed, SM-1 in_checkout -> payment_failed: no money recorded (FR-035). */
+async function failAttempt(attemptId: string, orderId: string, reason: 'declined' | 'no_answer'): Promise<void> {
+  await useDb()
+    .transaction()
+    .execute(async (trx) => {
+      await trx.selectFrom('orders').select('id').where('id', '=', orderId).forUpdate().execute()
+      await trx
+        .updateTable('payment_attempts')
+        .set({ status: 'failed', failure_reason: reason, finished_at: sql`now()` })
+        .where('id', '=', attemptId)
+        .where('status', '=', 'processing')
+        .execute()
+      await trx.updateTable('orders').set({ status: 'payment_failed' }).where('id', '=', orderId).where('status', '=', 'in_checkout').execute()
+    })
+}
+
+/** SM-2 processing -> failed with no failure_reason: not the gateway's answer, so the order is left alone (FM-3). */
+async function closeAttempt(attemptId: string): Promise<void> {
+  await useDb()
+    .updateTable('payment_attempts')
+    .set({ status: 'failed', finished_at: sql`now()` })
+    .where('id', '=', attemptId)
+    .where('status', '=', 'processing')
+    .execute()
+}
+
+/** Transaction 2: the split, the paid lines, four ledger entries, attempt succeeded, order paid. The order row is
+ *  locked before its lines, as in BE-9 startCheckout (R4). The deferred ct_ledger_entries_balance check runs at commit. */
+async function recordPayment(
+  order: { id: string; practice_id: string; provider_id: string },
+  lines: { id: string; held_unit_price_cents: number | null; unit_cost_cents: number }[],
+  split: Split,
+  feeSharesCents: number[],
+  attemptId: string,
+): Promise<Date> {
+  return useDb()
+    .transaction()
+    .execute(async (trx) => {
+      const locked = await trx.selectFrom('orders').select('status').where('id', '=', order.id).forUpdate().executeTakeFirst()
+      if (locked?.status !== 'in_checkout') throw new ProblemError('invalid-transition')
+      for (const [i, l] of lines.entries()) {
+        await trx
+          .updateTable('order_lines')
+          .set({ paid_unit_price_cents: l.held_unit_price_cents, unit_cost_cents_at_payment: l.unit_cost_cents, fee_share_cents: feeSharesCents[i]! })
+          .where('id', '=', l.id)
+          .execute()
+      }
+      const paid = await trx
+        .updateTable('orders')
+        .set({
+          status: 'paid',
+          paid_at: sql`now()`,
+          amount_paid_cents: split.amountPaidCents,
+          item_cost_cents: split.itemCostCents,
+          provider_payout_cents: split.providerPayoutCents,
+          platform_fee_cents: split.platformFeeCents,
+        })
+        .where('id', '=', order.id)
+        .where('status', '=', 'in_checkout')
+        .returning('paid_at')
+        .executeTakeFirstOrThrow()
+      const entries = [
+        ['patient_payment', split.amountPaidCents],
+        ['item_cost', split.itemCostCents],
+        ['provider_payout', split.providerPayoutCents],
+        ['platform_fee', split.platformFeeCents],
+      ] as const
+      await trx
+        .insertInto('ledger_entries')
+        .values(
+          entries.map(([category, amount_cents]) => ({
+            order_id: order.id,
+            payment_attempt_id: attemptId,
+            practice_id: order.practice_id,
+            provider_id: order.provider_id,
+            category,
+            amount_cents,
+            occurred_at: paid.paid_at!,
+          })),
+        )
+        .execute()
+      const done = await trx
+        .updateTable('payment_attempts')
+        .set({ status: 'succeeded', finished_at: paid.paid_at! })
+        .where('id', '=', attemptId)
+        .where('status', '=', 'processing')
+        .executeTakeFirst()
+      if (done.numUpdatedRows !== 1n) throw new Error(`payment attempt ${attemptId} is no longer processing`)
+      return paid.paid_at!
+    })
 }

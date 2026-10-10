@@ -8,17 +8,38 @@ export interface ChargeRequest {
 
 export type ChargeResult = { outcome: 'succeeded' } | { outcome: 'failed'; reason: 'declined' | 'no_answer' }
 
-// ponytail: no_answer answers at once instead of after the 10 s timeout; a real provider client adds the timeout.
-export async function charge(_request: ChargeRequest): Promise<ChargeResult> {
-  const mode = process.env.PAYMENT_STUB_MODE ?? 'succeed'
-  switch (mode) {
-    case 'succeed':
-      return { outcome: 'succeeded' }
-    case 'decline':
-      return { outcome: 'failed', reason: 'declined' }
-    case 'no_answer':
-      return { outcome: 'failed', reason: 'no_answer' }
-    default:
-      throw new Error(`PAYMENT_STUB_MODE must be succeed, decline or no_answer, not "${mode}"`)
+const NO_ANSWER: ChargeResult = { outcome: 'failed', reason: 'no_answer' }
+
+/** BE-11 contract: no answer within 10 s, or an exception, counts as `no_answer` (FM-2). */
+export async function answerWithin(answer: Promise<ChargeResult>, ms = 10_000): Promise<ChargeResult> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const timeout = new Promise<ChargeResult>((resolve) => {
+    timer = setTimeout(() => resolve(NO_ANSWER), ms)
+  })
+  try {
+    return await Promise.race([answer, timeout])
+  } catch (e) {
+    console.error('payment gateway error, counted as no_answer', e)
+    return NO_ANSWER
+  } finally {
+    clearTimeout(timer)
   }
+}
+
+const MODES = ['succeed', 'decline', 'no_answer'] as const
+
+/** A bad PAYMENT_STUB_MODE is a configuration error, not the gateway's answer: it rejects. */
+export async function charge(request: ChargeRequest): Promise<ChargeResult> {
+  const mode = process.env.PAYMENT_STUB_MODE ?? 'succeed'
+  if (!(MODES as readonly string[]).includes(mode)) {
+    throw new Error(`PAYMENT_STUB_MODE must be succeed, decline or no_answer, not "${mode}"`)
+  }
+  return answerWithin(stub(request, mode as (typeof MODES)[number]))
+}
+
+// The stub's no_answer mode answers at once so tests stay fast; answerWithin enforces the 10 s for a gateway that hangs.
+async function stub(_request: ChargeRequest, mode: (typeof MODES)[number]): Promise<ChargeResult> {
+  if (mode === 'succeed') return { outcome: 'succeeded' }
+  if (mode === 'decline') return { outcome: 'failed', reason: 'declined' }
+  return NO_ANSWER
 }
