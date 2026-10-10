@@ -8,9 +8,9 @@
 | Milestone | M4-M6 (M4 tracer bullet, M5 prices and stock, M6 measurement and operations), one pass by the human's choice (Q1 of this run) |
 | Mode | greenfield — from `specs/M1-in-ehr-supplement-orders/brief.md` ## Track ("Greenfield or brownfield: greenfield") |
 | Pass | first |
-| Stack | TypeScript 5 on Node.js 22 (D32), Nuxt 3 with Vue 3 server rendering and server API routes in one app (D34, proposed D38), PostgreSQL 16 (D33) through Kysely with plain SQL migrations (proposed D39), tests in Vitest against a real PostgreSQL 16 |
+| Stack | TypeScript 5 on Node.js 22.22 or later (D32; Nuxt 4 needs 22.22+, 24.15+ or 26+), Nuxt 4 with Vue 3 server rendering and server API routes in one app (D34, proposed D38), PostgreSQL 16 (D33) through Kysely with plain SQL migrations (proposed D39), tests in Vitest against a real PostgreSQL 16 |
 | Contract | `docs/architecture/contracts/openapi.yaml` (OpenAPI 3.1) |
-| Last updated | 2026-10-10 11:12 CDT |
+| Last updated | 2026-10-10 11:30 CDT |
 | Written by | design-lld (Claude Code, claude-opus-5-5) |
 | Approval | G3 — recorded in `.handoff/TRACKER.md ## Approvals` (never in this file); decisions in `docs/decisions/DECISION_JOURNAL.md` |
 
@@ -2530,11 +2530,11 @@ stateDiagram-v2
 | Option | Pros | Cons | Cost (build + run) | Basis |
 |---|---|---|---|---|
 | Do nothing / simplest: plain Node HTTP server with Vue's server renderer, wired by hand | no framework to learn; full control | routing, server rendering, hydration and asset building all hand-written; slow to build and easy to get wrong | +2 days; same hosting | D32 |
-| Nuxt 3 (Vue's own full-stack framework: server-rendered pages plus server API routes in one Node app) | one process serves pages and the API on one origin, exactly D36; Vue is Cerbo's front end (R01); file-based routes map one-to-one to EP rows | a framework's conventions to follow; its server layer (Nitro) is less common than Express | baseline; same hosting | D36, R01 |
+| Nuxt 4 (Vue's own full-stack framework: server-rendered pages plus server API routes in one Node app) | one process serves pages and the API on one origin, exactly D36; Vue is Cerbo's front end (R01); file-based routes map one-to-one to EP rows | a framework's conventions to follow; its server layer (Nitro) is less common than Express | baseline; same hosting | D36, R01 |
 | Express API plus a Vue app built with Vite's server rendering | Express is the most familiar Node server | two halves to glue together for server rendering; more setup than Nuxt for the same result | +1 day | — |
 
-- **Recommendation:** Nuxt 3
-- **Why (Y-statement):** In the context of one deployable that must serve server-rendered Vue pages and a same-origin JSON API, facing a 1-2 day appetite, we choose Nuxt 3 over a hand-wired server or Express plus Vite to get pages and API routes in one app with no glue, accepting Nuxt's conventions.
+- **Recommendation:** Nuxt 4
+- **Why (Y-statement):** In the context of one deployable that must serve server-rendered Vue pages and a same-origin JSON API, facing a 1-2 day appetite, we choose Nuxt 4 over a hand-wired server or Express plus Vite to get pages and API routes in one app with no glue, accepting Nuxt's conventions.
 - **In plain words:** Nuxt is Vue's own framework for exactly this: pages and an API in one app.
 - **First proposal (instead of):** same as recommendation.
 - **Revisit if:** Cerbo wants the API in another back end, then the API routes move and the Vue pages stay.
@@ -2642,3 +2642,4 @@ stateDiagram-v2
 | 2026-10-10 00:03 CDT | Draft completed before G3 (pass: finish the draft in place): gaps found by the 18 diagram jobs — Relationships rows for every FK, BE-1 dependencies by id, the component tree shows shared components under each page that uses them, ST-1/ST-8 consumers by id, every alt step in From → To form and numbered a1…, new alts (SEQ-1 retried Send, SEQ-11 not the finance lead), SM-3 release ends the lifecycle | §1 Relationships, BE-1, FE tree, ST-1, ST-8, SEQ-1 to SEQ-4, SEQ-6 to SEQ-11, SM-3 | pending G3 |
 | 2026-10-10 10:44 CDT | Revise per G3 row 2026-10-10 10:44 CDT ("a, add D42"): D42 Payment timing records options A-D, the lock analysis, the tolerance by persona and the revisit triggers; Q-7 broader holistic-care scope | D42, Q-7 | pending G3 |
 | 2026-10-10 11:12 CDT | Revise per G3 row 2026-10-10 11:11 CDT ("approve, then /design-lld"): trace FR-066 to FR-069 from the PRD clarify pass (prd.md@998ed94); EP-20 and BE-9 cover FR-066, FR-067; BE-6.allocateFee covers FR-069; S6 cancel in FE-15, ST-12 and SEQ-5 | Requirement trace, EP-20, BE-9, BE-6, FE-15, ST-12, SEQ-5 | pending G3 |
+| 2026-10-10 11:30 CDT | Revise per G3 row 2026-10-10 11:30 CDT ("a"): D38 now Nuxt 4 (current major per the npm registry, checked 2026-10-10; Nuxt 3 is the previous major); Stack line notes Node 22.22+ | D38, Stack | pending G3 |

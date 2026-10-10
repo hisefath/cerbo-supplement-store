@@ -423,7 +423,7 @@ Copy this block for each new entry (D-ids increase by one, starting at D1):
 - Cost accepted: no two-factor and no password reset. · Reversibility: Type 2 · Confidence: high
 - Revisit if: the slice moves toward real users. · Evidence: hld.md §9 D36, §10 Authentication · Interview line: "Sign-in is a stand-in, but every person still has their own account and session, because the access rules are what I'm proving."
 
-### D38 Web framework: Nuxt 3  [status: accepted]
+### D38 Web framework: Nuxt 3  [status: superseded-by D44]
 - 2026-10-10 09:52 CDT · design-lld (G3) · M3 · Decided by: human, G3 2026-10-10 09:52 CDT: "approve" · Proposed by: design-lld (Claude Code, claude-opus-5-5) · artifact: proposed as docs/architecture/lld.md D38 @9af3b07
 - Context and forces: D32 (TypeScript, server-rendered Vue), D36 (one deployable, API-first), NFR-001, appetite 1-2 days; Cerbo's front end is Vue (R01).
 - Options:
@@ -490,3 +490,14 @@ Copy this block for each new entry (D-ids increase by one, starting at D1):
 - Choice · Why: In the context of a supplement-only slice whose design (D35 ledger, D41 keys, D42 payment timing) already anticipates broader care, facing the risk of scope creep, we choose to park holistic-care products as a recorded future non-goal over writing stories now or not recording them, to keep the slice small while showing the product's direction, accepting that a later milestone must revisit product types and multi-payee orders.
 - Cost accepted: none now; a future PRD and design pass. · Reversibility: Type 2 · Confidence: high
 - Revisit if: a milestone takes on prescriptions, services or recurring charges (lld.md D42 triggers). · Evidence: prd.md NG-12, ## Clarifications Pass 1 CQ-3; lld.md D42, Q-7 · Interview line: "I parked prescriptions and services on purpose: they need multiple payees and background billing, and the ledger and idempotency design already leave room for them."
+
+### D44 Web framework: Nuxt 4 (supersedes D38's Nuxt 3)  [status: accepted]
+- 2026-10-10 11:30 CDT · design-lld (G3, revise) · M3 · Decided by: human, G3 Revise 2026-10-10 11:30 CDT: "a" · Proposed by: supervisor at toolchain bootstrap (Claude Code, claude-opus-5-5) · artifact: docs/architecture/lld.md D38 (revised) · ids differ: lld.md D38 = journal D44; supersedes D38
+- Context and forces: D38 approved "Nuxt 3", written from model memory; the npm registry check at bootstrap (2026-10-10) showed Nuxt 4 is the current major (4.6.1) and Nuxt 3 the previous major (3.21.11, still patched). The design (route handlers, page guards, file routes, per-page fetch) is the same on both.
+- Options:
+  - Do nothing: setup waits — rejected
+  - Keep Nuxt 3.21.11 as approved — rejected: starts greenfield work on the previous major, so an upgrade is likely within the project's life
+  - Revise to Nuxt 4 (agent's recommendation) — chosen
+- Choice · Why: In the context of a greenfield build on a framework whose current major is 4, facing an approved decision written from out-of-date memory, we choose Nuxt 4 over the approved Nuxt 3 to avoid upgrade debt on day one, accepting a Node 22.22+ engine floor.
+- Cost accepted: Node 22.22+ (local Node 26; Railway pins a supported version). · Reversibility: Type 1 · Confidence: high
+- Revisit if: a Nuxt 4 feature the design needs is missing. · Evidence: npm registry (nuxt dist-tags and release times, 2026-10-10); lld.md D38 · Interview line: "The AI suggested Nuxt 3 from memory; checking the registry before installing showed 4 was current, so I revised the decision before writing a line of code."
