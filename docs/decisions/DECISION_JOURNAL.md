@@ -266,3 +266,54 @@ Copy this block for each new entry (D-ids increase by one, starting at D1):
 - Choice · Why: in a factory reused across hiring-partner projects, facing PRD targets and design sizing with no evidence, we chose a bottom-up market and load method with stated formulas and ranges over guessed round numbers, so targets and machine sizing trace to evidence, accepting two more required brief questions and a heavier research pass.
 - Cost accepted: longer research before the PRD. · Reversibility: Type 2 (revert 071beeb) · Confidence: high
 - Revisit if: market questions routinely end as gaps with no public data. · Evidence: software-factory-kit FINDINGS.md F4, skills/gather-evidence/references/market-research.md; approval G-L5 2026-10-09 19:42 CDT · Interview line: "Before designing, I size the market and the expected load bottom-up with stated assumptions, so my targets and my machine sizing come from evidence, not round numbers."
+
+### D25 PRD scope: money path first, HIPAA-ready, campaigns later  [status: accepted]
+- 2026-10-09 20:29 CDT · write-prd (G1) · M2 · Decided by: human, G1 2026-10-09 20:29 CDT: "approve, then /map-ux-flows" · Proposed by: write-prd (Claude Code, claude-opus-5-5) · artifact: docs/product/prd.md@425e09c
+- Context and forces: REQ-01 to REQ-06 ask for one order journey with an auditable split; the human added default prices with an auditable price-change form (Q3), must-never-happen rules including no overselling and prices locked only at checkout (Q4), targets grounded in R10 and R11 (Q5), and HIPAA treatment (Q8). FR-001 to FR-038, NFR-001 to NFR-011, SC-001 to SC-003.
+- Options:
+  - Do nothing — rejected: no requirements, design would guess
+  - Agent's first draft (5fe5a0f) with 8 open questions and no HIPAA safeguards — revised by the human: questions answered (Q6), assumptions confirmed (Q7), HIPAA-ready added (Q8)
+  - Claim full HIPAA compliance — rejected (Q8): the assignment puts compliance out of scope and compliance is organisational (BAAs, risk analysis, policies)
+  - Put stock limits and pricing in the tracer bullet — not chosen: the money path (order, one payment, split to the cent) is what the partner grades
+  - Approved PRD 425e09c — chosen
+- Choice · Why: in a 1–2 day graded slice facing a partner who grades money integrity and judgment, we chose a tracer bullet of order → single payment → split recorded to the cent, with pricing and stock in M5, measurement in M6 and campaigns Later, over a broader first build, to prove the core promise first, accepting that stock limits arrive one milestone later.
+- Cost accepted: no overselling protection until M5; campaigns, refunds and refills deferred; HIPAA safeguards are partly stand-ins because sign-in is stubbed. · Reversibility: Type 2 (PRD edit + new G1) · Confidence: medium
+- Revisit if: the partner's feedback weights stock or campaigns over the split, or real patient data is ever in scope. · Evidence: docs/product/prd.md (Milestone cut, NG-10, Interview log Q1-Q8); R08-R13 · Interview line: "I scoped the first build to the money path because that's what they grade, and made it HIPAA-ready rather than claiming compliance, because compliance is an organisational status."
+
+### D26 PRD revision: sign-in, patient notices without health details, dashboards, no patient identity for platform staff  [status: accepted]
+- 2026-10-09 21:50 CDT · write-prd (G1) · M2 · Decided by: human, G1 2026-10-09 21:50 CDT: "approve, then /map-ux-flows" · Proposed by: write-prd (Claude Code, claude-opus-5-5) · artifact: docs/product/prd.md@930a8d7
+- Context and forces: map-ux-flows pass 1 surfaced three gaps (no story owned sign-in; no order-status view; how the patient reaches the order). The human asked for sign-in in the spec, an e-commerce dashboard with order status and bottleneck alerts, and no PII for platform staff (Q9-Q11). FR-039 to FR-050, NFR-004, NFR-012.
+- Options:
+  - Do nothing — rejected: sign-in and order status would be designed with no requirement behind them
+  - Agent's first proposal: sign-in story, order-status list Later, S1 shows the patient's link — revised by the human: order-status list and metrics wanted now; the link question researched
+  - Magic link that opens the order directly — rejected (Q10): anyone holding the email sees health details
+  - Details in the email — rejected (Q10): health information sits in the inbox, against the HIPAA-ready stance (D25)
+  - Everything in M5, or everything in M6 — rejected (Q11) for an M5 practice view and an M6 platform view
+  - Approved PRD 930a8d7 — chosen
+- Choice · Why: in an EHR store whose patients' supplement lists are health information, facing a demo that switches people and a business that needs to see bottlenecks, we chose personal sign-in, detail-free notices, a practice order-status view with alerts in M5, and a de-identified platform health dashboard in M6, over link-only access and a single dashboard, to keep each person to the minimum they need, accepting one more P1 story in the tracer bullet.
+- Cost accepted: M4 grows by sign-in; alert thresholds are agent picks (A-10, A-11) until real data exists. · Reversibility: Type 2 (PRD edit + new G1) · Confidence: medium
+- Revisit if: the partner expects the order to open from the message without sign-in, or alert lines prove noisy. · Evidence: docs/product/prd.md Interview log Q9-Q11; Fullscript support (S02.3); HHS FAQ 570 via Holland & Hart summary · Interview line: "The notice says only who sent an order; the patient signs in to see it, and operations staff audit orders by number without ever seeing who the patient is."
+
+### D29 PRD revision: financial report with gross and net, four least-privilege operations roles  [status: accepted]
+- 2026-10-09 22:16 CDT · write-prd (G1) · M2 · Decided by: human, G1 2026-10-09 22:16 CDT: "approve, then /map-ux-flows" · Proposed by: write-prd (Claude Code, claude-opus-5-5) · artifact: docs/product/prd.md@ab9f181
+- Context and forces: the human asked that operations data produce financial reports and that operations access be managed with a lean team (Q12). R14 (report shape, gross vs net, 3-year retention) and R15 (minimum necessary, separation of duties, least privilege). FR-051 to FR-065, NFR-013, NFR-014.
+- Options:
+  - Do nothing — rejected: no way to close the books or control staff access
+  - Pick gross or net revenue in the product — rejected: an accountant's judgment (R14 I2); show both, labelled
+  - One "platform staff" role for everyone — rejected: breaks minimum necessary and separation of duties (R15)
+  - Finance lead, operations specialist, SRE, data analyst; SRE grants roles, finance reviews the access log (agent's proposal, revised after R15 F4) — chosen
+- Choice · Why: for a platform that must close its books and pass an audit, facing a mixed principal-versus-agent case and HIPAA's minimum-necessary rule, we chose a balancing period report with gross and net side by side and four least-privilege roles with separated grant and review, over a single admin role, to keep every person to the data their job needs, accepting four more role screens in M6.
+- Cost accepted: M6 grows; a single SRE is a bottleneck for role changes (EC-15). · Reversibility: Type 2 · Confidence: medium
+- Revisit if: the partner's finance team settles gross vs net, or the team grows beyond four roles. · Evidence: docs/research/R14, R15; docs/product/prd.md US-9, US-10 · Interview line: "The person who hands out access never reviews the access log, and nobody on the ops team ever sees who a patient is."
+
+### D43 Broader holistic-care products parked as a future non-goal (NG-12)  [status: accepted]
+- 2026-10-10 10:58 CDT · clarify-spec (3b) · M2 · Decided by: human, clarify-spec CQ-3 2026-10-10 10:58 CDT: "A, non goals, can revisit later, and marked as was considered for the future of the product" · Proposed by: clarify-spec (Claude Code, claude-opus-5-5) · artifact: docs/product/prd.md@998ed94 NG-12
+- Context and forces: the human raised prescriptions, medical supplies, gym memberships and other holistic-care services at G3; lld.md D42 and Q-7 showed they need product types, a payee per order line, work with no patient present (recurring charges, claims, partner updates) and, for prescriptions, regulation the slice rules out (NG-3, NG-10).
+- Options:
+  - Do nothing: leave lld.md Q-7 open — not chosen
+  - A: park as a non-goal with "revisit later" and a Later-row line (agent's recommendation) — chosen
+  - B: add a P3 user story now — rejected: invites design before anyone is ready
+  - C: do not record — rejected: the thinking would not be visible in the PRD
+- Choice · Why: In the context of a supplement-only slice whose design (D35 ledger, D41 keys, D42 payment timing) already anticipates broader care, facing the risk of scope creep, we choose to park holistic-care products as a recorded future non-goal over writing stories now or not recording them, to keep the slice small while showing the product's direction, accepting that a later milestone must revisit product types and multi-payee orders.
+- Cost accepted: none now; a future PRD and design pass. · Reversibility: Type 2 · Confidence: high
+- Revisit if: a milestone takes on prescriptions, services or recurring charges (lld.md D42 triggers). · Evidence: prd.md NG-12, ## Clarifications Pass 1 CQ-3; lld.md D42, Q-7 · Interview line: "I parked prescriptions and services on purpose: they need multiple payees and background billing, and the ledger and idempotency design already leave room for them."
