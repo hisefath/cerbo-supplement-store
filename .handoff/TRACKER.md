@@ -7,11 +7,11 @@ several harnesses read it and the repo is public.
 ## Resume
 
 <!-- Rewritten as the LAST edit of every supervisor move. Times come from `date`. -->
-- **As of:** 2026-10-10 13:49 CDT
-- **In flight:** M4-T006 (sign-in, idle) and M4-T007 (reviewer views) in parallel from milestone@67a0315. Done: T001 61c966a, T002 eb3f87d, T003 09c7f55, T004 a3a582b, T005 67a0315.
-- **Next:** T006 → verify + per-task verifier → squash; T007 → verify → squash; then T008, T009, milestone review. Milestone-review notes: T004 order-level rounding fallback (all products named); T005 price-view rules untested beyond sent/unchanged, expireHoldIfDue not built (FR-037 out of M4). After M4: design-lld catch-up (helper unitCostFromLowestAllowedPrice; D47 SM-1 guard; FM-3 new-key retry; failure_reason NULL meaning; acceptance Q-1 to Q-4); define-acceptance re-run (D47 test); FM-7 reconcile owner; milestone review items pass2 R6, R7, pass3 R3, R5.
-- **Waiting on:** M4-T006 and M4-T007 workers.
-- **Verified:** 67a0315 make check OK (49 unit); M4 acceptance 32/43, no regressions
+- **As of:** 2026-10-10 15:00 CDT
+- **In flight:** M4-T008 (cancel) in .claude/worktrees/m4-t008 from milestone@440d94b. Done: T001 61c966a, T002 eb3f87d, T003 09c7f55, T004 a3a582b, T005 67a0315, T007 6a0e96f, T006 440d94b.
+- **Next:** T008 → verify → squash → T009 (acceptance joins make check) → milestone review (verifier over T004, T005, T007, T008, T009 + noted items) → report-milestone (G5). After M4: design-lld catch-up (helper unitCostFromLowestAllowedPrice; D47 SM-1 guard; FM-3 new-key retry; failure_reason NULL meaning; acceptance Q-1 to Q-4); define-acceptance re-run (D47 test); FM-7 reconcile owner; milestone review items pass2 R6, R7, pass3 R3, R5.
+- **Waiting on:** M4-T008 worker.
+- **Verified:** 440d94b make check OK (96 unit); M4 acceptance 39/43 (only T008 red)
 
 ## Tasks
 
@@ -99,6 +99,9 @@ several harnesses read it and the repo is public.
 | 2026-10-10 13:15 CDT | verifier pass 3 on M4-T003 before squash; review plan for the rest of M4: per-task verifier only for T006 (sign-in), one milestone review covering T004, T005, T007, T008 (and T009) | m4/t003-pay-and-send-exactly-once@54536f0 | "a, and yes to that review plan" |
 | 2026-10-10 13:28 CDT | M4-T003 review dispositions (pass 3), option a: relaunch T003 to fix R1 (store only successes; release the key on every problem and 5xx, per lld.md BE-5), R2 (failure_reason only declined or no_answer; FM-3 same-key retry), R4 (10 s gateway timeout as no_answer); R3, R5 to the milestone review | .handoff/reviews/M4-pass3.md; m4/t003-pay-and-send-exactly-once@54536f0 | "a, relaunch T003 with R1, R2, R4" |
 | 2026-10-10 13:36 CDT | M4-T003 relaunch questions, option a: squash as is; after-M4 design-lld catch-up: FM-3 retry uses a new key (like FM-1), failure_reason NULL = closed without the gateway's answer; then dispatch T004 | m4/t003-pay-and-send-exactly-once@13e91c9 | "a, squash T003 and start T004" |
+| 2026-10-10 14:16 CDT | G4 re-approval (Revise, option a): T006 Owns widened with app/components/AppShell.vue, db/migrations/1760000006000_sign-in-attempts.sql, server/utils/db-types.ts, server/utils/problem.ts; relaunch T006 to fix pass4 R2, R3, R4, R5, R6, R7, R8, R9, R10; R1, R11 to milestone review | specs/M4-tracer-bullet/tasks/T006.md@1fe3bc7 | "a, widen T006 Owns and relaunch" |
+| 2026-10-10 14:33 CDT | verifier pass 5 on the M4-T006 relaunch before squash | m4/t006-sign-in-and-idle-sign-out@610754e | "a, run the verifier on T006" |
+| 2026-10-10 14:54 CDT | T006 review pass5 dispositions, option a: relaunch T006 for R3 (parallel-safe limit), R4 (re-check EP-17 before redirect), R2 local half (TRUST_PROXY setting, no shared unknown-address count; ship-milestone sets and confirms the Railway header), R1 (or-vs-and test); R5, R6 to milestone review; supervisor checks the result without another verifier pass unless asked | specs/M4-tracer-bullet/tasks/T006.md@08a61ae | "a, one more T006 run" |
 
 ## Log
 
@@ -240,3 +243,12 @@ several harnesses read it and the repo is public.
 2026-10-10 13:49 CDT DISPATCH M4-T006 harness=claude-subagent why=sign-in and idle sign-out, parallel with T007 (disjoint Owns)
 2026-10-10 13:49 CDT DISPATCH M4-T007 harness=claude-subagent why=reviewer views, parallel with T006 (disjoint Owns)
 2026-10-10 13:56 CDT VERIFY M4-T007 squashed: scope-guard OK (8 paths); Done-when 5/5; make check OK (71 unit); milestone-review notes: EP-25 sorts by id only (LLD pagination says time DESC, id DESC); pages unrendered in a browser
+2026-10-10 13:57 CDT DISPATCH M4-review-T006 harness=claude-verifier why=per-task review for sign-in (pass 4, review plan approved)
+2026-10-10 14:02 CDT RESULT M4-review-T006 verifier pass 4: 11 rows (2 P1: R2 idle countdown never mounted (AppShell outside T006 Owns), R3 EP-15 rate limit not built; 3 P2: R4 next= check weaker than Nuxt plus error mapping, R5 countdown not refreshed by API activity, R6 no tests for next, redirect, sign-out; 6 P3); saved .handoff/reviews/M4-pass4.md
+2026-10-10 14:02 CDT FAIL slice-tasks M4: T006 Owns omitted app/components/AppShell.vue (FE-1 owns ST-2) and a migration path for the EP-15 rate-limit counter its Ask assigned
+2026-10-10 14:16 CDT DISPATCH M4-T006 relaunch harness=claude-subagent why=review pass4 fixes with widened Owns; milestone merged into task branch
+2026-10-10 14:33 CDT DISPATCH M4-review-T006b harness=claude-verifier why=review the T006 relaunch (pass 5, human yes)
+2026-10-10 14:38 CDT RESULT M4-review-T006b verifier pass 5: 6 rows (1 P1: R2 rate-limit address is the socket peer, all users share one bucket behind Railway proxy; 2 P2: R3 check-then-insert lets parallel bursts past 10, R4 countdown blind to other tabs and clock skew; 3 P3); saved .handoff/reviews/M4-pass5.md
+2026-10-10 14:54 CDT DISPATCH M4-T006 relaunch-2 harness=claude-subagent why=review pass5 R1-R4
+2026-10-10 15:00 CDT VERIFY M4-T006 squashed: scope-guard OK (12 paths); Done-when 4/4; make check OK (96 unit); M4 acceptance 39/43 (only T008 cancel red). Milestone-review notes: pass5 R5, R6; EP-17 idle re-check moves last_seen_at (worker Q1, accept for M4); patient home /orders has no page in M4; ship-milestone must set TRUST_PROXY=1 and confirm Railway X-Forwarded-For
+2026-10-10 15:00 CDT DISPATCH M4-T008 harness=claude-subagent why=cancel, serial on BE-9 and S2 components

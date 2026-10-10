@@ -123,6 +123,14 @@ export interface IdempotencyKeysTable {
   expires_at: Timestamp
 }
 
+export interface SignInAttemptsTable {
+  id: Id
+  /** lower-cased */
+  email: string
+  ip: string
+  attempted_at: DefaultTimestamp
+}
+
 export interface Database {
   practices: PracticesTable
   users: UsersTable
@@ -135,4 +143,5 @@ export interface Database {
   payment_attempts: PaymentAttemptsTable
   ledger_entries: LedgerEntriesTable
   idempotency_keys: IdempotencyKeysTable
+  sign_in_attempts: SignInAttemptsTable
 }

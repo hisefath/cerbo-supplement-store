@@ -1,5 +1,5 @@
-<!-- FE-1 AppShell (lld.md §3): fetches the signed-in viewer (ST-1, EP-17), provides it to pages, and shows the help
-     footer. The idle countdown (ST-2) and the signed-out redirect arrive with the sign-in page (M4-T006). -->
+<!-- FE-1 AppShell (lld.md §3): fetches the signed-in viewer (ST-1, EP-17), provides it to pages, runs the idle
+     countdown (ST-2) while someone is signed in, and shows the help footer. -->
 <script setup lang="ts">
 const { data: viewer } = await useFetch('/api/session', { key: 'viewer' })
 provide('viewer', viewer)
@@ -8,6 +8,7 @@ const staff = computed(() => !!viewer.value && viewer.value.role !== 'patient')
 
 <template>
   <div class="shell">
+    <IdleCountdown v-if="viewer" />
     <main>
       <slot />
     </main>

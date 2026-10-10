@@ -1,7 +1,7 @@
 // RFC 9457 problem details (lld.md §4 Problem types). Services throw ProblemError; defineApiHandler turns it into an
 // application/problem+json response, and any unexpected error into /problems/internal.
 import { randomUUID } from 'node:crypto'
-import { defineEventHandler, readBody, setResponseHeader, setResponseStatus, type EventHandlerRequest, type H3Event } from 'h3'
+import { defineEventHandler, getRequestHeader, readBody, setResponseHeader, setResponseStatus, type EventHandlerRequest, type H3Event } from 'h3'
 import type { ZodError, ZodType } from 'zod'
 
 const TITLES = {
@@ -45,9 +45,11 @@ export function validationProblem(err: ZodError): ProblemError {
   })
 }
 
-/** The JSON body parsed by `schema`, or 422 /problems/validation (also for a body that is not JSON). */
+/** The JSON body parsed by `schema`, or 422 /problems/validation (also for a body that is not JSON). Only an
+ *  `application/json` body is read (openapi requestBody), so a cross-site text/plain or form post is refused. */
 export async function parseBody<T>(event: H3Event, schema: ZodType<T>): Promise<T> {
-  const raw = await readBody(event).catch(() => undefined)
+  const type = getRequestHeader(event, 'content-type')?.split(';')[0]?.trim().toLowerCase()
+  const raw = type === 'application/json' ? await readBody(event).catch(() => undefined) : undefined
   const parsed = schema.safeParse(raw)
   if (!parsed.success) throw validationProblem(parsed.error)
   return parsed.data

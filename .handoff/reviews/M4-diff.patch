@@ -1,524 +1,584 @@
-diff --git a/db/migrations/1760000003000_idempotency-keys.sql b/db/migrations/1760000003000_idempotency-keys.sql
+diff --git a/app/components/AppShell.vue b/app/components/AppShell.vue
+index abcb63b..494a68f 100644
+--- a/app/components/AppShell.vue
++++ b/app/components/AppShell.vue
+@@ -1,5 +1,5 @@
+-<!-- FE-1 AppShell (lld.md §3): fetches the signed-in viewer (ST-1, EP-17), provides it to pages, and shows the help
+-     footer. The idle countdown (ST-2) and the signed-out redirect arrive with the sign-in page (M4-T006). -->
++<!-- FE-1 AppShell (lld.md §3): fetches the signed-in viewer (ST-1, EP-17), provides it to pages, runs the idle
++     countdown (ST-2) while someone is signed in, and shows the help footer. -->
+ <script setup lang="ts">
+ const { data: viewer } = await useFetch('/api/session', { key: 'viewer' })
+ provide('viewer', viewer)
+@@ -8,6 +8,7 @@ const staff = computed(() => !!viewer.value && viewer.value.role !== 'patient')
+ 
+ <template>
+   <div class="shell">
++    <IdleCountdown v-if="viewer" />
+     <main>
+       <slot />
+     </main>
+diff --git a/app/components/IdleCountdown.vue b/app/components/IdleCountdown.vue
+index f59108e..ac51c71 100644
+--- a/app/components/IdleCountdown.vue
++++ b/app/components/IdleCountdown.vue
+@@ -1,26 +1,52 @@
+-<!-- ST-2 idle countdown (lld.md §3, owned by FE-1 AppShell): when the signed-in viewer's idle_expires_at (ST-1) passes
+-     with no request moving it, opens the sign-in page with the idle message. It only shows that page sooner; the
+-     server's 15-minute rule (BE-3) decides. Renders nothing. -->
++<!-- ST-2 idle countdown (lld.md §3, owned by FE-1 AppShell): when 15 minutes pass with no request moving the server's
++     last_seen_at, opens the sign-in page with the idle message (FR-041). It starts from the viewer's idle_expires_at
++     (ST-1) and restarts on each of the person's own API calls, because each one moves last_seen_at (BE-3.resolve).
++     It only shows that page sooner; the server's 15-minute rule decides. Renders nothing. -->
+ <script setup lang="ts">
+ import type { Ref } from 'vue'
+ 
++const IDLE_MS = 15 * 60 * 1000
+ const viewer = inject<Ref<{ idle_expires_at: string } | null | undefined>>('viewer', ref(null))
+ const route = useRoute()
+ let timer: ReturnType<typeof setTimeout> | undefined
++let observer: PerformanceObserver | undefined
+ 
+-function arm() {
++function armAt(expiresAt: number) {
+   clearTimeout(timer)
+-  const at = viewer.value?.idle_expires_at
+-  if (!at) return
+-  // one second late, so the server agrees the session is idle when the next page asks
++  // one second late, so the server agrees the session is idle when the sign-in page asks
+   timer = setTimeout(() => {
+-    navigateTo(`/sign-in?next=${encodeURIComponent(route.fullPath)}&idle=1`)
+-  }, Math.max(0, new Date(at).getTime() - Date.now()) + 1000)
++    clearNuxtData('viewer') // the old viewer is gone; the sign-in page fetches ST-1 again
++    navigateTo({ path: '/sign-in', query: { next: route.fullPath, idle: '1' } })
++  }, Math.max(0, expiresAt - Date.now()) + 1000)
+ }
+ 
+-onMounted(arm)
++function arm() {
++  const at = viewer.value?.idle_expires_at
++  if (at) armAt(new Date(at).getTime())
++  else clearTimeout(timer)
++}
++
++// Resource timing sees every fetch the page makes, so no API call has to know about the countdown. A 401 means the
++// session already ended, so it restarts nothing. The countdown runs from when the answer arrived, never earlier than
++// the server's own clock started it.
++function onRequests(list: PerformanceObserverEntryList) {
++  for (const e of list.getEntries() as PerformanceResourceTiming[]) {
++    const url = new URL(e.name)
++    if (url.origin !== location.origin || !url.pathname.startsWith('/api/') || e.responseStatus === 401) continue
++    if (viewer.value) armAt(performance.timeOrigin + e.responseEnd + IDLE_MS)
++  }
++}
++
++onMounted(() => {
++  arm()
++  observer = new PerformanceObserver(onRequests)
++  observer.observe({ type: 'resource' })
++})
+ watch(() => viewer.value?.idle_expires_at, arm)
+-onBeforeUnmount(() => clearTimeout(timer))
++onBeforeUnmount(() => {
++  clearTimeout(timer)
++  observer?.disconnect()
++})
+ </script>
+ 
+ <template>
+diff --git a/app/middleware/auth.global.ts b/app/middleware/auth.global.ts
+index 30f6c48..d5a8f81 100644
+--- a/app/middleware/auth.global.ts
++++ b/app/middleware/auth.global.ts
+@@ -1,9 +1,24 @@
+ // BE-2 PageGuards (lld.md §2, SEQ-7 steps 1-2): every page except sign-in (EP-1) and the order notice (EP-2) needs a
+ // live session. Signed out: 303 to /sign-in?next=<the page asked for> and none of the page's contents (FR-040). The
+ // server's 15-minute rule decides (BE-3 via EP-17); a session that existed and ended adds `idle=1`, so the sign-in
+-// page explains it (FR-041). Wrong roles are refused by each page's own API call (BE-4) and shown as that page's
+-// Permission denied state.
++// page explains it (FR-041). A session check that fails for any other reason also goes to sign-in (fail closed).
++// Wrong roles are refused by each page's own API call (BE-4) and shown as that page's Permission denied state.
+ const PUBLIC = [/^\/sign-in$/, /^\/notices\/[^/]+$/]
++const BASE = 'http://same-site.invalid'
++
++/** `next` when it is a path on this site, else null. Parsed as a browser would ("/\t/x" is "//x"), so no off-site
++ *  redirect: "/orders/1001" yes; "//evil.example", "/\evil.example", "/\t/evil.example", "https://…" no. */
++export function safeNext(next: unknown): string | null {
++  if (typeof next !== 'string' || !next.startsWith('/')) return null
++  let url: URL
++  try {
++    url = new URL(next, BASE)
++  } catch {
++    return null
++  }
++  const path = url.pathname + url.search + url.hash
++  return url.origin === BASE && !path.startsWith('//') ? path : null
++}
+ 
+ export default defineNuxtRouteMiddleware(async (to) => {
+   if (PUBLIC.some((p) => p.test(to.path))) return
+@@ -11,7 +26,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
+   try {
+     await useRequestFetch()('/api/session')
+   } catch (err) {
+-    if ((err as { statusCode?: number }).statusCode !== 401) return // not a sign-in problem; the page shows its own error
+-    return navigateTo({ path: '/sign-in', query: { next: to.fullPath, ...(hadSession ? { idle: '1' } : {}) } }, { redirectCode: 303 })
++    const idle = hadSession && (err as { statusCode?: number })?.statusCode === 401
++    return navigateTo({ path: '/sign-in', query: { next: to.fullPath, ...(idle ? { idle: '1' } : {}) } }, { redirectCode: 303 })
+   }
+ })
+diff --git a/app/pages/sign-in.vue b/app/pages/sign-in.vue
+index 418f404..2be2ba6 100644
+--- a/app/pages/sign-in.vue
++++ b/app/pages/sign-in.vue
+@@ -1,21 +1,22 @@
+ <!-- FE-2 SignInPage (S8, EP-1; lld.md §3, SEQ-7): email and password through EP-15, then the page asked for (`next`)
+      or the role's home. Public: the page guard (BE-2) lets everyone open it. -->
+ <script setup lang="ts">
++import { safeNext } from '~/middleware/auth.global'
++
+ interface Me { role: string }
+ 
+ const route = useRoute()
++// Each role's home (flows.md F7 step 2): a patient her orders, a provider the practice dashboard, a reviewer Paid
++// orders. Finance, SRE and analyst roles open the one operations page their role is for.
+ const HOME: Record<string, string> = {
++  patient: '/orders',
+   provider: '/practice/dashboard',
+   operations_specialist: '/ops/orders',
+-  finance_lead: '/ops/finance',
++  finance_lead: '/ops/orders',
+   sre: '/ops/system',
+   data_analyst: '/ops/health',
+ }
+-// Only same-site paths: "/x" yes, "//evil.example" or "/\evil.example" no (open redirect).
+-const next = computed(() => {
+-  const n = route.query.next
+-  return typeof n === 'string' && /^\/(?![/\\])/.test(n) ? n : null
+-})
++const next = computed(() => safeNext(route.query.next))
+ const idle = computed(() =>
+   route.query.idle
+     ? `You were signed out after 15 minutes without activity.${next.value?.startsWith('/orders/') ? ' Sign in to return to your order.' : ''}`
+@@ -38,10 +39,9 @@ async function submit() {
+   error.value = null
+   pending.value = true
+   const timer = setTimeout(() => (slow.value = true), 10_000)
++  let me: Me
+   try {
+-    const me = await $fetch<Me>('/api/session', { method: 'POST', body: { email: email.value.trim(), password: password.value } })
+-    clearNuxtData('viewer') // ST-1 is fetched again for the signed-in person
+-    await navigateTo(next.value ?? HOME[me.role] ?? '/', { replace: true })
++    me = await $fetch<Me>('/api/session', { method: 'POST', body: { email: email.value.trim(), password: password.value } })
+   } catch (err) {
+     const { statusCode: status, data } = err as { statusCode?: number; data?: { title?: string } }
+     password.value = ''
+@@ -53,11 +53,20 @@ async function submit() {
+           : status
+             ? "We couldn't sign you in right now. Try again in a moment."
+             : "You're offline. Try again when you're back online."
++    pending.value = false
++    return
+   } finally {
+     clearTimeout(timer)
+-    pending.value = false
+     slow.value = false
+   }
++  // Signed in: from here a failure is the next page's own, never a sign-in error. The button stays busy while the
++  // next page opens, so a second press can't sign in twice.
++  clearNuxtData('viewer') // ST-1 is fetched again for the signed-in person
++  try {
++    await navigateTo(next.value ?? HOME[me.role] ?? '/', { replace: true })
++  } finally {
++    pending.value = false
++  }
+ }
+ </script>
+ 
+diff --git a/db/migrations/1760000006000_sign-in-attempts.sql b/db/migrations/1760000006000_sign-in-attempts.sql
 new file mode 100644
-index 0000000..43d4ef0
+index 0000000..8f119f2
 --- /dev/null
-+++ b/db/migrations/1760000003000_idempotency-keys.sql
-@@ -0,0 +1,38 @@
++++ b/db/migrations/1760000006000_sign-in-attempts.sql
+@@ -0,0 +1,20 @@
 +-- Up Migration
-+-- M4-T003 pay and send exactly once (lld.md §1, §7, SM-2, SM-3): idempotency_keys (D41) and the freeze of a
-+-- succeeded payment attempt (INV-2). Runs as supplements_owner (Q-3, Q-4).
++-- M4-T006 EP-15 sign-in rate limit (lld.md §4 `/problems/rate-limited`: more than 10 sign-in attempts in 15 minutes
++-- for one email or one address). One row per counted attempt; BE-3 counts the last 15 minutes and deletes older rows.
++-- Runs as supplements_owner (Q-3, Q-4).
 +
-+create table idempotency_keys (
-+  user_id bigint not null constraint fk_idempotency_keys_user references users (id) on delete cascade,
-+  key text not null constraint ck_idempotency_keys_key_len check (length(key) between 1 and 255),
-+  route text not null,
-+  request_hash bytea not null,
-+  status varchar(20) not null default 'in_flight' constraint ck_idempotency_keys_status check (
-+    status in ('in_flight', 'completed')),
-+  response_status smallint,
-+  response_body jsonb,
-+  created_at timestamptz not null default now(),
-+  expires_at timestamptz not null,
-+  constraint pk_idempotency_keys primary key (user_id, key)
++create table sign_in_attempts (
++  id bigint generated always as identity constraint pk_sign_in_attempts primary key,
++  email text not null,
++  ip text not null,
++  attempted_at timestamptz not null default now()
 +);
-+create index ix_idempotency_keys_expires on idempotency_keys (expires_at);
++create index ix_sign_in_attempts_email on sign_in_attempts (email, attempted_at);
++create index ix_sign_in_attempts_ip on sign_in_attempts (ip, attempted_at);
++create index ix_sign_in_attempts_attempted_at on sign_in_attempts (attempted_at);
 +
-+-- BE-5 begins, completes, releases (deletes in-flight rows) and purges expired keys.
-+grant select, insert, update, delete on idempotency_keys to supplements_app;
-+
-+-- INV-2: a succeeded payment attempt is money taken; it never changes or disappears, as tg_orders_paid_frozen
-+-- freezes paid orders.
-+create function payment_attempts_succeeded_frozen() returns trigger language plpgsql as $$
-+begin
-+  if old.status = 'succeeded' then
-+    raise exception 'payment attempt % succeeded; it cannot change', old.id using errcode = 'check_violation';
-+  end if;
-+  return coalesce(new, old);
-+end $$;
-+create trigger tg_payment_attempts_succeeded_frozen before update or delete on payment_attempts
-+  for each row execute function payment_attempts_succeeded_frozen();
++-- BE-3 records, counts and prunes attempts.
++grant select, insert, delete on sign_in_attempts to supplements_app;
 +
 +-- Down Migration
-+drop trigger tg_payment_attempts_succeeded_frozen on payment_attempts;
-+drop function payment_attempts_succeeded_frozen();
-+drop table idempotency_keys;
-diff --git a/server/api/orders/[orderId]/payments.post.ts b/server/api/orders/[orderId]/payments.post.ts
-index 48a74cd..a52ddde 100644
---- a/server/api/orders/[orderId]/payments.post.ts
-+++ b/server/api/orders/[orderId]/payments.post.ts
-@@ -1,6 +1,8 @@
- // EP-23 POST /api/orders/{orderId}/payments (payOrder): the patient pays with the test payment (FR-006, FR-007).
--// The Idempotency-Key header is required; storing and replaying it (BE-5) arrives with M4-T003.
--import { getRequestHeader, getRouterParam, setResponseStatus } from 'h3'
-+// The Idempotency-Key header is required; a repeat gets the first payment's result without charging again (BE-5,
-+// FR-008).
-+import { getRouterParam, setResponseStatus } from 'h3'
-+import { guard } from '../../../services/idempotency'
- import { pay } from '../../../services/payments'
- import { requireViewer } from '../../../services/session'
- import { defineApiHandler, ProblemError } from '../../../utils/problem'
-@@ -9,12 +11,9 @@ export default defineApiHandler(async (event) => {
-   const viewer = await requireViewer(event)
-   const id = getRouterParam(event, 'orderId') ?? ''
-   if (!/^\d{1,18}$/.test(id)) throw new ProblemError('not-found')
--  const key = getRequestHeader(event, 'idempotency-key')
--  if (!key) throw new ProblemError('idempotency-key-missing')
--  if (key.length > 255) {
--    throw new ProblemError('validation', { errors: [{ pointer: '#/headers/Idempotency-Key', detail: 'At most 255 characters.' }] })
--  }
--  const receipt = await pay(viewer, BigInt(id), key)
--  setResponseStatus(event, 201)
--  return receipt
-+  return guard(event, viewer.userId, 'POST /api/orders/{orderId}/payments', { orderId: id }, async (key) => {
-+    const receipt = await pay(viewer, BigInt(id), key)
-+    setResponseStatus(event, 201)
-+    return receipt
-+  })
- })
-diff --git a/server/api/orders/index.post.ts b/server/api/orders/index.post.ts
-index 8976455..bd208bc 100644
---- a/server/api/orders/index.post.ts
-+++ b/server/api/orders/index.post.ts
-@@ -1,8 +1,9 @@
--// EP-19 POST /api/orders (sendOrder): sends an order to a patient. The Idempotency-Key header is accepted; storing
--// and replaying it (BE-5) arrives with M4-T003.
-+// EP-19 POST /api/orders (sendOrder): sends an order to a patient. The Idempotency-Key header is required; a repeat
-+// gets the first response (BE-5, D41).
- import { setResponseStatus } from 'h3'
- import { z } from 'zod'
- import { assertRole } from '../../services/access-policy'
-+import { guard } from '../../services/idempotency'
- import { sendOrder } from '../../services/orders'
- import { requireViewer } from '../../services/session'
- import { defineApiHandler, parseBody } from '../../utils/problem'
-@@ -16,10 +17,12 @@ export default defineApiHandler(async (event) => {
-   const viewer = await requireViewer(event)
-   assertRole(viewer, ['provider'])
-   const body = await parseBody(event, SendOrderRequest)
--  const order = await sendOrder(viewer, {
--    patientId: BigInt(body.patient_id),
--    lines: body.lines.map((l) => ({ productId: BigInt(l.product_id), quantity: l.quantity })),
-+  return guard(event, viewer.userId, 'POST /api/orders', body, async () => {
-+    const order = await sendOrder(viewer, {
-+      patientId: BigInt(body.patient_id),
-+      lines: body.lines.map((l) => ({ productId: BigInt(l.product_id), quantity: l.quantity })),
-+    })
-+    setResponseStatus(event, 201)
-+    return order
-   })
--  setResponseStatus(event, 201)
--  return order
- })
-diff --git a/server/services/idempotency.ts b/server/services/idempotency.ts
-new file mode 100644
-index 0000000..cae04b7
---- /dev/null
-+++ b/server/services/idempotency.ts
-@@ -0,0 +1,120 @@
-+// BE-5 IdempotencyGuard (lld.md §2, §4 Idempotency, SM-3, D41): a repeated mutating request gets the first request's
-+// stored response. Keys live in `idempotency_keys`, scoped to the signed-in person, kept 24 h.
-+import { createHash } from 'node:crypto'
-+import { getRequestHeader, getResponseStatus, setResponseHeader, setResponseStatus, type H3Event } from 'h3'
-+import { sql } from 'kysely'
-+import { useDb } from '../utils/db'
-+import { defineApiHandler, ProblemError } from '../utils/problem'
-+
-+export interface StoredResponse {
-+  status: number
-+  body: unknown
-+}
-+
-+export interface KeyRow {
-+  route: string
-+  request_hash: Buffer
-+  status: string
-+  response_status: number | null
-+  response_body: unknown
-+  /** in flight for 60 s or more (FM-6) */
-+  abandoned: boolean
-+}
-+
-+/** SHA-256 of the canonical request: the parsed body plus path params, in schema order. */
-+export function requestHash(value: unknown): Buffer {
-+  return createHash('sha256').update(JSON.stringify(value)).digest()
-+}
-+
-+/** What a request gets when its (user, key) already has a row (SM-3). */
-+export function decide(row: KeyRow, route: string, hash: Buffer): { replay: StoredResponse } | { takeOver: true } {
-+  if (row.route !== route || !row.request_hash.equals(hash)) throw new ProblemError('idempotency-mismatch')
-+  if (row.status === 'completed') return { replay: { status: row.response_status!, body: row.response_body } }
-+  if (row.abandoned) return { takeOver: true }
-+  throw new ProblemError('idempotency-in-flight')
-+}
-+
-+export async function begin(
-+  userId: bigint,
-+  key: string | undefined,
-+  route: string,
-+  hash: Buffer,
-+): Promise<{ replay: StoredResponse } | { proceed: true }> {
-+  if (!key) throw new ProblemError('idempotency-key-missing')
-+  if (key.length > 255) {
-+    throw new ProblemError('validation', { errors: [{ pointer: '#/headers/Idempotency-Key', detail: 'At most 255 characters.' }] })
-+  }
-+  const db = useDb()
-+  const user = userId.toString()
-+  // Q-5: expired keys are purged on write.
-+  await db.deleteFrom('idempotency_keys').where('expires_at', '<=', sql<Date>`now()`).execute()
-+  const inserted = await db
-+    .insertInto('idempotency_keys')
-+    .values({ user_id: user, key, route, request_hash: hash, expires_at: sql<Date>`now() + interval '24 hours'` })
-+    .onConflict((oc) => oc.doNothing())
-+    .returning('key')
-+    .executeTakeFirst()
-+  if (inserted) return { proceed: true }
-+
-+  const row = await db
-+    .selectFrom('idempotency_keys')
-+    .select(['route', 'request_hash', 'status', 'response_status', 'response_body', sql<boolean>`created_at <= now() - interval '60 seconds'`.as('abandoned')])
-+    .where('user_id', '=', user)
-+    .where('key', '=', key)
-+    .executeTakeFirst()
-+  // ponytail: a row released between our insert and this read answers in-flight; the client's retry then proceeds.
-+  if (!row) throw new ProblemError('idempotency-in-flight')
-+  const d = decide(row, route, hash)
-+  if ('replay' in d) return d
-+  // FM-6: take over an abandoned in-flight key, only if no other request took it first.
-+  const taken = await db
-+    .updateTable('idempotency_keys')
-+    .set({ created_at: sql<Date>`now()`, expires_at: sql<Date>`now() + interval '24 hours'` })
-+    .where('user_id', '=', user)
-+    .where('key', '=', key)
-+    .where('status', '=', 'in_flight')
-+    .where(sql<boolean>`created_at <= now() - interval '60 seconds'`)
-+    .returning('key')
-+    .executeTakeFirst()
-+  if (!taken) throw new ProblemError('idempotency-in-flight')
-+  return { proceed: true }
-+}
-+
-+export async function complete(userId: bigint, key: string, status: number, body: unknown): Promise<void> {
-+  await useDb()
-+    .updateTable('idempotency_keys')
-+    .set({ status: 'completed', response_status: status, response_body: JSON.stringify(body ?? null) })
-+    .where('user_id', '=', userId.toString())
-+    .where('key', '=', key)
-+    .where('status', '=', 'in_flight')
-+    .execute()
-+}
-+
-+/** Deletes the in-flight row so a retry with the same key can run (SM-3 release). */
-+export async function release(userId: bigint, key: string): Promise<void> {
-+  await useDb()
-+    .deleteFrom('idempotency_keys')
-+    .where('user_id', '=', userId.toString())
-+    .where('key', '=', key)
-+    .where('status', '=', 'in_flight')
-+    .execute()
-+}
-+
-+function send(event: H3Event, r: StoredResponse) {
-+  setResponseStatus(event, r.status)
-+  if (r.status >= 400) setResponseHeader(event, 'content-type', 'application/problem+json')
-+  return r.body
-+}
-+
-+/** BE-1 wrapping for a guarded mutation: begin, run `work` (its problems become responses), then complete, or release
-+ *  on a 5xx so a retry can run. A 4xx problem and the 502 of a failed payment are stored and replayed like a success. */
-+export async function guard<T>(event: H3Event, userId: bigint, route: string, request: unknown, work: (key: string) => Promise<T>): Promise<T> {
-+  const key = getRequestHeader(event, 'idempotency-key')
-+  const started = await begin(userId, key, route, requestHash(request))
-+  if ('replay' in started) return send(event, started.replay) as T
-+  const body = await defineApiHandler(() => work(key!))(event)
-+  const status = getResponseStatus(event)
-+  if (status >= 500 && status !== 502) await release(userId, key!)
-+  else await complete(userId, key!, status, body)
-+  return body
-+}
-diff --git a/server/services/payments.ts b/server/services/payments.ts
-index 901a4a4..4cef0e8 100644
---- a/server/services/payments.ts
-+++ b/server/services/payments.ts
-@@ -86,78 +86,35 @@ export async function pay(viewer: Viewer, orderId: bigint, idempotencyKey: strin
-       await trx.updateTable('orders').set({ status: 'needs_review' }).where('id', '=', o.id).execute()
-       return null
-     }
-+    // LINV-6: a second payment while one is processing loses on uq_payment_attempts_one_processing.
-     const attempt = await trx
-       .insertInto('payment_attempts')
-       .values({ order_id: o.id, idempotency_key: idempotencyKey, amount_cents: split.amountPaidCents })
-       .returning('id')
-       .executeTakeFirstOrThrow()
-+      .catch((e: unknown) => {
-+        throw (e as { code?: string }).code === '23505' ? new ProblemError('invalid-transition') : e
-+      })
-     return { order: o, lines, split, feeSharesCents, attemptId: attempt.id }
-   })
-   if (!prepared) throw new ProblemError('order-under-review')
-   const { order, lines, split, feeSharesCents, attemptId } = prepared
- 
--  const result = await charge({ orderId, amountCents: split.amountPaidCents, idempotencyKey })
--
--  if (result.outcome === 'failed') {
--    await db.transaction().execute(async (trx) => {
--      await trx
--        .updateTable('payment_attempts')
--        .set({ status: 'failed', failure_reason: result.reason, finished_at: sql`now()` })
--        .where('id', '=', attemptId)
--        .execute()
--      await trx.updateTable('orders').set({ status: 'payment_failed' }).where('id', '=', order.id).where('status', '=', 'in_checkout').execute()
--    })
--    throw new ProblemError('payment-failed')
--  }
--
--  // Transaction 2: the split, the paid lines, four ledger entries, attempt succeeded, order paid. The deferred
--  // ct_ledger_entries_balance check runs at commit.
--  const paidAt = await db.transaction().execute(async (trx) => {
--    for (const [i, l] of lines.entries()) {
--      await trx
--        .updateTable('order_lines')
--        .set({ paid_unit_price_cents: l.held_unit_price_cents, unit_cost_cents_at_payment: l.unit_cost_cents, fee_share_cents: feeSharesCents[i]! })
--        .where('id', '=', l.id)
--        .execute()
-+  // R1: once the processing attempt is committed, any failure before transaction 2 commits marks it failed (SM-2),
-+  // so the next Pay is not blocked by uq_payment_attempts_one_processing.
-+  let failureReason = 'error'
-+  let paidAt: Date
-+  try {
-+    const result = await charge({ orderId, amountCents: split.amountPaidCents, idempotencyKey })
-+    if (result.outcome === 'failed') {
-+      failureReason = result.reason
-+      throw new ProblemError('payment-failed')
-     }
--    const paid = await trx
--      .updateTable('orders')
--      .set({
--        status: 'paid',
--        paid_at: sql`now()`,
--        amount_paid_cents: split.amountPaidCents,
--        item_cost_cents: split.itemCostCents,
--        provider_payout_cents: split.providerPayoutCents,
--        platform_fee_cents: split.platformFeeCents,
--      })
--      .where('id', '=', order.id)
--      .where('status', '=', 'in_checkout')
--      .returning('paid_at')
--      .executeTakeFirst()
--    if (!paid) throw new ProblemError('invalid-transition')
--    const entries = [
--      ['patient_payment', split.amountPaidCents],
--      ['item_cost', split.itemCostCents],
--      ['provider_payout', split.providerPayoutCents],
--      ['platform_fee', split.platformFeeCents],
--    ] as const
--    await trx
--      .insertInto('ledger_entries')
--      .values(
--        entries.map(([category, amount_cents]) => ({
--          order_id: order.id,
--          payment_attempt_id: attemptId,
--          practice_id: order.practice_id,
--          provider_id: order.provider_id,
--          category,
--          amount_cents,
--          occurred_at: paid.paid_at!,
--        })),
--      )
--      .execute()
--    await trx.updateTable('payment_attempts').set({ status: 'succeeded', finished_at: paid.paid_at! }).where('id', '=', attemptId).execute()
--    return paid.paid_at!
--  })
-+    paidAt = await recordPayment(order, lines, split, feeSharesCents, attemptId)
-+  } catch (e) {
-+    await failAttempt(attemptId, order.id, failureReason).catch((err) => console.error('could not mark payment attempt failed', attemptId, err))
-+    throw e
-+  }
- 
-   return {
-     order_id: Number(order.id),
-@@ -173,3 +130,85 @@ export async function pay(viewer: Viewer, orderId: bigint, idempotencyKey: strin
-     is_test_payment: true,
++drop table sign_in_attempts;
+diff --git a/server/services/session.ts b/server/services/session.ts
+index 60b6917..86f574c 100644
+--- a/server/services/session.ts
++++ b/server/services/session.ts
+@@ -67,10 +67,37 @@ export function toViewer(u: { id: string; display_name: string; role: string; pr
    }
  }
+ 
+-// ponytail: no sign-in rate limit yet (lld §4 says 10 tries / 15 min per email or address); no table holds the
+-// counts and counting every attempt would refuse the acceptance suite's repeated sign-ins. See result.md Questions.
+-export async function signIn(email: string, password: string, _ip: string): Promise<{ viewer: Viewer; cookieToken: string }> {
++// lld.md §4 /problems/rate-limited: more than 10 sign-in attempts in 15 minutes for one email or one address.
++const MAX_ATTEMPTS = 10
++const ATTEMPT_WINDOW_MS = 15 * 60 * 1000
 +
-+/** SM-2 processing -> failed, SM-1 in_checkout -> payment_failed: no money recorded (FR-035). */
-+async function failAttempt(attemptId: string, orderId: string, reason: string): Promise<void> {
-+  await useDb()
-+    .transaction()
-+    .execute(async (trx) => {
-+      await trx.selectFrom('orders').select('id').where('id', '=', orderId).forUpdate().execute()
-+      await trx
-+        .updateTable('payment_attempts')
-+        .set({ status: 'failed', failure_reason: reason, finished_at: sql`now()` })
-+        .where('id', '=', attemptId)
-+        .where('status', '=', 'processing')
-+        .execute()
-+      await trx.updateTable('orders').set({ status: 'payment_failed' }).where('id', '=', orderId).where('status', '=', 'in_checkout').execute()
-+    })
++/** Refuses the attempt (429) when its email or address already has 10 in the window; otherwise records it. */
++async function countAttempt(email: string, ip: string): Promise<void> {
++  const db = useDb()
++  const t = now()
++  const since = new Date(t.getTime() - ATTEMPT_WINDOW_MS)
++  const recent = await db
++    .selectFrom('sign_in_attempts')
++    .select(['email', 'ip', 'attempted_at'])
++    .where('attempted_at', '>', since)
++    .where((eb) => eb.or([eb('email', '=', email), eb('ip', '=', ip)]))
++    .orderBy('attempted_at')
++    .execute()
++  let retryAt = 0
++  for (const mine of [recent.filter((a) => a.email === email), recent.filter((a) => a.ip === ip)]) {
++    // the next try is allowed once all but the newest 9 have left the window
++    if (mine.length >= MAX_ATTEMPTS)
++      retryAt = Math.max(retryAt, mine[mine.length - MAX_ATTEMPTS]!.attempted_at.getTime() + ATTEMPT_WINDOW_MS)
++  }
++  if (retryAt) throw new ProblemError('rate-limited', { retryAfterSeconds: Math.ceil((retryAt - t.getTime()) / 1000) })
++  // ponytail: count-then-insert can let a burst of parallel tries past 10 by a few; a lock per key if that matters.
++  await db.insertInto('sign_in_attempts').values({ email, ip, attempted_at: t }).execute()
++  await db.deleteFrom('sign_in_attempts').where('attempted_at', '<=', since).execute()
 +}
 +
-+/** Transaction 2: the split, the paid lines, four ledger entries, attempt succeeded, order paid. The order row is
-+ *  locked before its lines, as in BE-9 startCheckout (R4). The deferred ct_ledger_entries_balance check runs at commit. */
-+async function recordPayment(
-+  order: { id: string; practice_id: string; provider_id: string },
-+  lines: { id: string; held_unit_price_cents: number | null; unit_cost_cents: number }[],
-+  split: Split,
-+  feeSharesCents: number[],
-+  attemptId: string,
-+): Promise<Date> {
-+  return useDb()
-+    .transaction()
-+    .execute(async (trx) => {
-+      const locked = await trx.selectFrom('orders').select('status').where('id', '=', order.id).forUpdate().executeTakeFirst()
-+      if (locked?.status !== 'in_checkout') throw new ProblemError('invalid-transition')
-+      for (const [i, l] of lines.entries()) {
-+        await trx
-+          .updateTable('order_lines')
-+          .set({ paid_unit_price_cents: l.held_unit_price_cents, unit_cost_cents_at_payment: l.unit_cost_cents, fee_share_cents: feeSharesCents[i]! })
-+          .where('id', '=', l.id)
-+          .execute()
-+      }
-+      const paid = await trx
-+        .updateTable('orders')
-+        .set({
-+          status: 'paid',
-+          paid_at: sql`now()`,
-+          amount_paid_cents: split.amountPaidCents,
-+          item_cost_cents: split.itemCostCents,
-+          provider_payout_cents: split.providerPayoutCents,
-+          platform_fee_cents: split.platformFeeCents,
-+        })
-+        .where('id', '=', order.id)
-+        .where('status', '=', 'in_checkout')
-+        .returning('paid_at')
-+        .executeTakeFirstOrThrow()
-+      const entries = [
-+        ['patient_payment', split.amountPaidCents],
-+        ['item_cost', split.itemCostCents],
-+        ['provider_payout', split.providerPayoutCents],
-+        ['platform_fee', split.platformFeeCents],
-+      ] as const
-+      await trx
-+        .insertInto('ledger_entries')
-+        .values(
-+          entries.map(([category, amount_cents]) => ({
-+            order_id: order.id,
-+            payment_attempt_id: attemptId,
-+            practice_id: order.practice_id,
-+            provider_id: order.provider_id,
-+            category,
-+            amount_cents,
-+            occurred_at: paid.paid_at!,
-+          })),
-+        )
-+        .execute()
-+      const done = await trx
-+        .updateTable('payment_attempts')
-+        .set({ status: 'succeeded', finished_at: paid.paid_at! })
-+        .where('id', '=', attemptId)
-+        .where('status', '=', 'processing')
-+        .executeTakeFirst()
-+      if (done.numUpdatedRows !== 1n) throw new Error(`payment attempt ${attemptId} is no longer processing`)
-+      return paid.paid_at!
-+    })
-+}
++export async function signIn(email: string, password: string, ip: string): Promise<{ viewer: Viewer; cookieToken: string }> {
+   const db = useDb()
++  await countAttempt(email.toLowerCase(), ip)
+   const user = await db
+     .selectFrom('users')
+     .select(['id', 'display_name', 'role', 'practice_id', 'password_hash'])
 diff --git a/server/utils/db-types.ts b/server/utils/db-types.ts
-index 1ebd0a0..df946f3 100644
+index df946f3..d568eff 100644
 --- a/server/utils/db-types.ts
 +++ b/server/utils/db-types.ts
-@@ -110,6 +110,19 @@ export interface LedgerEntriesTable {
-   occurred_at: Timestamp
+@@ -123,6 +123,14 @@ export interface IdempotencyKeysTable {
+   expires_at: Timestamp
  }
  
-+export interface IdempotencyKeysTable {
-+  user_id: Int8
-+  key: string
-+  route: string
-+  request_hash: Buffer
-+  status: Generated<string>
-+  response_status: number | null
-+  /** jsonb: written as JSON text, read back parsed */
-+  response_body: ColumnType<unknown, string | null, string | null>
-+  created_at: DefaultTimestamp
-+  expires_at: Timestamp
++export interface SignInAttemptsTable {
++  id: Id
++  /** lower-cased */
++  email: string
++  ip: string
++  attempted_at: DefaultTimestamp
 +}
 +
  export interface Database {
    practices: PracticesTable
    users: UsersTable
-@@ -121,4 +134,5 @@ export interface Database {
-   notices: NoticesTable
+@@ -135,4 +143,5 @@ export interface Database {
    payment_attempts: PaymentAttemptsTable
    ledger_entries: LedgerEntriesTable
-+  idempotency_keys: IdempotencyKeysTable
+   idempotency_keys: IdempotencyKeysTable
++  sign_in_attempts: SignInAttemptsTable
  }
-diff --git a/tests/unit/idempotency.test.ts b/tests/unit/idempotency.test.ts
-new file mode 100644
-index 0000000..5e59c28
---- /dev/null
-+++ b/tests/unit/idempotency.test.ts
-@@ -0,0 +1,64 @@
-+// BE-5 IdempotencyGuard (lld.md §2, §4 Idempotency, SM-3): what a repeat of a remembered key gets.
-+import { describe, expect, it } from 'vitest'
-+import { decide, requestHash } from '../../server/services/idempotency'
+diff --git a/server/utils/problem.ts b/server/utils/problem.ts
+index fd41284..1b2d3f6 100644
+--- a/server/utils/problem.ts
++++ b/server/utils/problem.ts
+@@ -1,7 +1,7 @@
+ // RFC 9457 problem details (lld.md §4 Problem types). Services throw ProblemError; defineApiHandler turns it into an
+ // application/problem+json response, and any unexpected error into /problems/internal.
+ import { randomUUID } from 'node:crypto'
+-import { defineEventHandler, readBody, setResponseHeader, setResponseStatus, type EventHandlerRequest, type H3Event } from 'h3'
++import { defineEventHandler, getRequestHeader, readBody, setResponseHeader, setResponseStatus, type EventHandlerRequest, type H3Event } from 'h3'
+ import type { ZodError, ZodType } from 'zod'
+ 
+ const TITLES = {
+@@ -45,9 +45,11 @@ export function validationProblem(err: ZodError): ProblemError {
+   })
+ }
+ 
+-/** The JSON body parsed by `schema`, or 422 /problems/validation (also for a body that is not JSON). */
++/** The JSON body parsed by `schema`, or 422 /problems/validation (also for a body that is not JSON). Only an
++ *  `application/json` body is read (openapi requestBody), so a cross-site text/plain or form post is refused. */
+ export async function parseBody<T>(event: H3Event, schema: ZodType<T>): Promise<T> {
+-  const raw = await readBody(event).catch(() => undefined)
++  const type = getRequestHeader(event, 'content-type')?.split(';')[0]?.trim().toLowerCase()
++  const raw = type === 'application/json' ? await readBody(event).catch(() => undefined) : undefined
+   const parsed = schema.safeParse(raw)
+   if (!parsed.success) throw validationProblem(parsed.error)
+   return parsed.data
+diff --git a/tests/unit/session.test.ts b/tests/unit/session.test.ts
+index 429e6a8..29969e2 100644
+--- a/tests/unit/session.test.ts
++++ b/tests/unit/session.test.ts
+@@ -1,10 +1,56 @@
+-// BE-3 SessionService and BE-20 Clock (lld.md §2, SEQ-7, SEAM-1, SEAM-6): the pure parts of sign-in and idle sign-out.
+-import { randomBytes, scryptSync } from 'node:crypto'
+-import { afterEach, describe, expect, it } from 'vitest'
++// BE-3 SessionService, BE-20 Clock, EP-15 rate limit, EP-16 sign-out and BE-2's `next=` check (lld.md §2, §4, SEQ-7,
++// SEAM-1, SEAM-6). No database: a fake Kysely driver records the SQL and answers each statement from `answer`.
++import { createHash, randomBytes, scryptSync } from 'node:crypto'
++import { createApp, toWebHandler } from 'h3'
++import { Kysely, PostgresAdapter, PostgresIntrospector, PostgresQueryCompiler, type CompiledQuery } from 'kysely'
++import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+ import { freezeClock, now } from '../../server/services/clock'
+-import { idleCutoff, toMe, toViewer, verifyPassword } from '../../server/services/session'
++import { idleCutoff, signIn, signOut, toMe, toViewer, verifyPassword } from '../../server/services/session'
 +import { ProblemError } from '../../server/utils/problem'
++import signOutHandler from '../../server/api/session/index.delete'
++import signInHandler from '../../server/api/session/index.post'
 +
-+const ROUTE = 'POST /api/orders'
-+const hash = requestHash({ patient_id: 1, lines: [{ product_id: 2, quantity: 1 }] })
-+const row = (over: Partial<Parameters<typeof decide>[0]> = {}): Parameters<typeof decide>[0] => ({
-+  route: ROUTE,
-+  request_hash: hash,
-+  status: 'completed',
-+  response_status: 201,
-+  response_body: { order_id: 1001 },
-+  abandoned: false,
-+  ...over,
++const fake = vi.hoisted(() => ({
++  queries: [] as { sql: string; parameters: readonly unknown[] }[],
++  answer: (_sql: string): unknown[] => [],
++}))
++vi.mock('../../server/utils/db', () => ({
++  useDb: () =>
++    new Kysely<any>({
++      dialect: {
++        createAdapter: () => new PostgresAdapter(),
++        createQueryCompiler: () => new PostgresQueryCompiler(),
++        createIntrospector: (db) => new PostgresIntrospector(db),
++        createDriver: () => ({
++          init: async () => {},
++          acquireConnection: async () => ({
++            executeQuery: async (q: CompiledQuery) => {
++              fake.queries.push({ sql: q.sql, parameters: q.parameters })
++              return { rows: fake.answer(q.sql) as any[] }
++            },
++            streamQuery: () => {
++              throw new Error('not used')
++            },
++          }),
++          beginTransaction: async () => {},
++          commitTransaction: async () => {},
++          rollbackTransaction: async () => {},
++          releaseConnection: async () => {},
++          destroy: async () => {},
++        }),
++      },
++    }),
++}))
+ 
+ const MIN = 60 * 1000
++const T0 = new Date('2026-10-10T12:00:00Z')
++const sha256 = (s: string) => createHash('sha256').update(s).digest()
++const sqlOf = (start: string) => fake.queries.filter((q) => q.sql.startsWith(start))
++
++beforeEach(() => {
++  fake.queries.length = 0
++  fake.answer = () => []
 +})
+ 
+ function hashFor(password: string, N = 1024, r = 8, p = 1): string {
+   const salt = randomBytes(16)
+@@ -71,3 +117,198 @@ describe('idle limit: 15 minutes (FR-041, NFR-008, AE-039)', () => {
+     expect(toMe(toViewer({ id: '9', display_name: 'Omar', role: 'sre', practice_id: null }, lastSeen)).practice_id).toBeNull()
+   })
+ })
 +
-+function problemOf(fn: () => unknown): string {
-+  try {
-+    fn()
-+  } catch (e) {
-+    if (e instanceof ProblemError) return e.slug
-+    throw e
++describe('EP-15 rate limit: more than 10 attempts in 15 minutes for one email or one address (lld.md §4)', () => {
++  const chen = { id: '2', display_name: 'Dr. Chen', role: 'provider', practice_id: '3', password_hash: hashFor('pw') }
++  const attempts = (n: number, who: { email?: string; ip?: string }, firstMinAgo = 14) =>
++    Array.from({ length: n }, (_, i) => ({
++      email: who.email ?? 'other@example.test',
++      ip: who.ip ?? '10.0.0.9',
++      attempted_at: new Date(T0.getTime() - (firstMinAgo - i) * MIN),
++    }))
++  function world(rows: ReturnType<typeof attempts>) {
++    fake.answer = (s) =>
++      s.startsWith('select') && s.includes('"sign_in_attempts"')
++        ? rows
++        : s.startsWith('select') && s.includes('"users"')
++          ? [chen]
++          : s.startsWith('insert into "sessions"')
++            ? [{ last_seen_at: now() }]
++            : []
 +  }
-+  return 'no problem'
-+}
 +
-+describe('requestHash: SHA-256 of the canonical request', () => {
-+  it('is 32 bytes, the same for the same request and different for a different one', () => {
-+    expect(hash.length).toBe(32)
-+    expect(requestHash({ patient_id: 1, lines: [{ product_id: 2, quantity: 1 }] }).equals(hash)).toBe(true)
-+    expect(requestHash({ patient_id: 1, lines: [{ product_id: 2, quantity: 2 }] }).equals(hash)).toBe(false)
++  it('the 11th attempt for one email is refused with 429 rate-limited and when to retry; no password check, nothing recorded', async () => {
++    freezeClock(T0)
++    world(attempts(10, { email: 'chen@example.test' }))
++    const err = await signIn('Chen@Example.test', 'pw', '10.0.0.1').catch((e) => e)
++    expect(err).toBeInstanceOf(ProblemError)
++    expect(err.slug).toBe('rate-limited')
++    expect(err.extensions).toEqual({ retryAfterSeconds: 60 }) // the oldest of the 10 leaves the window in 1 minute
++    expect(sqlOf('select').some((q) => q.sql.includes('"users"'))).toBe(false)
++    expect(sqlOf('insert')).toEqual([])
++  })
++
++  it('the 11th attempt from one address is refused too, whatever the email', async () => {
++    freezeClock(T0)
++    world(attempts(10, { ip: '10.0.0.1' }, 5))
++    const err = await signIn('chen@example.test', 'pw', '10.0.0.1').catch((e) => e)
++    expect(err.slug).toBe('rate-limited')
++    expect(err.extensions).toEqual({ retryAfterSeconds: 10 * 60 })
++  })
++
++  it('the 10th attempt goes through, is recorded (email lower-cased) and only the last 15 minutes count', async () => {
++    freezeClock(T0)
++    world(attempts(9, { email: 'chen@example.test', ip: '10.0.0.1' }))
++    const { viewer } = await signIn('Chen@Example.test', 'pw', '10.0.0.1')
++    expect(viewer.displayName).toBe('Dr. Chen')
++    const [count] = sqlOf('select')
++    expect(count.sql).toContain('"attempted_at" >')
++    expect(count.parameters).toContainEqual(new Date(T0.getTime() - 15 * MIN))
++    const [recorded] = sqlOf('insert into "sign_in_attempts"')
++    expect(recorded.parameters).toEqual(expect.arrayContaining(['chen@example.test', '10.0.0.1']))
++  })
++
++  it('a wrong password is still one recorded attempt and answers sign-in-failed', async () => {
++    freezeClock(T0)
++    world([])
++    const err = await signIn('chen@example.test', 'wrong', '10.0.0.1').catch((e) => e)
++    expect(err.slug).toBe('sign-in-failed')
++    expect(sqlOf('insert into "sign_in_attempts"')).toHaveLength(1)
++    expect(sqlOf('insert into "sessions"')).toEqual([])
 +  })
 +})
 +
-+describe('decide: a repeat of a key that already has a row (SM-3)', () => {
-+  it('completed + same request -> replay the stored response unchanged (FR-008)', () => {
-+    expect(decide(row(), ROUTE, hash)).toEqual({ replay: { status: 201, body: { order_id: 1001 } } })
-+  })
-+  it('a stored problem is replayed too (e.g. the 502 of a failed payment)', () => {
-+    const body = { type: '/problems/payment-failed', status: 502 }
-+    expect(decide(row({ response_status: 502, response_body: body }), ROUTE, hash)).toEqual({ replay: { status: 502, body } })
-+  })
-+  it('same key, different body -> 422 idempotency-mismatch', () => {
-+    expect(problemOf(() => decide(row(), ROUTE, requestHash({ other: true })))).toBe('idempotency-mismatch')
-+  })
-+  it('same key on a different route -> 422 idempotency-mismatch', () => {
-+    expect(problemOf(() => decide(row(), 'POST /api/orders/{orderId}/payments', hash))).toBe('idempotency-mismatch')
-+  })
-+  it('still in flight -> 409 idempotency-in-flight', () => {
-+    expect(problemOf(() => decide(row({ status: 'in_flight', response_status: null, response_body: null }), ROUTE, hash))).toBe(
-+      'idempotency-in-flight',
++describe('EP-15 reads only application/json bodies (no sign-in by a cross-site form post)', () => {
++  const post = (type: string, body: string) =>
++    toWebHandler(createApp().use(signInHandler))(
++      new Request('http://localhost/api/session', { method: 'POST', headers: { 'content-type': type }, body }),
 +    )
++  it('text/plain or a form post with valid JSON-looking content is 422 validation and never checked', async () => {
++    const json = JSON.stringify({ email: 'chen@example.test', password: 'pw' })
++    for (const [type, body] of [
++      ['text/plain', json],
++      ['text/plain;charset=UTF-8', json],
++      ['application/x-www-form-urlencoded', 'email=chen%40example.test&password=pw'],
++      ['multipart/form-data; boundary=x', '--x--'],
++    ]) {
++      const res = await post(type!, body!)
++      expect(res.status, type).toBe(422)
++      expect((await res.json()).type).toBe('/problems/validation')
++    }
++    expect(fake.queries).toEqual([])
 +  })
-+  it('in flight for 60 s or more -> the new request takes it over (FM-6)', () => {
-+    expect(decide(row({ status: 'in_flight', response_status: null, response_body: null, abandoned: true }), ROUTE, hash)).toEqual({
-+      takeOver: true,
-+    })
++  it('application/json (any charset) is read', async () => {
++    fake.answer = () => []
++    const res = await post('application/json; charset=utf-8', JSON.stringify({ email: 'nobody@example.test', password: 'pw' }))
++    expect((await res.json()).type).toBe('/problems/sign-in-failed')
 +  })
-+  it('an abandoned row with a different body is still a mismatch', () => {
-+    const r = row({ status: 'in_flight', response_status: null, response_body: null, abandoned: true })
-+    expect(problemOf(() => decide(r, ROUTE, requestHash({ other: true })))).toBe('idempotency-mismatch')
++})
++
++describe('EP-16 DELETE /api/session: sign out (FR-041)', () => {
++  const run = (cookie?: string) =>
++    toWebHandler(createApp().use(signOutHandler))(
++      new Request('http://localhost/api/session', { method: 'DELETE', headers: cookie ? { cookie } : {} }),
++    )
++
++  it('204, the session cookie cleared and the session ended', async () => {
++    freezeClock(T0)
++    fake.answer = (s) =>
++      s.startsWith('update "sessions" set "last_seen_at"')
++        ? [{ user_id: '2', last_seen_at: T0 }]
++        : s.startsWith('select')
++          ? [{ id: '2', display_name: 'Dr. Chen', role: 'provider', practice_id: '3' }]
++          : []
++    const res = await run('session=tok-1')
++    expect(res.status).toBe(204)
++    expect(await res.text()).toBe('')
++    const cleared = res.headers.getSetCookie().find((c) => c.startsWith('session='))
++    expect(cleared).toMatch(/^session=;.*Max-Age=0/i)
++    expect(cleared).toMatch(/HttpOnly/i)
++    const ended = sqlOf('update "sessions" set "ended_at"')
++    expect(ended).toHaveLength(1)
++    expect(ended[0].sql).toContain('"ended_at" is null')
++    expect(ended[0].parameters).toEqual([T0, sha256('tok-1')])
++  })
++
++  it('401 unauthenticated when nobody is signed in, and nothing is ended', async () => {
++    const res = await run()
++    expect(res.status).toBe(401)
++    expect((await res.json()).type).toBe('/problems/unauthenticated')
++    expect(sqlOf('update')).toEqual([])
++  })
++
++  it('signOut ends only a live session with that token', async () => {
++    freezeClock(T0)
++    await signOut('tok-2')
++    expect(fake.queries).toEqual([
++      { sql: 'update "sessions" set "ended_at" = $1 where "token_hash" = $2 and "ended_at" is null', parameters: [T0, sha256('tok-2')] },
++    ])
++  })
++})
++
++describe('BE-2 page guard and the sign-in `next=` check', () => {
++  const nav = vi.fn()
++  let session: () => Promise<unknown>
++  async function guard() {
++    vi.stubGlobal('defineNuxtRouteMiddleware', (f: unknown) => f)
++    vi.stubGlobal('useRequestFetch', () => () => session())
++    vi.stubGlobal('navigateTo', nav)
++    vi.stubGlobal('useCookie', () => ({ value: undefined }))
++    vi.stubGlobal('useNuxtData', () => ({ data: { value: undefined } }))
++    return import('../../app/middleware/auth.global')
++  }
++  afterEach(() => {
++    vi.unstubAllGlobals()
++    nav.mockReset()
++  })
++
++  it('accepts only same-site paths; anything a browser would take off-site is refused', async () => {
++    const { safeNext } = await guard()
++    expect(safeNext('/orders/1001')).toBe('/orders/1001')
++    expect(safeNext('/ops/orders?status=paid#top')).toBe('/ops/orders?status=paid#top')
++    for (const bad of [
++      '//evil.example',
++      '/\\evil.example',
++      '/\t/evil.example',
++      '/..//evil.example',
++      '/\n/evil.example',
++      '\\/evil.example',
++      'https://evil.example/x',
++      'javascript:alert(1)',
++      'orders/1001',
++      '',
++      undefined,
++      ['/orders/1'],
++    ])
++      expect(safeNext(bad), JSON.stringify(bad)).toBeNull()
++  })
++
++  it('a signed-out visitor is sent to sign-in with next (303); a signed-in one passes', async () => {
++    const { default: mw } = await guard()
++    session = async () => ({ role: 'patient' })
++    await (mw as any)({ path: '/orders/1001', fullPath: '/orders/1001' })
++    expect(nav).not.toHaveBeenCalled()
++    session = async () => Promise.reject({ statusCode: 401 })
++    await (mw as any)({ path: '/orders/1001', fullPath: '/orders/1001' })
++    expect(nav).toHaveBeenCalledWith({ path: '/sign-in', query: { next: '/orders/1001' } }, { redirectCode: 303 })
++  })
++
++  it('fails closed: a session check that errors sends the person to sign-in, not to the page', async () => {
++    const { default: mw } = await guard()
++    session = async () => Promise.reject({ statusCode: 500 })
++    await (mw as any)({ path: '/orders/1001', fullPath: '/orders/1001' })
++    expect(nav).toHaveBeenCalledWith({ path: '/sign-in', query: { next: '/orders/1001' } }, { redirectCode: 303 })
++    nav.mockReset()
++    session = async () => Promise.reject(new TypeError('fetch failed'))
++    await (mw as any)({ path: '/ops/orders', fullPath: '/ops/orders' })
++    expect(nav).toHaveBeenCalledTimes(1)
++  })
++
++  it('the sign-in and notice pages are public', async () => {
++    const { default: mw } = await guard()
++    session = async () => Promise.reject({ statusCode: 401 })
++    await (mw as any)({ path: '/sign-in', fullPath: '/sign-in?next=/orders/1' })
++    await (mw as any)({ path: '/notices/abc', fullPath: '/notices/abc' })
++    expect(nav).not.toHaveBeenCalled()
 +  })
 +})
