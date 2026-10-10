@@ -547,3 +547,72 @@ Copy this block for each new entry (D-ids increase by one, starting at D1):
 - Choice: a · Why: In the context of four milestones built on one unmerged branch stack, facing a rule of one MR and one revert per milestone, we chose to merge M1 to M4 in order over one combined MR to keep each milestone reviewable and revertible on its own, accepting four MRs and that M4 waits for M1 to M3.
 - Cost accepted: M4 cannot merge before M1, M2 and M3 are on main; four reviews instead of one. · Reversibility: Type 2 two-way — merge order can change before any MR merges · Confidence: high
 - Revisit if: an M1 to M3 MR needs rework that conflicts with M4 code. · Evidence: docs/milestones/M4.md DV-1; AGENTS.md "Git"; approval report-milestone DV-1: M4 stays stacked on milestone/m1-research; merge M1, M2, M3, M4 to main in order, one MR each (option a) 2026-10-10 15:39 CDT · Interview line: "Later milestones were stacked on unmerged planning branches, so we merge them to main in order, one MR each, keeping every milestone reviewable and revertible on its own."
+
+### D49 Accept node-forge advisory in Nuxt dev tooling  [status: accepted]
+- Date 2026-10-10 15:48 CDT · phase 12 check-security (G5) · milestone M4 · Decided by: human, G5 SEC-2 2026-10-10 15:48 CDT: "Approve, accept SEC-2" · Proposed by: check-security (Claude Code, claude-opus-5-5) · artifact: docs/security/CHECKLIST.md@239c922
+- Context and forces: npm audit reports node-forge (GHSA-86w9-cpqp-85rv, high: forged RSA PKCS#1 v1.5 signatures accepted), pulled in by listhen, the Nuxt development server. The app verifies no signatures, and a build check (npx nuxi build, Log 2026-10-10 15:48 CDT VERIFY SEC-1 Q1) shows node-forge is absent from .output/server; npm's only offered fix is a downgrade to Nuxt 3.7.4 (against D44).
+- Options:
+  - Do nothing / simplest (shown as "default: pending G5"): leave it undecided — cost: the milestone cannot merge — rejected: blocks G5 with no benefit
+  - fix: upgrade once a Nuxt release ships a patched dev server — cost: none available today; npm's downgrade undoes D44 — rejected: no fix exists that keeps D44
+  - accept, revisit on a trigger (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: a high advisory stays in the developer toolchain — chosen
+  - investigate — cost: about 10 minutes — rejected: already done for SEC-1 (node-forge not in the built server)
+- Choice: accept · Why: In the context of a high advisory in the Nuxt development server, facing no upstream fix that keeps Nuxt 4, we chose to accept it over a downgrade or waiting, because the vulnerable code is not in the shipped server, accepting that developer machines keep it until Nuxt updates.
+- Cost accepted: the advisory stays in package-lock.json and in local dev servers until Nuxt ships a patched dependency. · Reversibility: Type 2 two-way — upgrade when a patched release exists · Confidence: high
+- Revisit if: node-forge appears in .output/server, the app starts verifying signatures (for example real payment webhooks), or a Nuxt 4 release removes the advisory. · Evidence: docs/security/CHECKLIST.md SEC-2; npm audit CMD-16; .handoff/TRACKER.md Log SEC-1 Q1 build check; approval G5 SEC-2 2026-10-10 15:48 CDT · Interview line: "The advisory was in the dev server only; a build check proved it never ships, so we accepted it with a trigger tied to adding signature checks."
+
+### D50 Accept braces advisory in build tooling  [status: accepted]
+- Date 2026-10-10 15:49 CDT · phase 12 check-security (G5) · milestone M4 · Decided by: human, G5 SEC-3 2026-10-10 15:49 CDT: "Approve, accept SEC-3" · Proposed by: check-security (Claude Code, claude-opus-5-5) · artifact: docs/security/CHECKLIST.md@239c922
+- Context and forces: npm audit reports braces (GHSA-vfj7-8cjw-p6xm, high: stack-exhaustion denial of service on crafted glob patterns), pulled in by micromatch, fast-glob and globby under Nuxt build tooling and kysely-codegen. The app never passes user input to glob matching, and the build check shows braces and micromatch absent from .output/server; npm's only offered fix downgrades kysely-codegen to 0.6.1.
+- Options:
+  - Do nothing / simplest (shown as "default: pending G5"): leave it undecided — cost: the milestone cannot merge — rejected: blocks G5 with no benefit
+  - fix: upgrade once patched releases exist — cost: none available today; the kysely-codegen downgrade leaves the Nuxt path open — rejected: no real fix exists
+  - accept, revisit on a trigger (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: a high advisory stays in the build toolchain — chosen
+  - investigate — cost: about 10 minutes — rejected: already done (braces not in the built server)
+- Choice: accept · Why: In the context of a denial-of-service advisory in build-time glob matching, facing no upstream fix, we chose to accept it over a downgrade, because only our own build controls the patterns and the code never ships, accepting that build machines keep it until upstream updates.
+- Cost accepted: the advisory stays in package-lock.json and in build and codegen runs. · Reversibility: Type 2 two-way — upgrade when patched · Confidence: high
+- Revisit if: braces appears in .output/server, the app matches file patterns from user input, or patched Nuxt and kysely-codegen releases exist. · Evidence: docs/security/CHECKLIST.md SEC-3; npm audit CMD-16; .handoff/TRACKER.md Log SEC-1 Q1 build check; approval G5 SEC-3 2026-10-10 15:49 CDT · Interview line: "The DoS advisory lived in build-time glob matching that only our build controls, and it never ships, so we accepted it with a trigger."
+
+### D51 Accept simple-git advisory in Nuxt devtools  [status: accepted]
+- Date 2026-10-10 15:50 CDT · phase 12 check-security (G5) · milestone M4 · Decided by: human, G5 SEC-1 2026-10-10 15:50 CDT: "Approve, accept SEC-1" · Proposed by: check-security (Claude Code, claude-opus-5-5) · artifact: docs/security/CHECKLIST.md@239c922
+- Context and forces: npm audit reports simple-git and @simple-git/argv-parser (GHSA-x6jw-m9v5-85vh, GHSA-g4wm-2vf7-vfgr, GHSA-858h-whjf-mvg5, GHSA-v5rq-49vh-5v5c, critical: git command execution past the unsafe-operation guard), pulled in by @nuxt/devtools. Devtools are off (nuxt.config.ts:4), the app never runs git, and the build check shows simple-git absent from .output/server; npm's only offered fix is a downgrade to Nuxt 3.7.4 (against D44). The human first chose investigate (G5 SEC-1, "Approve, investigate SEC-1"), and this decision closes it.
+- Options:
+  - Do nothing / simplest (shown as "default: stays investigate"): leave SEC-1 open — cost: the milestone cannot merge — rejected: the investigation already answered the question
+  - fix: upgrade once Nuxt devtools ship simple-git 4.0.2 or later — cost: no release confirmed; the downgrade undoes D44 — rejected: no fix exists that keeps D44
+  - accept, revisit on a trigger (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: a critical advisory stays in the developer toolchain — chosen
+- Choice: accept · Why: In the context of a critical advisory in Nuxt devtools, facing no upstream fix that keeps Nuxt 4, we chose to accept it over a downgrade, because devtools are off and the code is not in the shipped server, accepting that developer machines keep it until Nuxt updates.
+- Cost accepted: the advisory stays in package-lock.json and on developer machines. · Reversibility: Type 2 two-way — upgrade when patched · Confidence: high
+- Revisit if: simple-git appears in .output/server, devtools are switched on, or a Nuxt 4 release ships patched devtools. · Evidence: docs/security/CHECKLIST.md SEC-1, Q1; npm audit CMD-16; .handoff/TRACKER.md Log SEC-1 Q1 build check; approvals G5 SEC-1 (investigate, then accept) · Interview line: "A critical git-execution advisory sat in Nuxt's devtools; we proved by building that it never ships and devtools are off, then accepted it with a trigger."
+
+### D52 Accept SameSite and JSON-only as the CSRF defence  [status: accepted]
+- Date 2026-10-10 15:51 CDT · phase 12 check-security (G5) · milestone M4 · Decided by: human, G5 SEC-5 2026-10-10 15:51 CDT: "Approve, add T011 and run it" · Proposed by: check-security (Claude Code, claude-opus-5-5) · artifact: docs/security/CHECKLIST.md@239c922
+- Context and forces: no anti-CSRF token or Origin check exists. Session cookies are SameSite=Lax (server/services/session.ts:180) and request bodies are JSON-only (server/utils/problem.ts:50), so a cross-site page cannot send an authenticated write today. An in-EHR iframe would need SameSite=None, which removes that protection.
+- Options:
+  - Do nothing / simplest (shown as "default: pending G5"): leave it undecided — cost: the milestone cannot merge — rejected: blocks G5
+  - fix: add an anti-CSRF token or a strict Origin check on every write — cost: a token round trip in every page and API client now — rejected: no current attack path
+  - accept, revisit on a trigger (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: relies on browser SameSite behaviour — chosen
+- Choice: accept · Why: In the context of a first-party app with SameSite=Lax cookies and JSON-only bodies, facing no cross-site write path today, we chose to accept the missing CSRF token over adding one now, accepting that embedding in the EHR iframe will need a token first.
+- Cost accepted: no defence in depth beyond SameSite and content type. · Reversibility: Type 2 two-way · Confidence: med
+- Revisit if: the app is embedded in an iframe or the session cookie moves to SameSite=None, or a write endpoint accepts a non-JSON body. · Evidence: docs/security/CHECKLIST.md SEC-5, CK-06; approval G5 SEC-5 2026-10-10 15:51 CDT · Interview line: "CSRF is blocked by SameSite=Lax plus JSON-only bodies today; the trigger to add tokens is embedding the app in the EHR iframe."
+
+### D53 Accept unbounded order quantity until stock limits  [status: accepted]
+- Date 2026-10-10 15:51 CDT · phase 12 check-security (G5) · milestone M4 · Decided by: human, G5 SEC-10 2026-10-10 15:51 CDT: "Approve, add T011 and run it" · Proposed by: check-security (Claude Code, claude-opus-5-5) · artifact: docs/security/CHECKLIST.md@239c922
+- Context and forces: order line quantity has no upper bound (server/api/orders/index.post.ts:13), so a huge quantity overflows the integer total and returns a 500 instead of a validation error. Stock limits (FR-025) arrive in M5 and will cap quantity naturally.
+- Options:
+  - Do nothing / simplest (shown as "default: pending G5"): leave it undecided — cost: the milestone cannot merge — rejected: blocks G5
+  - fix: add an arbitrary maximum now — cost: a number with no design basis, replaced in M5 — rejected: invents a limit before the stock design
+  - accept until M5 (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: a confusing 500 for absurd quantities — chosen
+- Choice: accept · Why: In the context of a quantity rule that M5's stock limit will define, facing only a 500 on absurd input, we chose to accept it over inventing a cap now, accepting a poor error message until M5.
+- Cost accepted: a 500 instead of a 422 for absurd quantities; no data harm (the database rejects the overflow). · Reversibility: Type 2 two-way · Confidence: high
+- Revisit if: M5 adds stock limits (FR-025), or a real user hits the 500. · Evidence: docs/security/CHECKLIST.md SEC-10, CK-04; approval G5 SEC-10 2026-10-10 15:51 CDT · Interview line: "Quantity is uncapped until the stock rules land, which is safe because the database refuses the overflow; the only cost is an unhelpful error."
+
+### D54 M4 keeps 11 tasks as a one-time exception  [status: accepted]
+- Date 2026-10-10 15:55 CDT · phase 8 slice-tasks (G4 re-approval at G5) · milestone M4 · Decided by: human, G4 exception: M4 keeps 11 tasks (T011 security hardening) above the 10-task limit 2026-10-10 15:55 CDT: "a, keep T011 in M4 with an exception" · Proposed by: supervisor (Claude Code, claude-opus-5-5) · artifact: specs/M4-tracer-bullet/tasks@58fa3ee
+- Context and forces: the slice-tasks analyze pass fails a milestone with more than 10 tasks, to keep it reviewable. M4-T011 was added at G5 to fix six security findings (SEC-4, SEC-6, SEC-7, SEC-8, SEC-9, SEC-11) in M4's own code, making 11 tasks; the supervisor dispatched it before the analyze pass ran (Log FAIL).
+- Options:
+  - Do nothing / simplest (shown as "d) Stop T011"): drop the fixes — cost: six findings stay open and M4 cannot pass G5 — rejected: blocks the milestone
+  - a) Keep T011 in M4 with a recorded exception (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: one milestone above the 10-task limit — chosen
+  - b) Move T011 to a new milestone M4.1 — cost: M4 merges with six open security findings or waits for M4.1, plus another report and gate — rejected: delays the security fixes for a counting rule
+  - c) Merge T010 and T011 into one task file — cost: rewrites the record of a task already run and squashed — rejected: breaks the audit trail
+- Choice: a · Why: In the context of security fixes found at G5 for M4's own code, facing the 10-task limit, we chose a one-time exception over a new milestone, to ship M4 with its hardening, accepting one milestone of 11 tasks.
+- Cost accepted: M4 has 11 tasks; the analyze pass reports FAIL on the count for M4 only. · Reversibility: Type 2 two-way · Confidence: high
+- Revisit if: a second milestone needs the same exception (then the kit's limit or how it counts close-out fix tasks should change, via route-failure). · Evidence: slice-tasks analyze output (11 tasks > 10); .handoff/TRACKER.md Log FAIL supervisor T011 dispatch; approval G4 exception: M4 keeps 11 tasks (T011 security hardening) above the 10-task limit 2026-10-10 15:55 CDT · Interview line: "Security fixes found at the merge gate belong to the milestone they fix, so we took a recorded one-time exception to the task limit rather than ship M4 without them."
