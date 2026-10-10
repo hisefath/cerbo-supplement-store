@@ -67,6 +67,7 @@ Non-goals:
 - **NG-9** Discount-off-retail-price pricing — because the assignment asks for a price or a margin per item (REQ-02, Q3).
 - **NG-11** Alerts by email or text — because messaging is a stand-in (NG-1); alerts show on the dashboards only (Q11); revisit after the slice.
 - **NG-10** Formal HIPAA compliance (business associate agreements with every vendor that touches patient data, a risk analysis, written policies, staff training) — because the assignment puts compliance out of scope and compliance belongs to the organisation, not the software (REQ-08, Q8); the slice is HIPAA-ready instead (NFR-003, NFR-004, NFR-007 to NFR-011); revisit before any real patient data.
+- **NG-12** Broader holistic-care products: prescriptions filled by a partner pharmacy, medical supplies, services such as gym memberships or IV sessions, and recurring charges — considered for the future of the product, not built now, because they need product types, a payee per order line (a pharmacy or a gym rather than the provider), work that runs with no patient present (recurring charges, insurance claims, partner updates) and, for prescriptions, regulation this slice rules out (NG-3, NG-10); revisit later, when a milestone takes them on. (CQ-3)
 
 No-gos:
 - **NOGO-1** The provider paying for a patient's order up front — because that is the problem being removed (REQ-01, JS-01).
@@ -87,7 +88,7 @@ it to the patient, so that I never pay for it myself.
 
 - Why this priority: it is the start of the journey the assignment asks for (REQ-01, REQ-02).
 - Independent test: a provider builds an order for a patient, sees the total and their payout, sends it, and the patient can see it.
-- Requirements: FR-001, FR-002, FR-003, FR-004, FR-005 · Examples: AE-001, AE-002, AE-003, AE-004
+- Requirements: FR-001, FR-002, FR-003, FR-004, FR-005, FR-066, FR-067, FR-068 · Examples: AE-001, AE-002, AE-003, AE-004, AE-063, AE-064, AE-065
 
 ### US-2 Patient pays once (P1)
 
@@ -123,7 +124,7 @@ without surprises.
 
 - Why this priority: the assignment asks for the dashboard (REQ-06); the human asked that stock never be oversold (Q4) and for an order-status list with alerts (Q9, Q11).
 - Independent test: after two paid orders, the provider's dashboard shows the units sold and the lower stock count.
-- Requirements: FR-025, FR-026, FR-027, FR-028, FR-029, FR-030, FR-038, FR-045, FR-046, FR-047 · Examples: AE-022, AE-023, AE-024, AE-025, AE-026, AE-027, AE-036, AE-042, AE-043, AE-044
+- Requirements: FR-025, FR-026, FR-027, FR-028, FR-029, FR-030, FR-038, FR-045, FR-046, FR-047, FR-069 · Examples: AE-022, AE-023, AE-024, AE-025, AE-026, AE-027, AE-036, AE-042, AE-043, AE-044, AE-066
 
 ### US-6 Measure in-house volume and platform health (P3)
 
@@ -201,7 +202,7 @@ changes made by one person and reviewed by another, so that nobody holds more ac
 - **FR-025** [Unwanted] (US-5) If a provider adds more units of a product than are in stock, then the system shall refuse the quantity and show the units available.
 - **FR-026** [Unwanted] (US-5) If a patient pays for an order whose items are no longer all in stock, then the system shall refuse the payment without charging and name the items short of stock.
 - **FR-027** [Event] (US-5) When an order is marked paid, the system shall reduce each product's stock by the quantity sold.
-- **FR-028** [Event] (US-5) When a provider opens the practice dashboard for a chosen period, the system shall show per product the units sold, the amount patients paid and the provider payout.
+- **FR-028** [Event] (US-5) When a provider opens the practice dashboard for a chosen period, the system shall show per product the units sold, the amount patients paid and the provider payout after that product's share of the platform fee (FR-069). (CQ-2, from .handoff/TRACKER.md:69 and docs/architecture/lld.md Q-2 @6733116)
 - **FR-029** [Ubiquitous] (US-5) The system shall show the current units in stock for each product on the practice dashboard.
 - **FR-030** [Event] (US-5) When a platform staff member records a stock adjustment with a quantity and a reason, the system shall add a stock history entry showing who made it, when, the change and the reason.
 - **FR-031** [Ubiquitous] (US-6) The system shall record on every order its practice, provider, time sent and time paid.
@@ -239,6 +240,10 @@ changes made by one person and reviewed by another, so that nobody holds more ac
 - **FR-063** [Event] (US-9) When the finance lead exports the financial report, the system shall produce the period totals and one line per paid order with its order number and no patient identity.
 - **FR-064** [Event] (US-9) When the finance lead runs the financial report, the system shall list each provider's payout total for the period.
 - **FR-065** [Unwanted] (US-9) If a period's totals do not balance to the cent, then the system shall mark the report as not balanced and name the orders that cause the gap.
+- **FR-066** [Event] (US-1) When a provider cancels a sent or payment-failed order, the system shall mark it cancelled and show its patient "This order was cancelled by your practice." (CQ-1, from .handoff/TRACKER.md:69 and docs/architecture/lld.md Q-1 @6733116)
+- **FR-067** [Unwanted] (US-1) If a provider tries to cancel an order whose checkout has started or that is paid, then the system shall refuse and leave the order unchanged. (CQ-1, from .handoff/TRACKER.md:69 and docs/architecture/lld.md Q-1 @6733116)
+- **FR-068** [Unwanted] (US-1) If anyone tries to change the items or quantities of a sent order, then the system shall refuse and keep the order as sent. (CQ-1, from .handoff/TRACKER.md:69 and docs/architecture/lld.md Q-1 @6733116)
+- **FR-069** [Ubiquitous] (US-5) The system shall share each paid order's one platform fee across its lines in proportion to each line's amount, giving any leftover cents to the lines with the largest remainders, so the shares add up to the order's fee exactly. (CQ-2, from .handoff/TRACKER.md:69 and docs/architecture/lld.md Q-2 @6733116)
 
 ## Non-functional requirements
 
@@ -335,6 +340,10 @@ cost → default patient price): Vitamin D3 $9.00 → $18.00; Magnesium Glycinat
 - **AE-060** (FR-060) Given no orders were paid in September, When Fran runs September's report, Then every total shows $0.00 and the report is balanced.
 - **AE-061** (FR-058) Given Sam is the SRE, When he opens Order 1042's breakdown, Then he is refused and sees no amounts.
 - **AE-062** (FR-059) Given October had 99.7 % availability, 0.4 % errors and 2 % of pages slower than 2 s, When Sam opens system health for October, Then he sees those three figures.
+- **AE-063** (FR-066) Given Ben Ortiz's $30.00 order is sent and unpaid, When Dr. Chen cancels it, Then it shows as cancelled and Ben sees "This order was cancelled by your practice." (CQ-1)
+- **AE-064** (FR-067) Given Ana Ruiz has started checkout on her $60.00 order, When Dr. Chen tries to cancel it, Then the cancel is refused and Ana's checkout continues. (CQ-1)
+- **AE-065** (FR-068) Given Ana's order was sent with 2 Vitamin D3, When anyone tries to change the quantity to 3, Then it is refused and the order still holds 2. (CQ-1)
+- **AE-066** (FR-069) Given a paid $3.00 order of three $1.00 items whose platform fee is $0.02, When the fee is shared across the lines, Then the shares are $0.01, $0.01 and $0.00 and add up to $0.02. (CQ-2)
 
 ## Edge cases
 
@@ -412,10 +421,10 @@ Answered from sources: Problem → brief Problem, REQ-01, R02, R08, R10 · Users
 | M1 Research | Approved brief + cited research | none (docs only) | G0 approval | A reviewer reads the brief and every R01 to R13 note. |
 | M2 Product | Approved PRD (+ clarifications) | none (docs only) | G1 approval | A reviewer reads docs/product/prd.md. |
 | M3 Design | Approved HLD, LLD, data design, contract, diagrams | none (docs only) | G2-G3 approvals | A reviewer can read every design doc from docs/README.md. |
-| M4 Tracer bullet | Each person signs in; provider sends an order, patient pays once, the split is recorded and shown to the cent | FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-007, FR-008, FR-009, FR-010, FR-011, FR-012, FR-013, FR-014, FR-015, FR-017, FR-031, FR-035, FR-036, FR-039, FR-040, FR-041, FR-042, FR-043, FR-044, FR-050 | AE-001 to AE-015, AE-028, AE-031, AE-032, AE-037 to AE-041, AE-047 | Dr. Chen sends Ana a $60.00 order, Ana pays it with the test payment, and a reviewer sees $30.00 + $29.55 + $0.45. |
-| M5 Prices and stock | Price-change form with history, price notices, checkout lock, stock limits, practice dashboard | FR-018, FR-019, FR-020, FR-021, FR-022, FR-023, FR-024, FR-025, FR-026, FR-027, FR-028, FR-029, FR-030, FR-037, FR-038, FR-045, FR-046, FR-047 | AE-016 to AE-027, AE-035, AE-036, AE-042 to AE-044 | Dr. Chen changes a price, Ana sees the notice, pays, and the dashboard shows the sale and lower stock. |
+| M4 Tracer bullet | Each person signs in; provider sends an order, patient pays once, the split is recorded and shown to the cent | FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-007, FR-008, FR-009, FR-010, FR-011, FR-012, FR-013, FR-014, FR-015, FR-017, FR-031, FR-035, FR-036, FR-039, FR-040, FR-041, FR-042, FR-043, FR-044, FR-050, FR-066, FR-067, FR-068 | AE-001 to AE-015, AE-028, AE-031, AE-032, AE-037 to AE-041, AE-047, AE-063 to AE-065 | Dr. Chen sends Ana a $60.00 order, Ana pays it with the test payment, and a reviewer sees $30.00 + $29.55 + $0.45. |
+| M5 Prices and stock | Price-change form with history, price notices, checkout lock, stock limits, practice dashboard | FR-018, FR-019, FR-020, FR-021, FR-022, FR-023, FR-024, FR-025, FR-026, FR-027, FR-028, FR-029, FR-030, FR-037, FR-038, FR-045, FR-046, FR-047, FR-069 | AE-016 to AE-027, AE-035, AE-036, AE-042 to AE-044, AE-066 | Dr. Chen changes a price, Ana sees the notice, pays, and the dashboard shows the sale and lower stock. |
 | M6 Measurement and operations | Platform health dashboard, volume report, financial report, operations roles, access log and system health | FR-032, FR-048, FR-049, FR-051, FR-052, FR-053, FR-054, FR-055, FR-056, FR-057, FR-058, FR-059, FR-060, FR-061, FR-062, FR-063, FR-064, FR-065 | AE-029, AE-045, AE-046, AE-048 to AE-062, SC-001, SC-002, SC-003 | Fran runs October's report and sees $90.00 = $45.00 + $44.32 + $0.68, balanced; Sam grants Dana a role and Fran sees it in the access log. |
-| Later | Not in this appetite: pricing campaigns and corrections | FR-016, FR-033, FR-034 | — | — |
+| Later | Not in this appetite: pricing campaigns and corrections; broader holistic-care products were considered for the future of the product and parked (NG-12, CQ-3) | FR-016, FR-033, FR-034 | — | — |
 
 ## Constraints
 
@@ -462,4 +471,35 @@ Answered from sources: Problem → brief Problem, REQ-01, R02, R08, R10 · Users
 
 ## Clarifications
 
-None yet.
+### Pass 1 · 2026-10-10 10:50 CDT · clarify-spec (Claude Code, claude-opus-5-5) · base c00b960
+
+Open questions before: 0 · after: 0
+Markers added, not asked: none
+Parked for a later phase: none
+
+#### CQ-1 · [Edge cases / failure] · FR-066, FR-067, FR-068, AE-063 to AE-065, M4 row
+- Question: Can a provider cancel an order after sending it, before the patient pays? (design-lld Q2, 2026-10-09)
+- Options: none (settled by source)
+- Answer (verbatim): "yes" — .handoff/TRACKER.md:69 (Approvals, design-lld interview) and docs/architecture/lld.md Open questions Q-1 @6733116 (G3 approved), answering the recommendation "a sent, unpaid order can be cancelled by its provider, but never edited; once checkout has started or it is paid it can't be cancelled; the patient sees 'This order was cancelled by your practice.'"
+- Status: from-source
+- Applied: new FR-066 (cancel a sent or payment-failed order), FR-067 (no cancel once checkout started or paid), FR-068 (a sent order is never edited); AE-063 to AE-065; FR-066 to FR-068 added to US-1 and the M4 row (the milestone that builds the order lifecycle, lld.md SM-1)
+- Decision candidate: no — it fills an edge case inside the accepted order design (lld.md SM-1, journal D38-D42); no new dependency, contract owner or money rule
+- Scope change: none
+
+#### CQ-2 · [Data / entities] · FR-028, FR-069, AE-066, M5 row
+- Question: On the provider's dashboard, how is an order's single platform fee shared across its products? (design-lld Q3, 2026-10-09)
+- Options: none (settled by source)
+- Answer (verbatim): "b" — .handoff/TRACKER.md:69 (Approvals, design-lld interview) and docs/architecture/lld.md Open questions Q-2 @6733116 (G3 approved), choosing "keep per-product payout and split the fee in proportion, leftover cents to the largest remainders, stored at payment"
+- Status: from-source
+- Applied: FR-028 now names the per-product payout as after that product's fee share; new FR-069 (proportional split, largest remainders, shares add up to the fee); AE-066; FR-069 added to US-5 and the M5 row
+- Decision candidate: no — a money rounding rule already recorded and approved at G3 (lld.md LINV-1); nothing new is chosen here
+- Scope change: none
+
+#### CQ-3 · [Scope] · NG-12, Milestone cut › Later
+- Question: Should broader holistic-care products (prescriptions through a partner pharmacy, medical supplies, services like gym memberships or IV sessions, recurring charges) be written into the PRD as Later scope?
+- Options: A park them as a non-goal with "revisit later" plus a line in the Later milestone · B add a P3 user story now, unscheduled in Later · C do not record it · do nothing: leave open · recommended A
+- Answer (verbatim): "A, non goals, can revisit later, and marked as was considered for the future of the product"
+- Status: resolved
+- Applied: new NG-12 naming the categories, why they wait (product types, a payee per line, work with no patient present, regulation) and "considered for the future of the product … revisit later"; the Later milestone row points at NG-12
+- Decision candidate: yes — it sets product scope for the future (a non-goal that defers prescriptions, services and recurring billing), which changes what later milestones may take on
+- Scope change: none

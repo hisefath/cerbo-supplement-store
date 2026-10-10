@@ -7,11 +7,11 @@ several harnesses read it and the repo is public.
 ## Resume
 
 <!-- Rewritten as the LAST edit of every supervisor move. Times come from `date`. -->
-- **As of:** 2026-10-09 22:14 CDT
-- **In flight:** PRD revised @ab9f181 (Q12, R14, R15): US-9 financial report, US-10 operations roles, P-5..P-8, NFR-013/014. 10 stories (4 P1), 65 FR, 14 NFR, 3 SC, 62 AE, 0 open ⚠. Agent assumption A-13 to confirm.
-- **Next:** human answers G1 on docs/product/prd.md@ab9f181; then map-ux-flows for M6 (health dashboard, financial report, ops roles, access log, system health); then resume design-hld (Q1-Q3 answered).
-- **Waiting on:** human: G1 verdict.
-- **Verified:** ab9f181 write-prd Done-when command set → all empty
+- **As of:** 2026-10-10 10:45 CDT
+- **In flight:** G3 on docs/architecture/lld.md@6733116 (revised: D42 payment timing, Q-7). D38-D41 answered (provisional, on 9af3b07; lld.md changed only in Decisions and Open questions since); D42 presented; then closing G3 binds every answer to 6733116.
+- **Next:** human answers D42, then closing G3. After G3: clarify-spec (LLD Q-1 cancel, Q-2 fee split, Q-7 Later scope), AGENTS.md stack diff (human-only), define-acceptance M4.
+- **Waiting on:** human: D42 verdict.
+- **Verified:** 6733116 embed-diagrams 18 in sync; make check OK; id checks clean
 
 ## Tasks
 
@@ -56,6 +56,28 @@ several harnesses read it and the repo is public.
 | 2026-10-09 22:13 CDT | research review (no gate; gather-evidence STOP) | docs/research/R14-R15@8c5081c | "approve, these are not important gaps, dont write them, then /write-prd" |
 | 2026-10-09 22:13 CDT | G1 Revise | docs/product/prd.md@930a8d7 (add financial reporting + ops roles per the 22:07 route; R14/R15 gaps waived, not carried as ⚠) | "approve, these are not important gaps, dont write them, then /write-prd" |
 | 2026-10-09 22:16 CDT | G1 | docs/product/prd.md@ab9f181 (A-13 taken as recommended) | "approve, then /map-ux-flows" |
+| 2026-10-09 22:31 CDT | G-ux (variant half, M6) | docs/design/screens.md@9282682 (go = S10-V2, S11-V1, S12-V1) | "go, then run pass 2" |
+| 2026-10-09 22:33 CDT | G-ux | docs/design/screens.md@675f650 (and docs/design/flows.md@675f650) | "approve, then /design-hld" |
+| 2026-10-09 22:45 CDT | G2 decision D32 (provisional until closing G2) | docs/architecture/hld.md@a5bc4ea D32 | "approve" |
+| 2026-10-09 22:58 CDT | G2 decision D33 (provisional until closing G2) | docs/architecture/hld.md@a5bc4ea D33 | "approve" |
+| 2026-10-09 23:00 CDT | G2 decision D34 (provisional until closing G2) | docs/architecture/hld.md@a5bc4ea D34 | "approve" |
+| 2026-10-09 23:04 CDT | G2 decision D35 (provisional until closing G2); D34 reopened for comparison by the human | docs/architecture/hld.md@a5bc4ea D35 | "for D34, is there anything else we should consider ... lets make a good case on why we should keep it as one app, and a good case on why we should do a separate SPA + API app, and compare. D35, B is approved" |
+| 2026-10-09 23:09 CDT | G2 Revise D34 (supersedes the 23:00 D34 approval) | docs/architecture/hld.md@a5bc4ea D34 | "c, then /design-hld" |
+| 2026-10-09 23:14 CDT | G2 decision D34 revised (provisional until closing G2); journal D36 = hld.md D34, supersedes journal D34 | docs/architecture/hld.md@fea2e18 D34 | "approved" |
+| 2026-10-09 23:14 CDT | G2 decision D36 (provisional until closing G2); journal D37 = hld.md D36 | docs/architecture/hld.md@fea2e18 D36 | "approve" |
+| 2026-10-09 23:24 CDT | G2 (closing) | docs/architecture/hld.md@fea2e18 (diagrams embedded; binds D32-D36 as answered = journal D32, D33, D36, D35, D37) | "approve, then /quiz-me D34" |
+| 2026-10-09 23:55 CDT | design-lld interview (scope + 2 product answers; no gate) | chat; lands in docs/architecture/lld.md Q-1, Q-2 | Q1 scope: "M4 + M5 + M6 in one pass ... lets do this one" · Q-1 cancel: "yes" · Q-2 fee split: "b" |
+| 2026-10-10 09:52 CDT | G3 decision D38 (provisional until closing G3); journal D38 = lld.md D38 | docs/architecture/lld.md@9af3b07 D38 | "approve" |
+| 2026-10-10 09:56 CDT | G3 decision D39 (provisional until closing G3); journal D39 = lld.md D39 | docs/architecture/lld.md@9af3b07 D39 | "approve" |
+| 2026-10-10 09:58 CDT | G3 decision D40 (provisional until closing G3); journal D40 = lld.md D40 | docs/architecture/lld.md@9af3b07 D40 | "approved" |
+| 2026-10-10 09:59 CDT | G3 decision D41 (provisional until closing G3); journal D41 = lld.md D41 | docs/architecture/lld.md@9af3b07 D41 | "approve, but also explain to me this solution over using a mesage broker like rabbitmq" |
+| 2026-10-10 10:44 CDT | G3 Revise (add D42 Payment timing; records the sync-vs-async analysis, lock analysis, tolerance by persona, and triggers for broader holistic-care products) | docs/architecture/lld.md@9af3b07 | "a, add D42" |
+| 2026-10-10 10:49 CDT | G3 decision D42 (provisional until closing G3); journal D42 = lld.md D42 | docs/architecture/lld.md@6733116 D42 | "approve" |
+| 2026-10-10 10:50 CDT | G3 (closing) | docs/architecture/lld.md@6733116 + contracts/openapi.yaml + diagrams (binds D38-D42) | "approve, then /clarify-spec docs/product/prd.md" |
+| 2026-10-10 10:58 CDT | 3b clarify-spec pass 1 | docs/product/prd.md@998ed94 | "approve" |
+| 2026-10-10 10:58 CDT | 3b clarify-spec CQ-3 | docs/product/prd.md@998ed94 | "A, non goals, can revisit later, and marked as was considered for the future of the product" |
+| 2026-10-10 11:04 CDT | G1 | docs/product/prd.md@998ed94 (re-approval after clarify-spec pass 1) | "approve, then /map-ux-flows" |
+| 2026-10-10 11:04 CDT | G-ux Revise (bring S2, S6 and flows F2, F5 in line with FR-066 to FR-068) | docs/design/screens.md@675f650 | "approve, then /map-ux-flows" |
 
 ## Log
 
@@ -100,3 +122,67 @@ several harnesses read it and the repo is public.
 2026-10-09 22:09 CDT VERIFY gather-evidence R14, R15 committed @8c5081c
 2026-10-09 22:14 CDT VERIFY write-prd revise docs/product/prd.md@ab9f181 (US-9, US-10); re-offered G1
 2026-10-09 22:16 CDT GATE G1 approved docs/product/prd.md@ab9f181; D29 logged; next map-ux-flows pass 1 for M6 (US-6, US-9, US-10)
+2026-10-09 22:17 CDT VERIFY map-ux-flows pass 1 (M6) docs/design@9282682; offered G-ux variant half
+2026-10-09 22:31 CDT GATE G-ux variant half (M6): S10-V2, S11-V1, S12-V1; D30 logged; pass 2 for S10-S14 started
+2026-10-09 22:32 CDT VERIFY map-ux-flows pass 2 (M6) docs/design@675f650; offered G-ux
+2026-10-09 22:33 CDT GATE G-ux approved docs/design@675f650 (M4-M6); D31 logged; resume design-hld
+2026-10-09 22:38 CDT DISPATCH M3-D01 harness=claude-subagent why=draw-diagrams hld-context from hld.md@026eb08, one skill, disjoint Owns, parallel
+2026-10-09 22:38 CDT DISPATCH M3-D02 harness=claude-subagent why=draw-diagrams hld-container from hld.md@026eb08, one skill, disjoint Owns, parallel
+2026-10-09 22:38 CDT DISPATCH M3-D03 harness=claude-subagent why=draw-diagrams deployment from hld.md@026eb08, one skill, disjoint Owns, parallel
+2026-10-09 22:41 CDT RESULT M3-D01 status=done (hld-context, 0 gaps, render unverified) → squash 7d3449d
+2026-10-09 22:41 CDT RESULT M3-D02 status=human_review (hld-container, 1 gap: TB-2 trusted side not a container) → squash fb2adfe
+2026-10-09 22:41 CDT RESULT M3-D03 status=done (deployment, 0 gaps; worker commit lacked Task trailer, added on squash) → squash 4e7f4da
+2026-10-09 22:41 CDT FAIL dispatch: Agent-tool worktrees start from main@778e788, not the milestone branch; all 3 workers reset or fast-forwarded to milestone/m1-research themselves, and the isolation guard blocked result.md writes to the shared HANDOFF_DIR (supervisor copied them). Route at M1 close.
+2026-10-09 22:41 CDT VERIFY embed-diagrams docs/architecture/hld.md → a5bc4ea; make check OK
+2026-10-09 22:45 CDT GATE G2 D32 approved (provisional); journal D32 = hld.md D32
+2026-10-09 22:58 CDT GATE G2 D33 approved (provisional); journal D33 = hld.md D33
+2026-10-09 23:00 CDT GATE G2 D34 approved (provisional); journal D34 = hld.md D34
+2026-10-09 23:04 CDT GATE G2 D35 approved (provisional; option b split + append-only ledger); D34 reopened by the human for a one-app vs SPA+API comparison
+2026-10-09 23:09 CDT DISPATCH M3-D02 harness=claude-subagent why=re-draw hld-container after HLD revision db8bab2 (D34, TB-2)
+2026-10-09 23:11 CDT RESULT M3-D02 status=done (re-draw, 0 gaps) → squashed, embedded at fea2e18; make check OK
+2026-10-09 23:14 CDT GATE G2 D34 (revised, API-first) approved (provisional); logged as journal D36 superseding D34; ids differ: hld D34 = journal D36
+2026-10-09 23:14 CDT GATE G2 D36 approved (provisional); logged as journal D37; ids differ: hld D36 = journal D37
+2026-10-09 23:24 CDT GATE G2 closing approved docs/architecture/hld.md@fea2e18; next quiz-me D34, then design-lld
+2026-10-09 23:55 CDT DISPATCH M3-D04 harness=claude-subagent why=draw-diagrams from lld.md@e885abc; batched 3 jobs per worker (6 workers) to limit parallel sessions
+2026-10-09 23:55 CDT DISPATCH M3-D05 harness=claude-subagent why=draw-diagrams from lld.md@e885abc; batched 3 jobs per worker (6 workers) to limit parallel sessions
+2026-10-09 23:55 CDT DISPATCH M3-D06 harness=claude-subagent why=draw-diagrams from lld.md@e885abc; batched 3 jobs per worker (6 workers) to limit parallel sessions
+2026-10-09 23:55 CDT DISPATCH M3-D07 harness=claude-subagent why=draw-diagrams from lld.md@e885abc; batched 3 jobs per worker (6 workers) to limit parallel sessions
+2026-10-09 23:55 CDT DISPATCH M3-D08 harness=claude-subagent why=draw-diagrams from lld.md@e885abc; batched 3 jobs per worker (6 workers) to limit parallel sessions
+2026-10-09 23:55 CDT DISPATCH M3-D09 harness=claude-subagent why=draw-diagrams from lld.md@e885abc; batched 3 jobs per worker (6 workers) to limit parallel sessions
+2026-10-09 23:55 CDT DISPATCH M3-D10 harness=claude-subagent why=draw-diagrams from lld.md@e885abc; batched 3 jobs per worker (6 workers) to limit parallel sessions
+2026-10-09 23:55 CDT DISPATCH M3-D11 harness=claude-subagent why=draw-diagrams from lld.md@e885abc; batched 3 jobs per worker (6 workers) to limit parallel sessions
+2026-10-09 23:55 CDT DISPATCH M3-D12 harness=claude-subagent why=draw-diagrams from lld.md@e885abc; batched 3 jobs per worker (6 workers) to limit parallel sessions
+2026-10-09 23:55 CDT DISPATCH M3-D13 harness=claude-subagent why=draw-diagrams from lld.md@e885abc; batched 3 jobs per worker (6 workers) to limit parallel sessions
+2026-10-09 23:55 CDT DISPATCH M3-D14 harness=claude-subagent why=draw-diagrams from lld.md@e885abc; batched 3 jobs per worker (6 workers) to limit parallel sessions
+2026-10-09 23:55 CDT DISPATCH M3-D15 harness=claude-subagent why=draw-diagrams from lld.md@e885abc; batched 3 jobs per worker (6 workers) to limit parallel sessions
+2026-10-09 23:55 CDT DISPATCH M3-D16 harness=claude-subagent why=draw-diagrams from lld.md@e885abc; batched 3 jobs per worker (6 workers) to limit parallel sessions
+2026-10-09 23:55 CDT DISPATCH M3-D17 harness=claude-subagent why=draw-diagrams from lld.md@e885abc; batched 3 jobs per worker (6 workers) to limit parallel sessions
+2026-10-09 23:55 CDT DISPATCH M3-D18 harness=claude-subagent why=draw-diagrams from lld.md@e885abc; batched 3 jobs per worker (6 workers) to limit parallel sessions
+2026-10-09 23:55 CDT DISPATCH M3-D19 harness=claude-subagent why=draw-diagrams from lld.md@e885abc; batched 3 jobs per worker (6 workers) to limit parallel sessions
+2026-10-09 23:55 CDT DISPATCH M3-D20 harness=claude-subagent why=draw-diagrams from lld.md@e885abc; batched 3 jobs per worker (6 workers) to limit parallel sessions
+2026-10-09 23:55 CDT DISPATCH M3-D21 harness=claude-subagent why=draw-diagrams from lld.md@e885abc; batched 3 jobs per worker (6 workers) to limit parallel sessions
+2026-10-10 00:03 CDT DISPATCH M3-D04 harness=claude-subagent why=re-draw after lld.md gap fixes @2e4e445 (attempt 1 archived as result.attempt-1.md)
+2026-10-10 00:03 CDT DISPATCH M3-D05 harness=claude-subagent why=re-draw after lld.md gap fixes @2e4e445 (attempt 1 archived as result.attempt-1.md)
+2026-10-10 00:03 CDT DISPATCH M3-D06 harness=claude-subagent why=re-draw after lld.md gap fixes @2e4e445 (attempt 1 archived as result.attempt-1.md)
+2026-10-10 00:03 CDT DISPATCH M3-D07 harness=claude-subagent why=re-draw after lld.md gap fixes @2e4e445 (attempt 1 archived as result.attempt-1.md)
+2026-10-10 00:03 CDT DISPATCH M3-D08 harness=claude-subagent why=re-draw after lld.md gap fixes @2e4e445 (attempt 1 archived as result.attempt-1.md)
+2026-10-10 00:03 CDT DISPATCH M3-D09 harness=claude-subagent why=re-draw after lld.md gap fixes @2e4e445 (attempt 1 archived as result.attempt-1.md)
+2026-10-10 00:03 CDT DISPATCH M3-D10 harness=claude-subagent why=re-draw after lld.md gap fixes @2e4e445 (attempt 1 archived as result.attempt-1.md)
+2026-10-10 00:03 CDT DISPATCH M3-D12 harness=claude-subagent why=re-draw after lld.md gap fixes @2e4e445 (attempt 1 archived as result.attempt-1.md)
+2026-10-10 00:03 CDT DISPATCH M3-D13 harness=claude-subagent why=re-draw after lld.md gap fixes @2e4e445 (attempt 1 archived as result.attempt-1.md)
+2026-10-10 00:03 CDT DISPATCH M3-D14 harness=claude-subagent why=re-draw after lld.md gap fixes @2e4e445 (attempt 1 archived as result.attempt-1.md)
+2026-10-10 00:03 CDT DISPATCH M3-D15 harness=claude-subagent why=re-draw after lld.md gap fixes @2e4e445 (attempt 1 archived as result.attempt-1.md)
+2026-10-10 00:03 CDT DISPATCH M3-D16 harness=claude-subagent why=re-draw after lld.md gap fixes @2e4e445 (attempt 1 archived as result.attempt-1.md)
+2026-10-10 00:03 CDT DISPATCH M3-D17 harness=claude-subagent why=re-draw after lld.md gap fixes @2e4e445 (attempt 1 archived as result.attempt-1.md)
+2026-10-10 00:03 CDT DISPATCH M3-D21 harness=claude-subagent why=re-draw after lld.md gap fixes @2e4e445 (attempt 1 archived as result.attempt-1.md)
+2026-10-10 00:03 CDT RESULT M3-D11,D18,D19,D20 merged (7970b1b, f881d3e, 870ed10, 0fc65d9); D19/D20 human_review only for the kit's start-arrow count (finding: dd_trace does not count [*] creation transitions); D-jobs found ~25 LLD text gaps, fixed in 2e4e445
+2026-10-10 00:03 CDT FAIL draw-diagrams kit: dd_trace counts only n./aN. steps (alt steps bN. uncounted) and ignores [*] start arrows; workers sharing one scratchpad overwrote each other's helper scripts; workers created .probe files in HANDOFF_DIR (rm forbidden). Route at M1 close.
+2026-10-10 00:08 CDT RESULT M3-D04..D10, D12..D17, D21 re-draws merged (14; all done except D21 kit false positive); embedded at 9af3b07; G3 opened
+2026-10-10 09:52 CDT GATE G3 D38 approved (provisional)
+2026-10-10 09:56 CDT GATE G3 D39 approved (provisional)
+2026-10-10 09:58 CDT GATE G3 D40 approved (provisional); D39 question answered with a tool comparison, D39 kept as approved
+2026-10-10 09:59 CDT GATE G3 D41 approved (provisional); all four LLD decisions answered; closing G3 next
+2026-10-10 10:49 CDT GATE G3 D42 approved (provisional); closing G3 next
+2026-10-10 10:50 CDT GATE G3 closing approved docs/architecture/lld.md@6733116; next clarify-spec on prd.md (LLD Q-1, Q-2, Q-7)
+2026-10-10 10:58 CDT VERIFY clarify-spec pass 1 docs/product/prd.md@998ed94 (CQ-1, CQ-2 from-source; CQ-3 resolved); D43 logged; G1 to re-present (PRD changed since ab9f181)
+2026-10-10 11:04 CDT GATE G1 re-approved docs/product/prd.md@998ed94; map-ux-flows revise for cancel (S2, S6)

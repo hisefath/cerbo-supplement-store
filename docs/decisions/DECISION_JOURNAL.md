@@ -305,3 +305,15 @@ Copy this block for each new entry (D-ids increase by one, starting at D1):
 - Choice · Why: for a platform that must close its books and pass an audit, facing a mixed principal-versus-agent case and HIPAA's minimum-necessary rule, we chose a balancing period report with gross and net side by side and four least-privilege roles with separated grant and review, over a single admin role, to keep every person to the data their job needs, accepting four more role screens in M6.
 - Cost accepted: M6 grows; a single SRE is a bottleneck for role changes (EC-15). · Reversibility: Type 2 · Confidence: medium
 - Revisit if: the partner's finance team settles gross vs net, or the team grows beyond four roles. · Evidence: docs/research/R14, R15; docs/product/prd.md US-9, US-10 · Interview line: "The person who hands out access never reviews the access log, and nobody on the ops team ever sees who a patient is."
+
+### D43 Broader holistic-care products parked as a future non-goal (NG-12)  [status: accepted]
+- 2026-10-10 10:58 CDT · clarify-spec (3b) · M2 · Decided by: human, clarify-spec CQ-3 2026-10-10 10:58 CDT: "A, non goals, can revisit later, and marked as was considered for the future of the product" · Proposed by: clarify-spec (Claude Code, claude-opus-5-5) · artifact: docs/product/prd.md@998ed94 NG-12
+- Context and forces: the human raised prescriptions, medical supplies, gym memberships and other holistic-care services at G3; lld.md D42 and Q-7 showed they need product types, a payee per order line, work with no patient present (recurring charges, claims, partner updates) and, for prescriptions, regulation the slice rules out (NG-3, NG-10).
+- Options:
+  - Do nothing: leave lld.md Q-7 open — not chosen
+  - A: park as a non-goal with "revisit later" and a Later-row line (agent's recommendation) — chosen
+  - B: add a P3 user story now — rejected: invites design before anyone is ready
+  - C: do not record — rejected: the thinking would not be visible in the PRD
+- Choice · Why: In the context of a supplement-only slice whose design (D35 ledger, D41 keys, D42 payment timing) already anticipates broader care, facing the risk of scope creep, we choose to park holistic-care products as a recorded future non-goal over writing stories now or not recording them, to keep the slice small while showing the product's direction, accepting that a later milestone must revisit product types and multi-payee orders.
+- Cost accepted: none now; a future PRD and design pass. · Reversibility: Type 2 · Confidence: high
+- Revisit if: a milestone takes on prescriptions, services or recurring charges (lld.md D42 triggers). · Evidence: prd.md NG-12, ## Clarifications Pass 1 CQ-3; lld.md D42, Q-7 · Interview line: "I parked prescriptions and services on purpose: they need multiple payees and background billing, and the ledger and idempotency design already leave room for them."
