@@ -1,5 +1,5 @@
-// BE-9 OrderService (lld.md §2, SEQ-1, SEQ-2, SM-1): send, show and start checkout on an order. Later tasks add
-// cancel here. No method changes a sent order's lines (FR-068).
+// BE-9 OrderService (lld.md §2, SEQ-1, SEQ-2, SEQ-5, SM-1): send, show, start checkout on and cancel an order.
+// No method changes a sent order's lines (FR-068).
 import { sql } from 'kysely'
 import { useDb } from '../utils/db'
 import { ProblemError } from '../utils/problem'
@@ -225,7 +225,7 @@ export async function getOrderForViewer(viewer: Viewer, orderId: bigint): Promis
     .where('order_id', '=', o.id)
     .orderBy('id')
     .execute()
-  // ponytail: a cancelled order shows its sent prices; M4-T008 owns the cancelled state and may want otherwise.
+  // A cancelled order shows its sent prices, frozen (SM-1), the same prices cancelOrder returns.
   const priced = ['paid', 'cancelled', 'needs_review'].includes(o.status) || (o.status === 'in_checkout' && o.hold_live)
   const current = priced ? new Map<bigint, number>() : await currentPrices(BigInt(o.practice_id), rows.map((r) => BigInt(r.product_id)))
   const price = (r: (typeof rows)[number]): number => {
@@ -255,5 +255,60 @@ export async function getOrderForViewer(viewer: Viewer, orderId: bigint): Promis
     prices_held_until: o.hold_live ? o.prices_held_until!.toISOString() : null,
     paid_at: o.paid_at ? o.paid_at.toISOString() : null,
     is_test_payment: true,
+  }
+}
+
+/** EP-20 (FR-066, FR-067, SM-1): a provider of the order's practice cancels a sent or payment-failed order (or one
+ *  whose checkout hold has ended, which SM-1 returns to sent on any action). A live checkout, a paid or a
+ *  needs-review order is refused unchanged. Cancelling a cancelled order returns it unchanged (natural repeat). */
+export async function cancelOrder(viewer: Viewer, orderId: bigint): Promise<Order> {
+  const db = useDb()
+  const o = await db
+    .selectFrom('orders')
+    .select(['id', 'patient_id', 'practice_id', 'status', 'sent_at'])
+    .where('id', '=', orderId.toString())
+    .executeTakeFirst()
+  if (!o || viewer.role !== 'provider') throw new ProblemError('not-found')
+  assertCanViewOrder(viewer, { patientId: BigInt(o.patient_id), practiceId: BigInt(o.practice_id) })
+
+  if (o.status !== 'cancelled') {
+    // One conditional update: two racing requests (a cancel and a checkout start) can't both win (SM-1).
+    const done = await db
+      .updateTable('orders')
+      .set({ status: 'cancelled', cancelled_at: sql`now()` })
+      .where('id', '=', o.id)
+      .where((eb) =>
+        eb.or([eb('status', 'in', ['sent', 'payment_failed']), eb.and([eb('status', '=', 'in_checkout'), eb('prices_held_until', '<=', sql<Date>`now()`)])]),
+      )
+      .returning('id')
+      .executeTakeFirst()
+    if (!done) throw new ProblemError('invalid-transition')
+  }
+
+  const rows = await db
+    .selectFrom('order_lines')
+    .innerJoin('products', 'products.id', 'order_lines.product_id')
+    .select(['order_lines.product_id', 'order_lines.product_name', 'order_lines.quantity', 'order_lines.sent_unit_price_cents', 'products.unit_cost_cents'])
+    .where('order_lines.order_id', '=', o.id)
+    .orderBy('order_lines.id')
+    .execute()
+  const lines = rows.map((r) => ({
+    product_id: Number(r.product_id),
+    name: r.product_name,
+    quantity: r.quantity,
+    unit_price_cents: r.sent_unit_price_cents,
+    line_total_cents: r.sent_unit_price_cents * r.quantity,
+  }))
+  const total = lines.reduce((s, l) => s + l.line_total_cents, 0)
+  const cost = rows.reduce((s, r) => s + r.unit_cost_cents * r.quantity, 0)
+  const fee = platformFeeCents(total)
+  return {
+    order_id: Number(o.id),
+    status: 'cancelled',
+    lines,
+    total_cents: total,
+    platform_fee_cents: fee,
+    provider_payout_cents: payoutCents(total, cost, fee),
+    sent_at: o.sent_at.toISOString(),
   }
 }

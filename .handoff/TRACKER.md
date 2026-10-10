@@ -7,11 +7,11 @@ several harnesses read it and the repo is public.
 ## Resume
 
 <!-- Rewritten as the LAST edit of every supervisor move. Times come from `date`. -->
-- **As of:** 2026-10-10 15:00 CDT
-- **In flight:** M4-T008 (cancel) in .claude/worktrees/m4-t008 from milestone@440d94b. Done: T001 61c966a, T002 eb3f87d, T003 09c7f55, T004 a3a582b, T005 67a0315, T007 6a0e96f, T006 440d94b.
+- **As of:** 2026-10-10 15:05 CDT
+- **In flight:** M4-T009 (acceptance suite joins make check) from milestone@efc39d9. Done: T001-T008 (last: T008 efc39d9).
 - **Next:** T008 → verify → squash → T009 (acceptance joins make check) → milestone review (verifier over T004, T005, T007, T008, T009 + noted items) → report-milestone (G5). After M4: design-lld catch-up (helper unitCostFromLowestAllowedPrice; D47 SM-1 guard; FM-3 new-key retry; failure_reason NULL meaning; acceptance Q-1 to Q-4); define-acceptance re-run (D47 test); FM-7 reconcile owner; milestone review items pass2 R6, R7, pass3 R3, R5.
-- **Waiting on:** M4-T008 worker.
-- **Verified:** 440d94b make check OK (96 unit); M4 acceptance 39/43 (only T008 red)
+- **Waiting on:** M4-T009 worker.
+- **Verified:** efc39d9 make check OK (96 unit); M4 acceptance 43/43
 
 ## Tasks
 
@@ -252,3 +252,5 @@ several harnesses read it and the repo is public.
 2026-10-10 14:54 CDT DISPATCH M4-T006 relaunch-2 harness=claude-subagent why=review pass5 R1-R4
 2026-10-10 15:00 CDT VERIFY M4-T006 squashed: scope-guard OK (12 paths); Done-when 4/4; make check OK (96 unit); M4 acceptance 39/43 (only T008 cancel red). Milestone-review notes: pass5 R5, R6; EP-17 idle re-check moves last_seen_at (worker Q1, accept for M4); patient home /orders has no page in M4; ship-milestone must set TRUST_PROXY=1 and confirm Railway X-Forwarded-For
 2026-10-10 15:00 CDT DISPATCH M4-T008 harness=claude-subagent why=cancel, serial on BE-9 and S2 components
+2026-10-10 15:05 CDT VERIFY M4-T008 squashed: scope-guard OK (2 paths); Done-when 4/4; make check OK (96 unit); M4 acceptance 43/43 on the milestone branch. Milestone-review notes: cancel of an in_checkout order with an ended hold allowed (assumed from SM-1, untested); cancel-vs-checkout race untested
+2026-10-10 15:05 CDT DISPATCH M4-T009 harness=claude-subagent why=seam: acceptance suite joins make check
