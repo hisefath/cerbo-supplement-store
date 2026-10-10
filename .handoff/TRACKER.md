@@ -21,6 +21,9 @@ several harnesses read it and the repo is public.
 | id | ask (link) | track/phase | harness+model | state | since | owns | result |
 |---|---|---|---|---|---|---|---|
 | M1-S01 | repo setup: backup, init-repo, AGENTS commands, make check, remotes, journal import (human's kickoff message) | Full / phase 0 (G-init) | supervisor (claude-opus-5-5) | done | 2026-10-08 22:33 CDT | scaffold paths, AGENTS.md Commands, Makefile, .gitignore, docs/decisions/DECISION_JOURNAL.md | 1ed9fd1 (G-init) |
+| M5-R01 | F20: design-lld catch-up before M5 (Q-1 to Q-4, D47 SM-1 guard, FM-3 new-key retry, pagination wording, EP-23 429, pay_rate_attempts) | Standard / design-lld | supervisor | todo | 2026-10-10 18:31 CDT | docs/architecture/lld.md, contracts/openapi.yaml | — |
+| M5-R02 | F21: acceptance tests for review-fixed behaviours (key release, stuck attempt, parallel limits, cancel states) | Standard / define-acceptance | supervisor | todo | 2026-10-10 18:31 CDT | specs/M4-tracer-bullet/acceptance.md, tests/acceptance/** | — |
+| M5-R03 | F22: M5 scope in the PRD (patient order list /orders 404, provider view of EP-4, needs-review amounts, copy gaps) | Standard / clarify-spec | supervisor | todo | 2026-10-10 18:31 CDT | docs/product/prd.md | — |
 
 ## Approvals
 
@@ -147,6 +150,7 @@ several harnesses read it and the repo is public.
 | 2026-10-10 18:23 CDT | G-L5 (approval covers apply and project commit, incl. the D1-D64 backfill table) | H14@eb8d763f6268 | "Approve, adopt H13 and H14" |
 | 2026-10-10 18:28 CDT | G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) | H15@5fe6c05fbd96 | "Approve, adopt H15" |
 | 2026-10-10 18:30 CDT | G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) | H12@562b8efd0be7 | "Approve, adopt H12" |
+| 2026-10-10 18:31 CDT | G-L5 (block decision: rows without a diff) | software-factory-kit FINDINGS.md F14-F24 | "Approve, accept all as listed" |
 
 ## Log
 

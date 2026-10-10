@@ -779,3 +779,15 @@ Copy this block for each new entry (D-ids increase by one, starting at D1):
 - Cost accepted: log-decision can create docs/decisions/DECISION_JOURNAL.md; no mechanical guard beyond its STOP line. · Reversibility: Type 2 two-way — revert the kit commit · Confidence: high
 - Revisit if: a created journal differs from the kit template, or log-decision stalls on a missing journal again. · Evidence: software-factory-kit FINDINGS.md F13; HARNESS_CHANGELOG.md H12; kit commit b8560d0; approval G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) 2026-10-10 18:30 CDT · Interview line: "The first decision creates the decision log from the template, so recording never waits on a setup step someone forgot."
 - Review: Topic Process · Weight ●○○ · One-liner: log-decision starts the journal from the kit template when none exists.
+
+### D69 Accept routed and logged M4 findings as listed  [status: accepted]
+- Date 2026-10-10 18:31 CDT · phase 15 route-failure (G-L5) · milestone M4 · Decided by: human, G-L5 (block decision: rows without a diff) 2026-10-10 18:31 CDT: "Approve, accept all as listed" · Proposed by: route-failure (Claude Code, claude-opus-5-5) · artifact: software-factory-kit FINDINGS.md F14-F24
+- Context and forces: the M4 retro found rows that need no factory change: three product fixes for Cerbo's own skills (F20 design-lld catch-up, F21 acceptance tests for review-fixed behaviours, F22 M5 scope in the PRD) and eight one-offs or rules that already exist (F14 to F19, F23, F24).
+- Options:
+  - Do nothing / simplest (shown as "C do nothing"): leave the rows unqueued — cost: the routed fixes are not queued — rejected: the human chose to accept
+  - A accept all as listed: queue F20 to F22 as TRACKER rows M5-R01 to M5-R03; keep the logged rows so a repeat promotes them (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: none now — chosen
+  - B name a row to treat as durable — cost: one more route-failure pass — rejected: none named
+- Choice: A · Why: In the context of a milestone retro, facing findings that are product fixes or one-offs, we chose to route and log them as listed over new harness changes, to keep factory changes for real recurring causes, accepting that a repeat must happen before a logged row is fixed.
+- Cost accepted: logged causes can happen once more before they get a fix. · Reversibility: Type 2 two-way — any row can be promoted in a later pass · Confidence: high
+- Revisit if: any logged row (F14 to F19, F23, F24) recurs. · Evidence: software-factory-kit FINDINGS.md F14-F24; .handoff/TRACKER.md Tasks M5-R01 to M5-R03; approval G-L5 (block decision: rows without a diff) 2026-10-10 18:31 CDT · Interview line: "Only recurring causes earn a factory change; product gaps go back to the owning skill, and one-offs are logged so a repeat is noticed."
+- Review: Topic Process · Weight ●○○ · One-liner: Three product fixes queued for M5; eight one-offs logged, not fixed.

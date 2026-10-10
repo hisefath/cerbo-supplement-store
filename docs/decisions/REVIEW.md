@@ -65,7 +65,7 @@ Weight: ●●● critical (hard to undo, or touches money, personal data or sig
 - ●●○ ~~D34~~ — Pages and logic deploy together as one app. (replaced by D36)
 - ●○○ ~~D7~~ — v1: outside services stubbed behind seams. (replaced by D22)
 
-### Process (27)
+### Process (28)
 
 - ●●● D18 — Restarted from scratch on a milestone branch with the gated workflow.
 - ●●● D22 — The v1 build in main is set aside: never read, cited or reused.
@@ -90,6 +90,7 @@ Weight: ●●● critical (hard to undo, or touches money, personal data or sig
 - ●○○ D66 — D1 to D64 tagged in a side table; the ledger is untouched.
 - ●○○ D67 — The apply script's lookups no longer die of SIGPIPE on large proposals.
 - ●○○ D68 — log-decision starts the journal from the kit template when none exists.
+- ●○○ D69 — Three product fixes queued for M5; eight one-offs logged, not fixed.
 - ●○○ ~~D9~~ — v1: diagrams as .mmd sources with embedded copies. (replaced by D22)
 - ●○○ ~~D10~~ — v1: changes from a design-review panel accepted. (replaced by D22)
 - ●○○ ~~D15~~ — v1: repo visibility stays the human's step. (replaced by D22)
@@ -118,6 +119,7 @@ Decisions that adopted a software-factory-kit change (H) and the finding (F) beh
 
 ### 2026-10-10
 
+- D69 · Process · ●○○ — Three product fixes queued for M5; eight one-offs logged, not fixed.
 - D68 · Process · ●○○ — log-decision starts the journal from the kit template when none exists.
 - D67 · Process · ●○○ — The apply script's lookups no longer die of SIGPIPE on large proposals.
 - D66 · Process · ●○○ — D1 to D64 tagged in a side table; the ledger is untouched.
