@@ -1,0 +1,2195 @@
+openapi: 3.1.0
+info:
+  title: "In-EHR supplement orders API"
+  version: "0.1.0"
+  description: "Contract for M4-M6 (tracer bullet, prices and stock, measurement and operations). Shapes are designed in docs/architecture/lld.md section 4. One deployable, API-first (hld.md D34): the Vue pages call these JSON operations on the same origin."
+servers:
+  - url: "http://localhost:3000"
+    description: local
+security:
+  - sessionCookie: []
+tags:
+  - name: pages
+  - name: session
+  - name: orders
+  - name: practice
+  - name: operations
+  - name: finance
+  - name: access
+paths:
+  "/sign-in":
+    get:
+      x-lld-id: "EP-1"
+      operationId: signInPage
+      summary: "Sign-in page (S8)"
+      tags: [pages]
+      security: []
+      parameters:
+        - name: next
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "Sign-in page (S8), server-rendered"
+          content:
+            text/html:
+              schema:
+                type: string
+  "/notices/{token}":
+    get:
+      x-lld-id: "EP-2"
+      operationId: noticePage
+      summary: "Order notice page (S9)"
+      tags: [pages]
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "Order notice page (S9), server-rendered"
+          content:
+            text/html:
+              schema:
+                type: string
+        "404":
+          description: "/problems/not-found"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  "/patients/{patientId}/supplements":
+    get:
+      x-lld-id: "EP-3"
+      operationId: orderBuilderPage
+      summary: "Supplement order in the patient's chart (S1)"
+      tags: [pages]
+      parameters:
+        - name: patientId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: "Supplement order in the patient's chart (S1), server-rendered"
+          content:
+            text/html:
+              schema:
+                type: string
+        "401":
+          description: "/problems/unauthenticated"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          description: "/problems/not-found"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  "/orders/{orderId}":
+    get:
+      x-lld-id: "EP-4"
+      operationId: patientOrderPage
+      summary: "Your supplement order and checkout (S2)"
+      tags: [pages]
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: "Your supplement order and checkout (S2), server-rendered"
+          content:
+            text/html:
+              schema:
+                type: string
+        "401":
+          description: "/problems/unauthenticated"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          description: "/problems/not-found"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  "/ops/orders":
+    get:
+      x-lld-id: "EP-5"
+      operationId: opsOrdersPage
+      summary: "Paid orders (S3)"
+      tags: [pages]
+      responses:
+        "200":
+          description: "Paid orders (S3), server-rendered"
+          content:
+            text/html:
+              schema:
+                type: string
+        "401":
+          description: "/problems/unauthenticated"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "403":
+          description: "/problems/forbidden"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  "/ops/orders/{orderId}":
+    get:
+      x-lld-id: "EP-6"
+      operationId: orderBreakdownPage
+      summary: "Paid order breakdown (S4)"
+      tags: [pages]
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: "Paid order breakdown (S4), server-rendered"
+          content:
+            text/html:
+              schema:
+                type: string
+        "401":
+          description: "/problems/unauthenticated"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "403":
+          description: "/problems/forbidden"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          description: "/problems/not-found"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  "/practice/prices":
+    get:
+      x-lld-id: "EP-7"
+      operationId: practicePricesPage
+      summary: "Practice prices (S5)"
+      tags: [pages]
+      responses:
+        "200":
+          description: "Practice prices (S5), server-rendered"
+          content:
+            text/html:
+              schema:
+                type: string
+        "401":
+          description: "/problems/unauthenticated"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "403":
+          description: "/problems/forbidden"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  "/practice/dashboard":
+    get:
+      x-lld-id: "EP-8"
+      operationId: practiceDashboardPage
+      summary: "Practice dashboard (S6)"
+      tags: [pages]
+      parameters:
+        - name: month
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "Practice dashboard (S6), server-rendered"
+          content:
+            text/html:
+              schema:
+                type: string
+        "401":
+          description: "/problems/unauthenticated"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "403":
+          description: "/problems/forbidden"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  "/ops/stock":
+    get:
+      x-lld-id: "EP-9"
+      operationId: stockPage
+      summary: "Stock adjustments (S7)"
+      tags: [pages]
+      responses:
+        "200":
+          description: "Stock adjustments (S7), server-rendered"
+          content:
+            text/html:
+              schema:
+                type: string
+        "401":
+          description: "/problems/unauthenticated"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "403":
+          description: "/problems/forbidden"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  "/ops/health":
+    get:
+      x-lld-id: "EP-10"
+      operationId: platformHealthPage
+      summary: "Platform health (S10)"
+      tags: [pages]
+      parameters:
+        - name: month
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "Platform health (S10), server-rendered"
+          content:
+            text/html:
+              schema:
+                type: string
+        "401":
+          description: "/problems/unauthenticated"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "403":
+          description: "/problems/forbidden"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  "/ops/finance":
+    get:
+      x-lld-id: "EP-11"
+      operationId: financialReportPage
+      summary: "Financial report (S11)"
+      tags: [pages]
+      parameters:
+        - name: period
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "Financial report (S11), server-rendered"
+          content:
+            text/html:
+              schema:
+                type: string
+        "401":
+          description: "/problems/unauthenticated"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "403":
+          description: "/problems/forbidden"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  "/ops/access":
+    get:
+      x-lld-id: "EP-12"
+      operationId: operationsAccessPage
+      summary: "Operations access (S12)"
+      tags: [pages]
+      responses:
+        "200":
+          description: "Operations access (S12), server-rendered"
+          content:
+            text/html:
+              schema:
+                type: string
+        "401":
+          description: "/problems/unauthenticated"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "403":
+          description: "/problems/forbidden"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  "/ops/access-log":
+    get:
+      x-lld-id: "EP-13"
+      operationId: accessLogPage
+      summary: "Access log (S13)"
+      tags: [pages]
+      parameters:
+        - name: month
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "Access log (S13), server-rendered"
+          content:
+            text/html:
+              schema:
+                type: string
+        "401":
+          description: "/problems/unauthenticated"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "403":
+          description: "/problems/forbidden"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  "/ops/system":
+    get:
+      x-lld-id: "EP-14"
+      operationId: systemHealthPage
+      summary: "System health (S14)"
+      tags: [pages]
+      parameters:
+        - name: month
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "System health (S14), server-rendered"
+          content:
+            text/html:
+              schema:
+                type: string
+        "401":
+          description: "/problems/unauthenticated"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "403":
+          description: "/problems/forbidden"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  "/api/session":
+    post:
+      x-lld-id: "EP-15"
+      operationId: signIn
+      summary: "Sign in"
+      tags: [session]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignInRequest"
+      responses:
+        "200":
+          description: "Sign in"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Me"
+        "401":
+          description: "/problems/sign-in-failed"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "422":
+          description: "/problems/validation"
+          content:
+            application/problem+json:
+              schema:
+                anyOf:
+                  - $ref: "#/components/schemas/ValidationProblem"
+                  - $ref: "#/components/schemas/Problem"
+        "429":
+          description: "/problems/rate-limited"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    delete:
+      x-lld-id: "EP-16"
+      operationId: signOut
+      summary: "Sign out"
+      tags: [session]
+      responses:
+        "204":
+          description: "Sign out"
+        "401":
+          description: "/problems/unauthenticated"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    get:
+      x-lld-id: "EP-17"
+      operationId: getSession
+      summary: "Who is signed in"
+      tags: [session]
+      responses:
+        "200":
+          description: "Who is signed in"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Me"
+        "401":
+          description: "/problems/unauthenticated"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  "/api/patients/{patientId}/catalog":
+    get:
+      x-lld-id: "EP-18"
+      operationId: getCatalog
+      summary: "Products with this practice's prices and stock"
+      tags: [orders]
+      parameters:
+        - name: patientId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: "Products with this practice's prices and stock"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Catalog"
+        "401":
+          description: "/problems/unauthenticated"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "403":
+          description: "/problems/forbidden"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          description: "/problems/not-found"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  "/api/orders":
+    post:
+      x-lld-id: "EP-19"
+      operationId: sendOrder
+      summary: "Send an order to a patient"
+      tags: [orders]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendOrderRequest"
+      responses:
+        "201":
+          description: "Send an order to a patient"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "400":
+          description: "/problems/idempotency-key-missing"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "401":
+          description: "/problems/unauthenticated"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "403":
+          description: "/problems/forbidden"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          description: "/problems/not-found"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "409":
+          description: "/problems/idempotency-in-flight"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "422":
+          description: "/problems/validation, /problems/below-price-floor, /problems/insufficient-stock, /problems/idempotency-mismatch"
+          content:
+            application/problem+json:
+              schema:
+                anyOf:
+                  - $ref: "#/components/schemas/ValidationProblem"
+                  - $ref: "#/components/schemas/Problem"
+  "/api/orders/{orderId}/cancel":
+    post:
+      x-lld-id: "EP-20"
+      operationId: cancelOrder
+      summary: "Cancel a sent, unpaid order"
+      tags: [orders]
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: "Cancel a sent, unpaid order"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "401":
+          description: "/problems/unauthenticated"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          description: "/problems/not-found"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "409":
+          description: "/problems/invalid-transition"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  "/api/orders/{orderId}":
+    get:
+      x-lld-id: "EP-21"
+      operationId: getOrder
+      summary: "One order with current or held prices and price-change notices"
+      tags: [orders]
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: "One order with current or held prices and price-change notices"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderView"
+        "401":
+          description: "/problems/unauthenticated"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          description: "/problems/not-found"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  "/api/orders/{orderId}/checkout":
+    post:
+      x-lld-id: "EP-22"
+      operationId: startCheckout
+      summary: "Start checkout and hold prices for 30 minutes"
+      tags: [orders]
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: "Start checkout and hold prices for 30 minutes"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Checkout"
+        "401":
+          description: "/problems/unauthenticated"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          description: "/problems/not-found"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "409":
+          description: "/problems/invalid-transition"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  "/api/orders/{orderId}/payments":
+    post:
+      x-lld-id: "EP-23"
+      operationId: payOrder
+      summary: "Pay for an order with the test payment"
+      tags: [orders]
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "201":
+          description: "Pay for an order with the test payment"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Receipt"
+        "400":
+          description: "/problems/idempotency-key-missing"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "401":
+          description: "/problems/unauthenticated"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          description: "/problems/not-found"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "409":
+          description: "/problems/idempotency-in-flight, /problems/invalid-transition, /problems/checkout-expired"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "422":
+          description: "/problems/insufficient-stock, /problems/order-under-review, /problems/idempotency-mismatch"
+          content:
+            application/problem+json:
+              schema:
+                anyOf:
+                  - $ref: "#/components/schemas/ValidationProblem"
+                  - $ref: "#/components/schemas/Problem"
+        "502":
+          description: "/problems/payment-failed"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  "/api/notices/{token}":
+    get:
+      x-lld-id: "EP-24"
+      operationId: getNotice
+      summary: "A patient notice (practice name only)"
+      tags: [orders]
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "A patient notice (practice name only)"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notice"
+        "404":
+          description: "/problems/not-found"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  "/api/ops/orders":
+    get:
+      x-lld-id: "EP-25"
+      operationId: listOpsOrders
+      summary: "Paid orders or the review list, by order number"
+      tags: [operations]
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: number
+          in: query
+          required: false
+          schema:
+            type: integer
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: "Paid orders or the review list, by order number"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpsOrderPage"
+        "401":
+          description: "/problems/unauthenticated"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "403":
+          description: "/problems/forbidden"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "422":
+          description: "/problems/validation"
+          content:
+            application/problem+json:
+              schema:
+                anyOf:
+                  - $ref: "#/components/schemas/ValidationProblem"
+                  - $ref: "#/components/schemas/Problem"
+  "/api/ops/orders/{orderId}":
+    get:
+      x-lld-id: "EP-26"
+      operationId: getOrderBreakdown
+      summary: "Where every cent of one order went"
+      tags: [operations]
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: "Where every cent of one order went"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderBreakdown"
+        "401":
+          description: "/problems/unauthenticated"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "403":
+          description: "/problems/forbidden"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          description: "/problems/not-found"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  "/api/practice/prices":
+    get:
+      x-lld-id: "EP-27"
+      operationId: listPrices
+      summary: "This practice's prices and price history"
+      tags: [practice]
+      parameters:
+        - name: history_cursor
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "This practice's prices and price history"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PriceList"
+        "401":
+          description: "/problems/unauthenticated"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "403":
+          description: "/problems/forbidden"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  "/api/practice/prices/{productId}":
+    put:
+      x-lld-id: "EP-28"
+      operationId: changePrice
+      summary: "Change one product's practice price, with a reason"
+      tags: [practice]
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PriceChangeRequest"
+      responses:
+        "200":
+          description: "Change one product's practice price, with a reason"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PracticePrice"
+        "400":
+          description: "/problems/idempotency-key-missing"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "401":
+          description: "/problems/unauthenticated"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "403":
+          description: "/problems/forbidden"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          description: "/problems/not-found"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "409":
+          description: "/problems/idempotency-in-flight, /problems/stale-price"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "422":
+          description: "/problems/validation, /problems/below-price-floor, /problems/idempotency-mismatch"
+          content:
+            application/problem+json:
+              schema:
+                anyOf:
+                  - $ref: "#/components/schemas/ValidationProblem"
+                  - $ref: "#/components/schemas/Problem"
+  "/api/practice/dashboard":
+    get:
+      x-lld-id: "EP-29"
+      operationId: getPracticeDashboard
+      summary: "Attention items, sales per product and stock for a month"
+      tags: [practice]
+      parameters:
+        - name: month
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "Attention items, sales per product and stock for a month"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PracticeDashboard"
+        "401":
+          description: "/problems/unauthenticated"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "403":
+          description: "/problems/forbidden"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "422":
+          description: "/problems/validation"
+          content:
+            application/problem+json:
+              schema:
+                anyOf:
+                  - $ref: "#/components/schemas/ValidationProblem"
+                  - $ref: "#/components/schemas/Problem"
+  "/api/practice/orders":
+    get:
+      x-lld-id: "EP-30"
+      operationId: listPracticeOrders
+      summary: "This practice's orders and their status"
+      tags: [practice]
+      parameters:
+        - name: month
+          in: query
+          required: false
+          schema:
+            type: string
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: "This practice's orders and their status"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PracticeOrderPage"
+        "401":
+          description: "/problems/unauthenticated"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "403":
+          description: "/problems/forbidden"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "422":
+          description: "/problems/validation"
+          content:
+            application/problem+json:
+              schema:
+                anyOf:
+                  - $ref: "#/components/schemas/ValidationProblem"
+                  - $ref: "#/components/schemas/Problem"
+  "/api/ops/stock":
+    get:
+      x-lld-id: "EP-31"
+      operationId: listStock
+      summary: "Stock per product and stock history"
+      tags: [operations]
+      parameters:
+        - name: history_cursor
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "Stock per product and stock history"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockList"
+        "401":
+          description: "/problems/unauthenticated"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "403":
+          description: "/problems/forbidden"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  "/api/ops/stock/{productId}/adjustments":
+    post:
+      x-lld-id: "EP-32"
+      operationId: adjustStock
+      summary: "Record a stock change with a reason"
+      tags: [operations]
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StockAdjustmentRequest"
+      responses:
+        "201":
+          description: "Record a stock change with a reason"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockMovement"
+        "400":
+          description: "/problems/idempotency-key-missing"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "401":
+          description: "/problems/unauthenticated"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "403":
+          description: "/problems/forbidden"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          description: "/problems/not-found"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "409":
+          description: "/problems/idempotency-in-flight, /problems/stale-stock"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "422":
+          description: "/problems/validation, /problems/insufficient-stock, /problems/idempotency-mismatch"
+          content:
+            application/problem+json:
+              schema:
+                anyOf:
+                  - $ref: "#/components/schemas/ValidationProblem"
+                  - $ref: "#/components/schemas/Problem"
+  "/api/ops/health":
+    get:
+      x-lld-id: "EP-33"
+      operationId: getPlatformHealth
+      summary: "Order funnel, alerts and in-house volume, totals only"
+      tags: [operations]
+      parameters:
+        - name: month
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "Order funnel, alerts and in-house volume, totals only"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlatformHealth"
+        "401":
+          description: "/problems/unauthenticated"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "403":
+          description: "/problems/forbidden"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "422":
+          description: "/problems/validation"
+          content:
+            application/problem+json:
+              schema:
+                anyOf:
+                  - $ref: "#/components/schemas/ValidationProblem"
+                  - $ref: "#/components/schemas/Problem"
+  "/api/ops/finance/report":
+    get:
+      x-lld-id: "EP-34"
+      operationId: getFinancialReport
+      summary: "Period totals that must balance, gross and net, payouts by provider"
+      tags: [finance]
+      parameters:
+        - name: month
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "Period totals that must balance, gross and net, payouts by provider"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FinancialReport"
+        "401":
+          description: "/problems/unauthenticated"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "403":
+          description: "/problems/forbidden"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "422":
+          description: "/problems/validation"
+          content:
+            application/problem+json:
+              schema:
+                anyOf:
+                  - $ref: "#/components/schemas/ValidationProblem"
+                  - $ref: "#/components/schemas/Problem"
+  "/api/ops/finance/export":
+    get:
+      x-lld-id: "EP-35"
+      operationId: exportFinancialReport
+      summary: "Export the period: totals and one line per paid order"
+      tags: [finance]
+      parameters:
+        - name: month
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "CSV: the period totals, then one line per paid order by order number, no patient identity"
+          content:
+            text/csv:
+              schema:
+                type: string
+        "401":
+          description: "/problems/unauthenticated"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "403":
+          description: "/problems/forbidden"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "422":
+          description: "/problems/validation"
+          content:
+            application/problem+json:
+              schema:
+                anyOf:
+                  - $ref: "#/components/schemas/ValidationProblem"
+                  - $ref: "#/components/schemas/Problem"
+  "/api/ops/staff":
+    get:
+      x-lld-id: "EP-36"
+      operationId: listStaff
+      summary: "Operations people and their roles"
+      tags: [access]
+      responses:
+        "200":
+          description: "Operations people and their roles"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffList"
+        "401":
+          description: "/problems/unauthenticated"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "403":
+          description: "/problems/forbidden"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  "/api/ops/staff/{userId}/role":
+    put:
+      x-lld-id: "EP-37"
+      operationId: changeRole
+      summary: "Grant, change or remove an operations role"
+      tags: [access]
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoleChangeRequest"
+      responses:
+        "200":
+          description: "Grant, change or remove an operations role"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffMember"
+        "400":
+          description: "/problems/idempotency-key-missing"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "401":
+          description: "/problems/unauthenticated"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "403":
+          description: "/problems/forbidden, /problems/self-role-change"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          description: "/problems/not-found"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "409":
+          description: "/problems/idempotency-in-flight, /problems/stale-role"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "422":
+          description: "/problems/validation, /problems/last-finance-lead, /problems/idempotency-mismatch"
+          content:
+            application/problem+json:
+              schema:
+                anyOf:
+                  - $ref: "#/components/schemas/ValidationProblem"
+                  - $ref: "#/components/schemas/Problem"
+  "/api/ops/access-log":
+    get:
+      x-lld-id: "EP-38"
+      operationId: listAccessLog
+      summary: "Role grants, removals and refused attempts"
+      tags: [access]
+      parameters:
+        - name: month
+          in: query
+          required: false
+          schema:
+            type: string
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: "Role grants, removals and refused attempts"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccessLogPage"
+        "401":
+          description: "/problems/unauthenticated"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "403":
+          description: "/problems/forbidden"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "422":
+          description: "/problems/validation"
+          content:
+            application/problem+json:
+              schema:
+                anyOf:
+                  - $ref: "#/components/schemas/ValidationProblem"
+                  - $ref: "#/components/schemas/Problem"
+  "/api/ops/system-health":
+    get:
+      x-lld-id: "EP-39"
+      operationId: getSystemHealth
+      summary: "Availability, error rate and slow pages for a month"
+      tags: [operations]
+      parameters:
+        - name: month
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "Availability, error rate and slow pages for a month"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemHealth"
+        "401":
+          description: "/problems/unauthenticated"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "403":
+          description: "/problems/forbidden"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "422":
+          description: "/problems/validation"
+          content:
+            application/problem+json:
+              schema:
+                anyOf:
+                  - $ref: "#/components/schemas/ValidationProblem"
+                  - $ref: "#/components/schemas/Problem"
+  "/health":
+    get:
+      x-lld-id: "EP-40"
+      operationId: health
+      summary: "Health check for the uptime monitor"
+      tags: [operations]
+      security: []
+      responses:
+        "200":
+          description: "Health check for the uptime monitor"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: session
+      description: "HTTP-only, Secure, SameSite=Lax session cookie set by EP-15; idle limit 15 minutes (NFR-008)."
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: "Client-generated UUID. Same key + same body replays the stored response for 24 h."
+      schema:
+        type: string
+        maxLength: 255
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      description: "Opaque cursor from the previous page's next_cursor."
+      schema:
+        type: string
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 25
+  schemas:
+    Problem:
+      type: object
+      description: "RFC 9457 problem details. `type` identifies the problem; see lld.md section 4 Problem types."
+      properties:
+        type:
+          type: string
+          format: uri-reference
+          default: about:blank
+          examples: ["/problems/insufficient-stock"]
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri-reference
+      required: [type, title, status]
+    ValidationProblem:
+      allOf:
+        - $ref: "#/components/schemas/Problem"
+        - type: object
+          properties:
+            errors:
+              type: array
+              items:
+                type: object
+                properties:
+                  pointer:
+                    type: string
+                    description: "JSON Pointer to the invalid field, e.g. #/lines/0/quantity"
+                  detail:
+                    type: string
+                required: [pointer, detail]
+          required: [errors]
+    Role:
+      type: string
+      enum: [patient, provider, finance_lead, operations_specialist, sre, data_analyst, none]
+    Cents:
+      type: integer
+      description: "Whole US cents. The PRD fixes one currency (USD, C-5), so no currency field."
+    SignInRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        email:
+          type: string
+          format: email
+          examples: ["pat.example@example.test"]
+        password:
+          type: string
+          minLength: 1
+      required: [email, password]
+    Me:
+      type: object
+      properties:
+        user_id:
+          type: integer
+        display_name:
+          type: string
+        role:
+          $ref: "#/components/schemas/Role"
+        practice_id:
+          type: ["integer", "null"]
+        idle_expires_at:
+          type: string
+          format: date-time
+      required: [user_id, display_name, role, practice_id, idle_expires_at]
+    CatalogItem:
+      type: object
+      properties:
+        product_id:
+          type: integer
+        name:
+          type: string
+        price_cents:
+          $ref: "#/components/schemas/Cents"
+        units_in_stock:
+          type: integer
+          minimum: 0
+        lowest_allowed_price_cents:
+          $ref: "#/components/schemas/Cents"
+      required: [product_id, name, price_cents, units_in_stock, lowest_allowed_price_cents]
+    Catalog:
+      type: object
+      properties:
+        patient_display_name:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CatalogItem"
+      required: [patient_display_name, items]
+    SendOrderRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        patient_id:
+          type: integer
+        lines:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              product_id:
+                type: integer
+              quantity:
+                type: integer
+                minimum: 1
+            required: [product_id, quantity]
+      required: [patient_id, lines]
+    OrderStatus:
+      type: string
+      enum: [sent, in_checkout, payment_failed, paid, needs_review, cancelled]
+    OrderLine:
+      type: object
+      properties:
+        product_id:
+          type: integer
+        name:
+          type: string
+        quantity:
+          type: integer
+          minimum: 1
+        unit_price_cents:
+          $ref: "#/components/schemas/Cents"
+        line_total_cents:
+          $ref: "#/components/schemas/Cents"
+      required: [product_id, name, quantity, unit_price_cents, line_total_cents]
+    Order:
+      type: object
+      properties:
+        order_id:
+          type: integer
+          description: "Also the order number people see, e.g. 1042."
+        status:
+          $ref: "#/components/schemas/OrderStatus"
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderLine"
+        total_cents:
+          $ref: "#/components/schemas/Cents"
+        platform_fee_cents:
+          $ref: "#/components/schemas/Cents"
+        provider_payout_cents:
+          $ref: "#/components/schemas/Cents"
+        sent_at:
+          type: string
+          format: date-time
+      required: [order_id, status, lines, total_cents, platform_fee_cents, provider_payout_cents, sent_at]
+    PriceChangeNotice:
+      type: object
+      properties:
+        product_id:
+          type: integer
+        name:
+          type: string
+        old_price_cents:
+          $ref: "#/components/schemas/Cents"
+        new_price_cents:
+          $ref: "#/components/schemas/Cents"
+      required: [product_id, name, old_price_cents, new_price_cents]
+    OrderView:
+      type: object
+      properties:
+        order_id:
+          type: integer
+        status:
+          $ref: "#/components/schemas/OrderStatus"
+        practice_name:
+          type: string
+        provider_display_name:
+          type: string
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderLine"
+        total_cents:
+          $ref: "#/components/schemas/Cents"
+        price_changes:
+          type: array
+          items:
+            $ref: "#/components/schemas/PriceChangeNotice"
+        prices_held_until:
+          type: ["string", "null"]
+          format: date-time
+        paid_at:
+          type: ["string", "null"]
+          format: date-time
+        is_test_payment:
+          type: boolean
+          const: true
+      required: [order_id, status, practice_name, provider_display_name, lines, total_cents, price_changes, prices_held_until, paid_at, is_test_payment]
+    Checkout:
+      type: object
+      properties:
+        order_id:
+          type: integer
+        total_cents:
+          $ref: "#/components/schemas/Cents"
+        prices_held_until:
+          type: string
+          format: date-time
+      required: [order_id, total_cents, prices_held_until]
+    Receipt:
+      type: object
+      properties:
+        order_id:
+          type: integer
+        amount_paid_cents:
+          $ref: "#/components/schemas/Cents"
+        paid_at:
+          type: string
+          format: date-time
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderLine"
+        is_test_payment:
+          type: boolean
+          const: true
+      required: [order_id, amount_paid_cents, paid_at, lines, is_test_payment]
+    Notice:
+      type: object
+      description: "Never carries items, quantities, amounts or health details (FR-044)."
+      properties:
+        practice_name:
+          type: string
+        sign_in_path:
+          type: string
+      required: [practice_name, sign_in_path]
+    OpsOrderSummary:
+      type: object
+      description: "De-identified: no patient name or contact detail (FR-050)."
+      properties:
+        order_id:
+          type: integer
+        practice_name:
+          type: string
+        provider_display_name:
+          type: string
+        amount_paid_cents:
+          $ref: "#/components/schemas/Cents"
+        status:
+          $ref: "#/components/schemas/OrderStatus"
+        paid_at:
+          type: ["string", "null"]
+          format: date-time
+      required: [order_id, practice_name, provider_display_name, amount_paid_cents, status, paid_at]
+    OpsOrderPage:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/OpsOrderSummary"
+        needs_review_count:
+          type: integer
+        next_cursor:
+          type: ["string", "null"]
+      required: [data, needs_review_count, next_cursor]
+    BreakdownLine:
+      type: object
+      properties:
+        name:
+          type: string
+        quantity:
+          type: integer
+        unit_price_cents:
+          $ref: "#/components/schemas/Cents"
+        unit_cost_cents:
+          $ref: "#/components/schemas/Cents"
+        line_cost_cents:
+          $ref: "#/components/schemas/Cents"
+        fee_share_cents:
+          $ref: "#/components/schemas/Cents"
+      required: [name, quantity, unit_price_cents, unit_cost_cents, line_cost_cents, fee_share_cents]
+    OrderBreakdown:
+      type: object
+      description: "De-identified: order number only (FR-050)."
+      properties:
+        order_id:
+          type: integer
+        practice_name:
+          type: string
+        provider_display_name:
+          type: string
+        paid_at:
+          type: string
+          format: date-time
+        amount_paid_cents:
+          $ref: "#/components/schemas/Cents"
+        item_cost_cents:
+          $ref: "#/components/schemas/Cents"
+        provider_payout_cents:
+          $ref: "#/components/schemas/Cents"
+        platform_fee_cents:
+          $ref: "#/components/schemas/Cents"
+        adds_up:
+          type: boolean
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/BreakdownLine"
+      required: [order_id, practice_name, provider_display_name, paid_at, amount_paid_cents, item_cost_cents, provider_payout_cents, platform_fee_cents, adds_up, lines]
+    PracticePrice:
+      type: object
+      properties:
+        product_id:
+          type: integer
+        name:
+          type: string
+        unit_cost_cents:
+          $ref: "#/components/schemas/Cents"
+        price_cents:
+          $ref: "#/components/schemas/Cents"
+        margin_basis_points:
+          type: integer
+          description: "(price - cost) / price, in hundredths of a percent."
+        is_default:
+          type: boolean
+        set_by_display_name:
+          type: ["string", "null"]
+        lowest_allowed_price_cents:
+          $ref: "#/components/schemas/Cents"
+      required: [product_id, name, unit_cost_cents, price_cents, margin_basis_points, is_default, set_by_display_name, lowest_allowed_price_cents]
+    PriceChange:
+      type: object
+      properties:
+        product_name:
+          type: string
+        changed_by_display_name:
+          type: string
+        changed_at:
+          type: string
+          format: date-time
+        old_price_cents:
+          $ref: "#/components/schemas/Cents"
+        new_price_cents:
+          $ref: "#/components/schemas/Cents"
+        reason:
+          type: string
+      required: [product_name, changed_by_display_name, changed_at, old_price_cents, new_price_cents, reason]
+    PriceList:
+      type: object
+      properties:
+        prices:
+          type: array
+          items:
+            $ref: "#/components/schemas/PracticePrice"
+        history:
+          type: array
+          items:
+            $ref: "#/components/schemas/PriceChange"
+        history_next_cursor:
+          type: ["string", "null"]
+      required: [prices, history, history_next_cursor]
+    PriceChangeRequest:
+      type: object
+      additionalProperties: false
+      description: "Exactly one of price_cents or margin_basis_points."
+      properties:
+        price_cents:
+          $ref: "#/components/schemas/Cents"
+        margin_basis_points:
+          type: integer
+          minimum: 0
+          maximum: 9999
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 200
+        expected_current_price_cents:
+          $ref: "#/components/schemas/Cents"
+      required: [reason, expected_current_price_cents]
+      oneOf:
+        - required: [price_cents]
+        - required: [margin_basis_points]
+    AttentionItem:
+      type: object
+      properties:
+        kind:
+          type: string
+          enum: [awaiting_payment, low_stock, out_of_stock]
+        label:
+          type: string
+        order_id:
+          type: ["integer", "null"]
+        product_id:
+          type: ["integer", "null"]
+      required: [kind, label, order_id, product_id]
+    ProductSales:
+      type: object
+      properties:
+        product_id:
+          type: integer
+        name:
+          type: string
+        units_sold:
+          type: integer
+        patients_paid_cents:
+          $ref: "#/components/schemas/Cents"
+        provider_payout_cents:
+          $ref: "#/components/schemas/Cents"
+        units_in_stock:
+          type: integer
+      required: [product_id, name, units_sold, patients_paid_cents, provider_payout_cents, units_in_stock]
+    PracticeDashboard:
+      type: object
+      properties:
+        month:
+          type: string
+          examples: ["2026-10"]
+        attention:
+          type: array
+          items:
+            $ref: "#/components/schemas/AttentionItem"
+        sales:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductSales"
+      required: [month, attention, sales]
+    PracticeOrderSummary:
+      type: object
+      properties:
+        order_id:
+          type: integer
+        patient_display_name:
+          type: string
+        total_cents:
+          $ref: "#/components/schemas/Cents"
+        status:
+          $ref: "#/components/schemas/OrderStatus"
+        sent_at:
+          type: string
+          format: date-time
+        paid_at:
+          type: ["string", "null"]
+          format: date-time
+      required: [order_id, patient_display_name, total_cents, status, sent_at, paid_at]
+    PracticeOrderPage:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/PracticeOrderSummary"
+        next_cursor:
+          type: ["string", "null"]
+      required: [data, next_cursor]
+    StockMovement:
+      type: object
+      properties:
+        product_name:
+          type: string
+        change:
+          type: integer
+        kind:
+          type: string
+          enum: [sale, sale_release, adjustment]
+        reason:
+          type: string
+        actor_display_name:
+          type: ["string", "null"]
+        created_at:
+          type: string
+          format: date-time
+        units_in_stock_after:
+          type: integer
+      required: [product_name, change, kind, reason, actor_display_name, created_at, units_in_stock_after]
+    StockList:
+      type: object
+      properties:
+        products:
+          type: array
+          items:
+            type: object
+            properties:
+              product_id:
+                type: integer
+              name:
+                type: string
+              units_in_stock:
+                type: integer
+            required: [product_id, name, units_in_stock]
+        history:
+          type: array
+          items:
+            $ref: "#/components/schemas/StockMovement"
+        history_next_cursor:
+          type: ["string", "null"]
+      required: [products, history, history_next_cursor]
+    StockAdjustmentRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        change:
+          type: integer
+          not:
+            const: 0
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 200
+        expected_units_in_stock:
+          type: integer
+          minimum: 0
+        confirm_large_change:
+          type: boolean
+          default: false
+      required: [change, reason, expected_units_in_stock]
+    PlatformHealth:
+      type: object
+      description: "Totals only; never a single order or a patient (FR-053, NFR-012)."
+      properties:
+        month:
+          type: string
+        funnel:
+          type: object
+          properties:
+            sent:
+              type: integer
+            checkout_started:
+              type: integer
+            paid:
+              type: integer
+            payment_failed:
+              type: integer
+            checkout_expired:
+              type: integer
+          required: [sent, checkout_started, paid, payment_failed, checkout_expired]
+        median_minutes_to_pay:
+          type: ["integer", "null"]
+        out_of_stock_refusals:
+          type: integer
+        orders_needing_review:
+          type: integer
+        measures:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              value:
+                type: number
+              alert_line:
+                type: ["number", "null"]
+              needs_attention:
+                type: boolean
+            required: [name, value, alert_line, needs_attention]
+        practices:
+          type: array
+          items:
+            type: object
+            properties:
+              practice_name:
+                type: string
+              paid_cents:
+                $ref: "#/components/schemas/Cents"
+              fees_cents:
+                $ref: "#/components/schemas/Cents"
+              orders_sent:
+                type: integer
+              orders_paid:
+                type: integer
+            required: [practice_name, paid_cents, fees_cents, orders_sent, orders_paid]
+      required: [month, funnel, median_minutes_to_pay, out_of_stock_refusals, orders_needing_review, measures, practices]
+    FinancialReport:
+      type: object
+      properties:
+        from:
+          type: string
+          format: date
+        to:
+          type: string
+          format: date
+        patient_payments_cents:
+          $ref: "#/components/schemas/Cents"
+        item_cost_cents:
+          $ref: "#/components/schemas/Cents"
+        provider_payouts_cents:
+          $ref: "#/components/schemas/Cents"
+        platform_fees_cents:
+          $ref: "#/components/schemas/Cents"
+        balanced:
+          type: boolean
+        gap_cents:
+          $ref: "#/components/schemas/Cents"
+        gap_order_ids:
+          type: array
+          items:
+            type: integer
+        gross_revenue_cents:
+          $ref: "#/components/schemas/Cents"
+        net_revenue_cents:
+          $ref: "#/components/schemas/Cents"
+        payouts_by_provider:
+          type: array
+          items:
+            type: object
+            properties:
+              provider_display_name:
+                type: string
+              practice_name:
+                type: string
+              payout_cents:
+                $ref: "#/components/schemas/Cents"
+            required: [provider_display_name, practice_name, payout_cents]
+      required: [from, to, patient_payments_cents, item_cost_cents, provider_payouts_cents, platform_fees_cents, balanced, gap_cents, gap_order_ids, gross_revenue_cents, net_revenue_cents, payouts_by_provider]
+    StaffMember:
+      type: object
+      properties:
+        user_id:
+          type: integer
+        display_name:
+          type: string
+        role:
+          $ref: "#/components/schemas/Role"
+        role_since:
+          type: ["string", "null"]
+          format: date-time
+        is_you:
+          type: boolean
+      required: [user_id, display_name, role, role_since, is_you]
+    StaffList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/StaffMember"
+      required: [data]
+    RoleChangeRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        role:
+          type: string
+          enum: [finance_lead, operations_specialist, sre, data_analyst, none]
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 200
+        expected_role:
+          $ref: "#/components/schemas/Role"
+        confirm_no_finance_lead:
+          type: boolean
+          default: false
+      required: [role, reason, expected_role]
+    AccessLogEntry:
+      type: object
+      properties:
+        at:
+          type: string
+          format: date-time
+        actor_display_name:
+          type: string
+        target_display_name:
+          type: string
+        from_role:
+          $ref: "#/components/schemas/Role"
+        to_role:
+          $ref: "#/components/schemas/Role"
+        reason:
+          type: string
+        outcome:
+          type: string
+          enum: [granted, refused]
+      required: [at, actor_display_name, target_display_name, from_role, to_role, reason, outcome]
+    AccessLogPage:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/AccessLogEntry"
+        next_cursor:
+          type: ["string", "null"]
+      required: [data, next_cursor]
+    SystemHealth:
+      type: object
+      properties:
+        month:
+          type: string
+        partial_month:
+          type: boolean
+        availability_percent:
+          type: ["number", "null"]
+        availability_target_percent:
+          type: number
+          const: 99.5
+        error_rate_percent:
+          type: ["number", "null"]
+        slow_page_percent:
+          type: ["number", "null"]
+        slow_page_target_percent:
+          type: number
+          const: 5
+      required: [month, partial_month, availability_percent, availability_target_percent, error_rate_percent, slow_page_percent, slow_page_target_percent]
+    Health:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [up]
+        version:
+          type: string
+      required: [status, version]

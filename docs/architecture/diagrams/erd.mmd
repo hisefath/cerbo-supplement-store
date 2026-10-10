@@ -1,0 +1,182 @@
+%% diagram: erd
+%% source: docs/architecture/lld.md#1-data-model @ 2e4e445
+%% drawn: 2026-10-10T05:04:43Z by draw-diagrams (claude, claude-opus-5-5)
+%% render: unverified
+%% render-check: mmdc not on PATH
+%% missing: 0
+%% Generated from the source section. Do not edit by hand: fix the section, then re-run `draw-diagrams erd`.
+erDiagram
+    practices |o..o{ users : "practice_id"
+    users ||..o{ sessions : "user_id"
+    practices ||--o{ practice_prices : "practice_id"
+    products ||--o{ practice_prices : "product_id"
+    practices ||..o{ price_changes : "practice_id"
+    products ||..o{ price_changes : "product_id"
+    users ||..o{ price_changes : "changed_by"
+    users ||..o{ practice_prices : "set_by"
+    practices ||..o{ orders : "practice_id"
+    users ||..o{ orders : "provider_id, practice_id"
+    users ||..o{ orders : "patient_id, practice_id"
+    orders ||..|{ order_lines : "order_id"
+    products ||..o{ order_lines : "product_id"
+    orders ||..o{ payment_attempts : "order_id"
+    orders ||..o{ ledger_entries : "order_id"
+    payment_attempts ||..o{ ledger_entries : "payment_attempt_id"
+    practices ||..o{ ledger_entries : "practice_id"
+    users ||..o{ ledger_entries : "provider_id"
+    products ||..o{ stock_movements : "product_id"
+    orders |o..o{ stock_movements : "order_id"
+    users |o..o{ stock_movements : "actor_id"
+    orders ||..o| notices : "order_id"
+    users ||..o{ notices : "patient_id"
+    practices ||..o{ notices : "practice_id"
+    users ||..o{ access_log : "actor_id"
+    users ||..o{ access_log : "target_user_id"
+    users ||--o{ idempotency_keys : "user_id"
+    practices {
+        bigint id PK "not null · identity"
+        text name "not null"
+        timestamptz created_at "not null"
+    }
+    users {
+        bigint id PK, UK "not null · identity · uq_users_id_practice (id, practice_id)"
+        text email UK "not null · uq_users_email_lower (lower(email))"
+        text password_hash "not null"
+        text display_name "not null"
+        varchar role "not null · (30)"
+        bigint practice_id FK, UK "nullable · ref practices.id · uq_users_id_practice (id, practice_id)"
+        timestamptz role_changed_at "nullable"
+        timestamptz created_at "not null"
+    }
+    sessions {
+        bigint id PK "not null · identity"
+        bytea token_hash UK "not null · uq_sessions_token_hash"
+        bigint user_id FK "not null · ref users.id"
+        timestamptz created_at "not null"
+        timestamptz last_seen_at "not null"
+        timestamptz ended_at "nullable"
+    }
+    products {
+        bigint id PK "not null · identity"
+        text sku UK "not null · uq_products_sku"
+        text name "not null"
+        integer unit_cost_cents "not null"
+        integer units_in_stock "not null"
+        timestamptz created_at "not null"
+    }
+    practice_prices {
+        bigint practice_id PK, FK "not null · ref practices.id"
+        bigint product_id PK, FK "not null · ref products.id"
+        integer price_cents "not null"
+        bigint set_by FK "not null · ref users.id"
+        timestamptz set_at "not null"
+    }
+    price_changes {
+        bigint id PK "not null · identity"
+        bigint practice_id FK "not null · ref practices.id"
+        bigint product_id FK "not null · ref products.id"
+        integer old_price_cents "not null"
+        integer new_price_cents "not null"
+        text reason "not null"
+        bigint changed_by FK "not null · ref users.id"
+        timestamptz changed_at "not null"
+    }
+    orders {
+        bigint id PK "not null · identity (starts at 1001)"
+        bigint practice_id FK "not null · ref practices.id · ref users.practice_id"
+        bigint provider_id FK "not null · ref users.id"
+        bigint patient_id FK "not null · ref users.id"
+        varchar status "not null · (20)"
+        timestamptz sent_at "not null"
+        timestamptz checkout_started_at "nullable"
+        timestamptz prices_held_until "nullable"
+        timestamptz paid_at "nullable"
+        timestamptz cancelled_at "nullable"
+        integer amount_paid_cents "nullable"
+        integer item_cost_cents "nullable"
+        integer provider_payout_cents "nullable"
+        integer platform_fee_cents "nullable"
+    }
+    order_lines {
+        bigint id PK "not null · identity"
+        bigint order_id FK, UK "not null · ref orders.id · uq_order_lines_order_product (order_id, product_id)"
+        bigint product_id FK, UK "not null · ref products.id · uq_order_lines_order_product (order_id, product_id)"
+        text product_name "not null"
+        integer quantity "not null"
+        integer sent_unit_price_cents "not null"
+        integer held_unit_price_cents "nullable"
+        integer paid_unit_price_cents "nullable"
+        integer unit_cost_cents_at_payment "nullable"
+        integer fee_share_cents "nullable"
+    }
+    payment_attempts {
+        bigint id PK "not null · identity"
+        bigint order_id FK, UK "not null · ref orders.id · uq_payment_attempts_order_key (order_id, idempotency_key) · uq_payment_attempts_one_success partial (order_id) WHERE status = 'succeeded' · uq_payment_attempts_one_processing partial (order_id) WHERE status = 'processing'"
+        text idempotency_key UK "not null · uq_payment_attempts_order_key (order_id, idempotency_key)"
+        varchar status "not null · (20)"
+        integer amount_cents "not null"
+        varchar failure_reason "nullable · (40)"
+        timestamptz created_at "not null"
+        timestamptz finished_at "nullable"
+    }
+    ledger_entries {
+        bigint id PK "not null · identity"
+        bigint order_id FK, UK "not null · ref orders.id · uq_ledger_entries_order_category (order_id, category)"
+        bigint payment_attempt_id FK "not null · ref payment_attempts.id"
+        bigint practice_id FK "not null · ref practices.id"
+        bigint provider_id FK "not null · ref users.id"
+        varchar category UK "not null · (20) · uq_ledger_entries_order_category (order_id, category)"
+        integer amount_cents "not null"
+        timestamptz occurred_at "not null"
+    }
+    stock_movements {
+        bigint id PK "not null · identity"
+        bigint product_id FK "not null · ref products.id"
+        integer change "not null"
+        varchar kind "not null · (20)"
+        text reason "not null"
+        bigint order_id FK "nullable · ref orders.id"
+        bigint actor_id FK "nullable · ref users.id"
+        integer units_after "not null"
+        timestamptz created_at "not null"
+    }
+    notices {
+        bigint id PK "not null · identity"
+        bigint order_id FK, UK "not null · ref orders.id · uq_notices_order"
+        bigint patient_id FK "not null · ref users.id"
+        bigint practice_id FK "not null · ref practices.id"
+        text token UK "not null · uq_notices_token"
+        timestamptz created_at "not null"
+    }
+    access_log {
+        bigint id PK "not null · identity"
+        bigint actor_id FK "not null · ref users.id"
+        bigint target_user_id FK "not null · ref users.id"
+        varchar from_role "not null · (30)"
+        varchar to_role "not null · (30)"
+        text reason "not null"
+        varchar outcome "not null · (10)"
+        timestamptz created_at "not null"
+    }
+    idempotency_keys {
+        bigint user_id PK, FK "not null · ref users.id"
+        text key PK "not null"
+        text route "not null"
+        bytea request_hash "not null"
+        varchar status "not null · (20)"
+        smallint response_status "nullable"
+        jsonb response_body "nullable"
+        timestamptz created_at "not null"
+        timestamptz expires_at "not null"
+    }
+    request_stats {
+        timestamptz hour PK "not null"
+        text route_group PK "not null"
+        integer requests "not null"
+        integer errors "not null"
+        integer slow "not null"
+    }
+    health_pings {
+        timestamptz minute PK "not null"
+        timestamptz first_seen_at "not null"
+    }

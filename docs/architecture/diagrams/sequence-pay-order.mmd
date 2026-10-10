@@ -1,0 +1,63 @@
+%% diagram: sequence-pay-order
+%% source: docs/architecture/lld.md#seq-2-review-and-pay-an-order-sequence-pay-order-covers-us-2-us-8-f2-fr-005-to-fr-013-fr-022-fr-023-fr-026-fr-027-fr-035-to-fr-037-fr-042-ae-005-to-ae-012-ae-020-ae-021-ae-023-ae-031 @ 2e4e445
+%% drawn: 2026-10-10T05:06:05Z by draw-diagrams (claude, claude-opus-5-5)
+%% render: unverified
+%% render-check: mmdc not on PATH
+%% missing: 0
+%% Generated from the source section. Do not edit by hand: fix the section, then re-run `draw-diagrams sequence-pay-order`.
+sequenceDiagram
+    autonumber
+    actor Patient
+    participant FE3 as FE-3 NoticePage
+    participant FE2 as FE-2 SignInPage
+    participant FE7 as FE-7 PatientOrderPage
+    participant FE8 as FE-8 CheckoutStep
+    participant BE1 as BE-1 ApiHandlers
+    participant BE3 as BE-3 SessionService
+    participant BE5 as BE-5 IdempotencyGuard
+    participant BE9 as BE-9 OrderService
+    participant BE10 as BE-10 PaymentService
+    participant BE11 as BE-11 PaymentGateway
+    participant BE13 as BE-13 StockService
+    participant DB
+    Patient->>FE3: opens the notice link (EP-2, EP-24)#59; sees only the practice name
+    Patient->>FE2: signs in (EP-15 → BE-3.signIn)#59; lands on her order (FR-042)
+    FE7->>BE1: GET order (EP-21) → BE-9.getOrderForViewer: lines at current prices, plus a notice for any price changed since sending
+    Patient->>FE8: presses Continue to payment
+    FE8->>BE1: POST checkout (EP-22) → BE-9.startCheckout: [tx begin] status sent → in_checkout only if still sent#59; copy current prices into held prices#59; hold until now + 30 min [tx commit]
+    FE8-->>Patient: #quot;Your prices are held for 30 minutes, until 2:30 PM.#quot;
+    Patient->>FE8: presses Pay $60.00
+    FE8->>BE1: POST payment with Idempotency-Key (EP-23)#59; BE-5.begin → proceed
+    alt main path (steps 9-15)
+        BE1->>BE10: pay(viewer, order, key)
+        alt main path (steps 10-15)
+            BE10->>DB: [tx begin] lock the order#59; check in_checkout and hold live#59; compute the split with BE-6 and check it balances#59; lock products in id order#59; BE-13.reserveForOrder lowers stock and appends sale movements#59; insert attempt processing [tx commit]
+            BE10->>BE11: charge(amount, order, key) — outside any transaction
+            alt main path (steps 12-15)
+                BE11-->>BE10: succeeded
+                BE10->>DB: [tx begin] lock the order#59; write the split, paid prices, unit costs and fee shares on lines#59; insert four ledger entries#59; attempt → succeeded#59; order → paid, paid_at [tx commit — deferred ledger and fee-share checks run here]
+                BE1->>BE5: complete(user, key, 201, receipt)
+                BE1-->>FE8: 201 Receipt → FE-9 shows #quot;Paid $60.00 on Oct 13, 2026 at 7:30 PM.#quot;
+            else the payment provider declines or does not answer
+                BE11-->>BE10: failed (declined, or no answer after 10 s)
+                BE10->>DB: [tx begin] BE-13.releaseForOrder returns the stock#59; attempt → failed#59; order → payment_failed [tx commit]
+                BE1->>BE5: release(user, key)
+                BE1-->>FE8: 502 /problems/payment-failed
+                FE8-->>Patient: #quot;Your payment didn't go through. No money was taken. Try again.#quot;
+            end
+        else an item sold out before Ana paid
+            BE13->>BE10: InsufficientStock inside transaction 1 → [tx rollback]#59; no attempt row, no charge#59; the order stays in_checkout
+            BE1->>BE5: release(user, key)
+            BE1-->>FE8: 422 /problems/insufficient-stock
+            FE8-->>Patient: #quot;Omega-3 Fish Oil sold out before you paid. Nothing was charged. Contact your practice to change your order.#quot;
+        else the split does not add up
+            BE10->>DB: [tx begin] order → needs_review [tx commit]#59; no attempt, no charge
+            BE1->>BE5: release(user, key)
+            BE1-->>FE8: 422 /problems/order-under-review
+            FE8-->>Patient: #quot;We couldn't complete this payment. No money was taken. Your practice will contact you.#quot;
+        end
+    else Pay pressed again with the same key
+        BE1->>BE5: begin(user, key, route, hash) — the key is completed with the same hash
+        BE5-->>BE1: replay the stored response
+        BE1-->>FE8: the stored 201 Receipt#59; no second charge
+    end

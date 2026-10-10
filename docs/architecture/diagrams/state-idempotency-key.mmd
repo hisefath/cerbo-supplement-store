@@ -1,0 +1,14 @@
+%% diagram: state-idempotency-key
+%% source: docs/architecture/lld.md#sm-3-idempotency-key-idempotency_keysstatus-state-idempotency-key @ 2e4e445
+%% drawn: 2026-10-10T05:06:06Z by draw-diagrams (claude, claude-opus-5-5)
+%% render: unverified
+%% render-check: mmdc not on PATH
+%% missing: 0
+%% Generated from the source section. Do not edit by hand: fix the section, then re-run `draw-diagrams state-idempotency-key`.
+stateDiagram-v2
+    [*] --> in_flight : first request (BE-5.begin) [no row for (user, key)]
+    in_flight --> completed : request finished (BE-5.complete) [same user and key]
+    in_flight --> [*] : request failed retryably (BE-5.release)
+    in_flight --> in_flight : abandoned (BE-5.begin sees it older than 60 s) [created_at + 60 s ≤ now]
+    completed --> completed : repeat (BE-5.begin) [same hash]
+    completed --> [*]

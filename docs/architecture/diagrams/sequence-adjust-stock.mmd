@@ -1,0 +1,38 @@
+%% diagram: sequence-adjust-stock
+%% source: docs/architecture/lld.md#seq-6-record-a-stock-change-sequence-adjust-stock-covers-us-5-f6-fr-030-fr-038-ae-027-ae-036 @ 2e4e445
+%% drawn: 2026-10-10T05:06:26Z by draw-diagrams (claude, claude-opus-5-5)
+%% render: unverified
+%% render-check: mmdc not on PATH
+%% missing: 0
+%% Generated from the source section. Do not edit by hand: fix the section, then re-run `draw-diagrams sequence-adjust-stock`.
+sequenceDiagram
+    autonumber
+    actor P1 as Operations specialist
+    actor Provider
+    participant FE16 as FE-16 StockAdjustmentsPage
+    participant BE1 as BE-1 ApiHandlers
+    participant BE4 as BE-4 AccessPolicy
+    participant BE5 as BE-5 IdempotencyGuard
+    participant BE13 as BE-13 StockService
+    participant DB
+    FE16->>BE1: GET stock (EP-31) → BE-13.listStock
+    P1->>FE16: records +12 Vitamin D3, reason #quot;delivery received#quot;
+    alt main path (steps 3-6)
+        FE16->>BE1: POST adjustment with Idempotency-Key (EP-32)#59; BE-4.assertRole#59; BE-5.begin → proceed
+        BE1->>BE13: adjust(viewer, product, {change 12, reason, expected 8})
+        alt main path (steps 5-6)
+            BE13->>DB: [tx begin] lock the product#59; check expected count#59; stock 8 → 20#59; insert movement (adjustment, actor, units after 20) [tx commit]
+            BE1-->>FE16: 201 StockMovement → #quot;Vitamin D3 2000 IU stock is now 20.#quot;
+        else a sale lowered stock while the form was open
+            BE13->>DB: expected 8 but now 7 → [tx rollback]
+            BE13-->>BE1: StaleStock
+            BE1-->>FE16: 409 /problems/stale-stock
+            FE16-->>P1: #quot;Stock changed while you were here. It's now 7. Check your change.#quot;
+        end
+    else a provider tries to adjust stock
+        Provider->>FE16: opens Stock adjustments and records a change
+        FE16->>BE1: POST adjustment (EP-32)
+        BE1->>BE4: assertRole → forbidden
+        BE1-->>FE16: 403 /problems/forbidden
+        FE16-->>Provider: #quot;Only platform staff can change stock.#quot; and stock unchanged
+    end

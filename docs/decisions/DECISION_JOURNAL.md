@@ -423,6 +423,62 @@ Copy this block for each new entry (D-ids increase by one, starting at D1):
 - Cost accepted: no two-factor and no password reset. · Reversibility: Type 2 · Confidence: high
 - Revisit if: the slice moves toward real users. · Evidence: hld.md §9 D36, §10 Authentication · Interview line: "Sign-in is a stand-in, but every person still has their own account and session, because the access rules are what I'm proving."
 
+### D38 Web framework: Nuxt 3  [status: accepted]
+- 2026-10-10 09:52 CDT · design-lld (G3) · M3 · Decided by: human, G3 2026-10-10 09:52 CDT: "approve" · Proposed by: design-lld (Claude Code, claude-opus-5-5) · artifact: proposed as docs/architecture/lld.md D38 @9af3b07
+- Context and forces: D32 (TypeScript, server-rendered Vue), D36 (one deployable, API-first), NFR-001, appetite 1-2 days; Cerbo's front end is Vue (R01).
+- Options:
+  - Do nothing / simplest: plain Node with Vue's server renderer wired by hand — rejected: about 2 days of routing, rendering, hydration and build glue
+  - Nuxt 3 (agent's recommendation) — chosen
+  - Express API plus Vue with Vite server rendering — rejected: two halves to glue, about a day more
+- Choice · Why: In the context of one deployable that must serve server-rendered Vue pages and a same-origin JSON API, facing a 1-2 day appetite, we choose Nuxt 3 over a hand-wired server or Express plus Vite to get pages and API routes in one app with no glue, accepting Nuxt's conventions.
+- Cost accepted: Nuxt and Nitro conventions. · Reversibility: Type 1 · Confidence: high
+- Revisit if: Cerbo wants the API in another back end. · Evidence: lld.md Decisions D38, §2 Layering · Interview line: "Nuxt gave me server-rendered Vue and the JSON API in one process, which is the one-deployable, API-first shape I chose."
+
+### D39 Database access: Kysely with plain SQL migrations  [status: accepted]
+- 2026-10-10 09:56 CDT · design-lld (G3) · M3 · Decided by: human, G3 2026-10-10 09:56 CDT: "approve" · Proposed by: design-lld (Claude Code, claude-opus-5-5) · artifact: proposed as docs/architecture/lld.md D39 @9af3b07
+- Context and forces: INV-1 to INV-5 and LINV-1 to LINV-6 rely on partial unique indexes, deferred constraint triggers, insert-only grants and composite foreign keys; D33 (PostgreSQL); AGENTS.md:57.
+- Options:
+  - Do nothing / simplest: pg driver with raw SQL strings — rejected: queries not type-checked
+  - Kysely plus plain SQL migration files (agent's recommendation) — chosen
+  - Prisma ORM — rejected: needs raw-SQL escapes for the very features the money rules use, and hides transaction boundaries
+- Choice · Why: In the context of a design whose money rules live in PostgreSQL constraints, triggers and grants, facing the need to also type-check queries in TypeScript, we choose Kysely with SQL migrations over raw strings or Prisma to get typed queries without hiding the database features we rely on, accepting a type-regeneration step after each migration.
+- Cost accepted: regenerate types after each migration. · Reversibility: Type 2 · Confidence: med
+- Revisit if: the team standardises on another data layer. · Evidence: lld.md Decisions D39, §1, §7 · Interview line: "The money rules are database constraints, so I kept the migrations in plain SQL and used a typed query builder rather than an ORM that would hide them."
+
+### D40 Primary keys: bigint identity, order number = id, random tokens for outside links  [status: accepted]
+- 2026-10-10 09:58 CDT · design-lld (G3) · M3 · Decided by: human, G3 2026-10-10 09:58 CDT: "approved" · Proposed by: design-lld (Claude Code, claude-opus-5-5) · artifact: proposed as docs/architecture/lld.md D40 @9af3b07
+- Context and forces: screens show "Order 1042" (S3, S4, S11); FR-009 (guessing must reveal nothing); every read is access-checked (INV-7, HLD TH-4); the notice link is the only link that leaves the system (FR-044).
+- Options:
+  - Do nothing / simplest: bigint identity ids, order number = id from 1001, random 32-byte tokens only for notice links (agent's recommendation) — chosen
+  - UUID v7 ids everywhere plus a separate readable number — rejected: two identifiers and larger indexes for no safety gain
+- Choice · Why: In the context of a small system where every read is access-checked and staff talk about "Order 1042", facing the risk of guessable ids, we choose bigint identity ids with random tokens for outside links over UUIDs everywhere to get readable numbers and small indexes, accepting that ids reveal volume to people who can already see orders.
+- Cost accepted: ids reveal order volume to authorised viewers. · Reversibility: Type 1 · Confidence: high
+- Revisit if: ids ever appear in links that skip the access check. · Evidence: lld.md Decisions D40, §1 `orders`, `notices` · Interview line: "Guessing an order number gets you 'not found', because every read is checked; the only link that leaves the system carries an unguessable token."
+
+### D41 Idempotency: one shared idempotency_keys table plus database backstops  [status: accepted]
+- 2026-10-10 09:59 CDT · design-lld (G3) · M3 · Decided by: human, G3 2026-10-10 09:59 CDT: "approve, but also explain to me this solution over using a mesage broker like rabbitmq" · Proposed by: design-lld (Claude Code, claude-opus-5-5) · artifact: proposed as docs/architecture/lld.md D41 @9af3b07
+- Context and forces: FR-008; HLD §10 Idempotency; INV-2; five repeatable mutations EP-19, EP-23, EP-28, EP-32, EP-37.
+- Options:
+  - Do nothing / simplest: disable the button after one press — rejected: retries and second tabs still send twice
+  - One idempotency_keys table plus natural backstops (agent's recommendation) — chosen
+  - Natural unique key per operation only — rejected: retries get errors instead of the first answer; rules differ per endpoint
+  - Message broker (raised by the human at the gate) — not an option for this problem: a broker delivers messages at least once, so consumers still need idempotency keys; the payment is synchronous; adding one is an HLD container change
+- Choice · Why: In the context of five mutations that patients and staff can repeat, facing double presses and network retries on a payment, we choose one stored-key table plus database backstops over button-disabling or per-endpoint keys to get identical replay behaviour everywhere and no double charge, accepting a small table with a 24-hour life.
+- Cost accepted: one more table; expired rows purged on write (LLD Q-5). · Reversibility: Type 2 · Confidence: high
+- Revisit if: a mutation needs a key that lives longer than 24 hours, or a broker is added for outbound work (keys stay). · Evidence: lld.md Decisions D41, §4 Idempotency, BE-5, SM-3 · Interview line: "Every mutation carries an Idempotency-Key, and behind it the database still allows only one successful payment per order."
+
+### D42 Payment timing: synchronous charge with short transactions on either side; hybrid with webhooks as the production path  [status: accepted]
+- 2026-10-10 10:49 CDT · design-lld (G3, revise) · M3 · Decided by: human, G3 2026-10-10 10:49 CDT: "approve" (after "a, add D42") · Proposed by: design-lld (Claude Code, claude-opus-5-5) · artifact: proposed as docs/architecture/lld.md D42 @6733116
+- Context and forces: FR-006, FR-035, S2 Loading state, NFR-001, INV-2, INV-5, HLD L-3; tolerance by persona (patients forgive seconds but not uncertainty about money; providers forgive no lag; finance forgives slow reports); the human asked at G3 for sync vs async, lock-up risk, broker comparison and broader holistic-care load to be weighed.
+- Options:
+  - Do nothing / simplest: A, one transaction holding locks across the provider call — rejected: lock-ups, pool exhaustion, charge without a record on commit failure
+  - B, synchronous with short transactions around the call (implied by PRD, UX and HLD L-3; agent's recommendation) — chosen for the slice
+  - C, fully asynchronous queue and worker — rejected: patient left uncertain; new container; still needs idempotency keys
+  - D, hybrid with a pending state and webhooks — chosen as the production path, not built now
+- Choice · Why: In the context of a patient who must know on the spot whether they paid and a stub provider that never answers ambiguously, facing the risk of database lock-ups from slow providers, we choose a synchronous charge with short transactions on either side over holding locks across the call, a fully queued payment, or a hybrid built now, to get a definite answer without lock contention or new infrastructure, accepting crash-recovery logic between the steps and a planned move to the hybrid when a real provider arrives.
+- Cost accepted: FM-7 reconcile logic; ambiguous timeouts once a real provider exists. · Reversibility: Type 2 · Confidence: high
+- Revisit if: a real payment provider, recurring charges or refills, third-party fulfillment (pharmacy, gym), insurance claims, or more than about 100 payments a second for one product. · Evidence: lld.md D42, SEQ-2, BE-10, FM-2, FM-7; R05 · Interview line: "Locks live for milliseconds on either side of the card call, never across it; the patient waits for a definite answer because uncertainty about money is the one thing they won't forgive, and in production I'd add a pending state settled by the provider's webhook."
+
 ### D43 Broader holistic-care products parked as a future non-goal (NG-12)  [status: accepted]
 - 2026-10-10 10:58 CDT · clarify-spec (3b) · M2 · Decided by: human, clarify-spec CQ-3 2026-10-10 10:58 CDT: "A, non goals, can revisit later, and marked as was considered for the future of the product" · Proposed by: clarify-spec (Claude Code, claude-opus-5-5) · artifact: docs/product/prd.md@998ed94 NG-12
 - Context and forces: the human raised prescriptions, medical supplies, gym memberships and other holistic-care services at G3; lld.md D42 and Q-7 showed they need product types, a payee per order line, work with no patient present (recurring charges, claims, partner updates) and, for prescriptions, regulation the slice rules out (NG-3, NG-10).

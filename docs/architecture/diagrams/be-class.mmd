@@ -1,0 +1,147 @@
+%% diagram: be-class
+%% source: docs/architecture/lld.md#2-backend-components @ 2e4e445
+%% drawn: 2026-10-10T05:06:07Z by draw-diagrams (claude, claude-opus-5-5)
+%% render: unverified
+%% render-check: mmdc not on PATH
+%% missing: 0
+%% Generated from the source section. Do not edit by hand: fix the section, then re-run `draw-diagrams be-class`.
+classDiagram
+    class BE1["BE-1 ApiHandlers"]
+    <<route handlers>> BE1
+    BE1 : +handle~Operation~(event: H3Event) Promise~T~
+    class BE2["BE-2 PageGuards"]
+    <<route middleware>> BE2
+    BE2 : +requirePageRole(event: H3Event, roles: Role[]) Promise~Viewer~
+    class BE3["BE-3 SessionService"]
+    <<service>> BE3
+    BE3 : +signIn(email: string, password: string, ip: string) Promise~{ viewer: Viewer#59; cookieToken: string }~
+    BE3 : +resolve(cookieToken: string | undefined) Promise~Viewer | null~
+    BE3 : +signOut(cookieToken: string) Promise~void~
+    class BE4["BE-4 AccessPolicy"]
+    <<policy>> BE4
+    BE4 : +assertRole(viewer: Viewer, allowed: Role[]) void
+    BE4 : +assertCanViewOrder(viewer: Viewer, order: OrderOwnership) void
+    BE4 : +assertCanActOnPatient(viewer: Viewer, patient: PatientRef) void
+    BE4 : +assertCanChangeRole(actor: Viewer, target: StaffRef) void
+    class BE5["BE-5 IdempotencyGuard"]
+    <<middleware service>> BE5
+    BE5 : +begin(userId: bigint, key: string | undefined, route: string, requestHash: Buffer) Promise~{ replay: StoredResponse } | { proceed: true }~
+    BE5 : +complete(userId: bigint, key: string, status: number, body: unknown) Promise~void~
+    BE5 : +release(userId: bigint, key: string) Promise~void~
+    class BE6["BE-6 Money"]
+    <<pure module>> BE6
+    BE6 : +platformFeeCents(amountPaidCents: number) number
+    BE6 : +payoutCents(amountPaidCents: number, itemCostCents: number, feeCents: number) number
+    BE6 : +allocateFee(lineAmountsCents: number[], feeCents: number) number[]
+    BE6 : +defaultPriceCents(unitCostCents: number) number
+    BE6 : +priceFromMargin(unitCostCents: number, marginBasisPoints: number) number
+    BE6 : +lowestAllowedPriceCents(unitCostCents: number) number
+    BE6 : +assertSplitBalances(split: Split) void
+    class BE7["BE-7 CatalogService"]
+    <<service>> BE7
+    BE7 : +catalogForPatient(viewer: Viewer, patientId: bigint) Promise~Catalog~
+    BE7 : +currentPrices(practiceId: bigint, productIds: bigint[]) Promise~Map~bigint, number~~
+    class BE8["BE-8 PricingService"]
+    <<service>> BE8
+    BE8 : +changePrice(viewer: Viewer, productId: bigint, input: PriceChangeInput) Promise~PracticePrice~
+    BE8 : +listPrices(viewer: Viewer, historyCursor?: string) Promise~PriceList~
+    class BE9["BE-9 OrderService"]
+    <<service>> BE9
+    BE9 : +sendOrder(viewer: Viewer, input: SendOrderInput) Promise~Order~
+    BE9 : +getOrderForViewer(viewer: Viewer, orderId: bigint) Promise~OrderView~
+    BE9 : +startCheckout(viewer: Viewer, orderId: bigint) Promise~Checkout~
+    BE9 : +cancelOrder(viewer: Viewer, orderId: bigint) Promise~Order~
+    BE9 : +expireHoldIfDue(orderId: bigint) Promise~void~
+    class BE10["BE-10 PaymentService"]
+    <<service>> BE10
+    BE10 : +pay(viewer: Viewer, orderId: bigint, idempotencyKey: string) Promise~Receipt~
+    class BE11["BE-11 PaymentGateway"]
+    <<adapter (stub)>> BE11
+    BE11 : +charge(request: { orderId: bigint#59; amountCents: number#59; idempotencyKey: string }) Promise~{ outcome: 'succeeded' } | { outcome: 'failed'#59; reason: 'declined' | 'no_answer' }~
+    class BE12["BE-12 MessagingGateway"]
+    <<adapter (stub)>> BE12
+    BE12 : +sendOrderNotice(input: { orderId: bigint#59; patientId: bigint#59; practiceId: bigint }) Promise~{ token: string }~
+    BE12 : +getNotice(token: string) Promise~Notice~
+    class BE13["BE-13 StockService"]
+    <<service>> BE13
+    BE13 : +adjust(viewer: Viewer, productId: bigint, input: StockAdjustmentInput) Promise~StockMovement~
+    BE13 : +reserveForOrder(tx: Transaction, orderId: bigint, lines: SaleLine[]) Promise~void~
+    BE13 : +releaseForOrder(tx: Transaction, orderId: bigint) Promise~void~
+    BE13 : +listStock(viewer: Viewer, historyCursor?: string) Promise~StockList~
+    class BE14["BE-14 OpsOrderQueries"]
+    <<read model>> BE14
+    BE14 : +listOrders(viewer: Viewer, filter: { status: 'paid' | 'needs_review'#59; number?: bigint#59; cursor?: string#59; limit: number }) Promise~OpsOrderPage~
+    BE14 : +getBreakdown(viewer: Viewer, orderId: bigint) Promise~OrderBreakdown~
+    class BE15["BE-15 PracticeDashboardQueries"]
+    <<read model>> BE15
+    BE15 : +dashboard(viewer: Viewer, month: YearMonth) Promise~PracticeDashboard~
+    BE15 : +orders(viewer: Viewer, month: YearMonth, cursor?: string, limit?: number) Promise~PracticeOrderPage~
+    class BE16["BE-16 PlatformHealthQueries"]
+    <<read model>> BE16
+    BE16 : +health(viewer: Viewer, month: YearMonth) Promise~PlatformHealth~
+    class BE17["BE-17 FinanceReportService"]
+    <<read model>> BE17
+    BE17 : +report(viewer: Viewer, period: Period) Promise~FinancialReport~
+    BE17 : +exportCsv(viewer: Viewer, period: Period) AsyncIterable~string~
+    class BE18["BE-18 StaffAccessService"]
+    <<service>> BE18
+    BE18 : +listStaff(viewer: Viewer) Promise~StaffList~
+    BE18 : +changeRole(actor: Viewer, targetUserId: bigint, input: RoleChangeInput) Promise~StaffMember~
+    BE18 : +accessLog(viewer: Viewer, month: YearMonth, cursor?: string, limit?: number) Promise~AccessLogPage~
+    class BE19["BE-19 RequestMetrics"]
+    <<middleware + read model>> BE19
+    BE19 : +record(routeGroup: string, status: number, durationMs: number) Promise~void~
+    BE19 : +recordPing() Promise~Health~
+    BE19 : +systemHealth(viewer: Viewer, month: YearMonth) Promise~SystemHealth~
+    class BE20["BE-20 Clock"]
+    <<seam>> BE20
+    BE20 : +now() Date
+    BE1 ..> BE3 : depends on
+    BE1 ..> BE4 : depends on
+    BE1 ..> BE5 : depends on
+    BE1 ..> BE7 : depends on
+    BE1 ..> BE8 : depends on
+    BE1 ..> BE9 : depends on
+    BE1 ..> BE10 : depends on
+    BE1 ..> BE12 : depends on
+    BE1 ..> BE13 : depends on
+    BE1 ..> BE14 : depends on
+    BE1 ..> BE15 : depends on
+    BE1 ..> BE16 : depends on
+    BE1 ..> BE17 : depends on
+    BE1 ..> BE18 : depends on
+    BE1 ..> BE19 : depends on
+    BE2 ..> BE3 : depends on
+    BE2 ..> BE4 : depends on
+    BE3 ..> BE20 : depends on
+    note for BE3 "depends on: SEAM-2 random tokens, scrypt from Node's crypto"
+    BE5 ..> BE20 : depends on
+    BE7 ..> BE4 : depends on
+    BE7 ..> BE6 : depends on
+    BE8 ..> BE6 : depends on
+    BE8 ..> BE7 : depends on
+    BE8 ..> BE20 : depends on
+    BE9 ..> BE4 : depends on
+    BE9 ..> BE6 : depends on
+    BE9 ..> BE7 : depends on
+    BE9 ..> BE12 : depends on
+    BE9 ..> BE20 : depends on
+    BE10 ..> BE6 : depends on
+    BE10 ..> BE9 : depends on
+    BE10 ..> BE11 : depends on
+    BE10 ..> BE13 : depends on
+    BE10 ..> BE20 : depends on
+    note for BE11 "depends on: none in the stub#59; later an HTTPS client and a secret from the host's store (HLD L-3)"
+    note for BE12 "depends on: SEAM-2 random tokens"
+    BE13 ..> BE4 : depends on
+    BE13 ..> BE20 : depends on
+    BE14 ..> BE4 : depends on
+    BE15 ..> BE4 : depends on
+    BE15 ..> BE20 : depends on
+    BE16 ..> BE4 : depends on
+    BE16 ..> BE20 : depends on
+    BE17 ..> BE4 : depends on
+    BE17 ..> BE20 : depends on
+    BE18 ..> BE4 : depends on
+    BE18 ..> BE20 : depends on
+    BE19 ..> BE20 : depends on

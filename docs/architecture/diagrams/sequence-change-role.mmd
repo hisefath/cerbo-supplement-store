@@ -1,0 +1,43 @@
+%% diagram: sequence-change-role
+%% source: docs/architecture/lld.md#seq-10-grant-or-remove-an-operations-role-sequence-change-role-covers-us-10-f10-fr-054-to-fr-056-ae-051-to-ae-053 @ 2e4e445
+%% drawn: 2026-10-10T05:04:50Z by draw-diagrams (claude, claude-opus-5-5)
+%% render: unverified
+%% render-check: mmdc not on PATH
+%% missing: 0
+%% Generated from the source section. Do not edit by hand: fix the section, then re-run `draw-diagrams sequence-change-role`.
+sequenceDiagram
+    autonumber
+    actor SRE
+    actor P1 as Other operations person
+    participant FE19 as FE-19 OperationsAccessPage
+    participant BE1 as BE-1 ApiHandlers
+    participant BE4 as BE-4 AccessPolicy
+    participant BE5 as BE-5 IdempotencyGuard
+    participant BE18 as BE-18 StaffAccessService
+    participant DB
+    alt main path (steps 1-7)
+        FE19->>BE1: GET staff (EP-36) → BE-18.listStaff
+        SRE->>FE19: Change role on Dana → Data analyst, reason #quot;new hire#quot;#59; presses Save role
+        FE19->>BE1: PUT role with Idempotency-Key (EP-37)#59; BE-5.begin → proceed
+        BE1->>BE18: changeRole(actor, Dana, {role data_analyst, reason, expected none})
+        BE18->>BE4: assertCanChangeRole(actor, Dana) — actor is SRE and not Dana
+        alt main path (steps 6-7)
+            BE18->>DB: [tx begin] lock Dana's row#59; check expected role#59; check the last-finance-lead rule#59; update role and role_changed_at#59; insert access log (granted) [tx commit]
+            BE1-->>FE19: 200 StaffMember → #quot;Saved. Dana Ito is now Data analyst. The finance lead will see this in the access log.#quot;
+        else the SRE targets their own account
+            BE4-->>BE18: self-role-change
+            BE18->>DB: [tx begin] insert access log (refused) [tx commit]
+            BE18-->>BE1: SelfRoleChange
+            BE1->>BE5: release(user, key)
+            BE1-->>FE19: 403 /problems/self-role-change
+            FE19-->>SRE: #quot;You can't change your own role.#quot;
+        end
+    else someone other than the SRE tries
+        P1->>FE19: opens Operations access and saves a role
+        FE19->>BE1: PUT role (EP-37)
+        BE1->>BE18: changeRole(actor, target, input)
+        BE18->>BE4: assertCanChangeRole → forbidden
+        BE18->>DB: [tx begin] insert access log (refused) [tx commit]
+        BE1-->>FE19: 403 /problems/forbidden
+        FE19-->>P1: #quot;Only the SRE can change operations roles.#quot;
+    end
