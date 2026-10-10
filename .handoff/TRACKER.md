@@ -7,11 +7,11 @@ several harnesses read it and the repo is public.
 ## Resume
 
 <!-- Rewritten as the LAST edit of every supervisor move. Times come from `date`. -->
-- **As of:** 2026-10-09 18:35 CDT
-- **In flight:** none. gather-evidence pass 1 done: R01–R07 written (2 answered, 5 partial), Done-when all pass.
-- **Next:** human reviews research (Approve / Revise R<NN> / Stop) → `/write-prd` (G1). M1 MR (brief + research) can open after this.
-- **Waiting on:** human: research review.
-- **Verified:** docs/research Done-when checks clean; make check OK
+- **As of:** 2026-10-09 19:56 CDT
+- **In flight:** gather-evidence follow-up pass R08-R13 STOPPED @8b161f6 (R08 answered/high, R09 partial/medium, R10 partial/medium, R11 answered/medium, R12 answered/medium, R13 answered/medium; 15 open gaps). `/write-prd` still paused after Q2; Q3 (price input + floor) asked, unanswered.
+- **Next:** human reviews R08-R13 (Approve / Revise / Stop); on Approve, resume `/write-prd` at Q3 with R08-R13 as inputs.
+- **Waiting on:** human: review the research STOP message.
+- **Verified:** 8b161f6 `make check` → OK; gather-evidence Done-when checks on R08-R13 → clean (one eyeballed hit: "recommend" describes Fullscript's feature in R08 Answer)
 
 ## Tasks
 
@@ -40,6 +40,10 @@ several harnesses read it and the repo is public.
 | 2026-10-09 18:19 CDT | decision: set v1 (main) aside; how to describe it | main@778e788; AGENTS.md "Project specifics"; journal D1-D17 | "actually the whole laravel thing, i dont want, since we're started from scratch. whatevers in main branch, just dont worry about it" · "for anything to do with the main branch, we should just say how we did the project in a one shot manner before, because ai is so powerful, and wanted to see if it would work, but then scratched that and started again with a full auditable work flow with me being very intimately involved in the planning stage as ai can catch whats broken but cant catch whats wrong, and solving the wrong problem is highly probable for a non deterministic model." |
 | 2026-10-09 18:22 CDT | G0 | specs/M1-in-ehr-supplement-orders/brief.md@e8c6621 | "approve" |
 | 2026-10-09 18:39 CDT | research review (no gate; gather-evidence STOP) | docs/research/R01-R07@b3966a6 | "approve, then /write-prd" |
+| 2026-10-09 19:34 CDT | decision: market-research detour plan (option 1: factory change via route-failure → G-L5, then gather-evidence R08-R11, then resume write-prd Q3) | chat options card | "1, /route-failure" |
+| 2026-10-09 19:40 CDT | G-L5 Revise (before verdict) | H2@98f66b7c8c99 | "also to add, we must think of finding if this product (in this case, a s upplement store tied to the EHR) has already been built by others, soif the problem was already solved or if something similar was already made. how many users they have. what market share of users do we expect. we can find out when our our user base will most likely use our services to plan things like maintenance windows, etc. we can also use how many users we will have on average, to right size the machine instances we plan to purchase in the cloud, and then what the through put may be, this also helps decide what langauge or tool to use, how many users to plan for our system design, infra architecture, etc. user behavior and expected behavior on our app can help plan for edge cases and requests per second. like this. now run /route-failure" |
+| 2026-10-09 19:42 CDT | G-L5 | H3@255e96814097 (approval covers apply + kit push to GitLab and GitHub) | "approve, then /gather-evidence" |
+| 2026-10-09 20:00 CDT | research review (no gate; gather-evidence STOP) | docs/research/R08-R13@8b161f6 | "approve, then /write-prd" |
 
 ## Log
 
@@ -67,3 +71,6 @@ several harnesses read it and the repo is public.
 2026-10-09 18:13 CDT ROUTE human-owned gap recorded: AI usage log (REQ-15/22) has no owning skill; supervisor keeps docs/AI_USAGE.md per Q2 → candidate F5 for /route-failure at M1 close
 2026-10-09 18:20 CDT VERIFY M1 brief Done-when all pass (sections, ids, tech words, NS=1, 3 Q rows); D22 logged, D1-D17 superseded-by D22; AGENTS.md specifics updated per Approvals 18:19
 2026-10-09 18:35 CDT RESULT gather-evidence R01-R07 interactive, serial (sources.md is shared, so not parallel-safe: a dispatch-rule lesson), 32/105 tool calls
+2026-10-09 19:33 CDT ROUTE PRD paused by human: "i think we should pause, and go back to the research phase ... research should be done on our ideal customer profile, and the market of our users in general, and what share of the market will come to us ... where are our customer clusters ... we need an expert skill in this type of research, but we can bundle it under the research skill we already have"
+2026-10-09 19:42 CDT VERIFY H3 applied in software-factory-kit 071beeb (hash 255e96814097 matched; scripts/test.sh 119/0); pushed GitLab + GitHub; D24 logged. Next: gather-evidence follow-up pass R08+ (market, competitors, usage/load)
+2026-10-09 19:56 CDT VERIFY gather-evidence R08-R13 written and committed @8b161f6 (budgets 9, 8, 8, 2, 10, 0 of 20)

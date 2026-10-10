@@ -254,3 +254,15 @@ Copy this block for each new entry (D-ids increase by one, starting at D1):
 - Choice · Why: in a graded partner project meant to practise the whole workflow, facing a high risk of solving the wrong problem, we chose Full over shortcuts to get a gated, auditable record from brief to ship, accepting more documents before code.
 - Cost accepted: slower start; many gates. · Reversibility: Type 2 (a track may move up, never down) · Confidence: high
 - Revisit if: appetite changes (a deadline appears). · Evidence: brief §Track; approval G0 2026-10-09 18:22 CDT · Interview line: "I ran the full gated track because the expensive failure is building the wrong thing, and gates are where I catch that."
+
+### D24 Adopt market, competitor and load-profile research (H3)  [status: accepted]
+- 2026-10-09 19:42 CDT · route-failure (G-L5) · M1 · Decided by: human, G-L5 2026-10-09 19:42 CDT: "approve, then /gather-evidence" · Proposed by: route-failure (Claude Code, claude-opus-5-5) · artifact: software-factory-kit HARNESS_CHANGELOG.md H3@255e96814097 (applied 071beeb)
+- Context and forces: the human paused write-prd after Q2: success targets and later system sizing had no market or usage evidence (kit FINDINGS F4). The human then added competitors and their users, expected share, usage timing for maintenance windows, and load for instance sizing, throughput and stack choices.
+- Options:
+  - Do nothing / simplest (shown as "Stop / reject") — rejected: targets and sizing would be guessed
+  - Approve H3: market-research reference (competitors, ICP, TAM/SAM/SOM bottom-up, share, clusters, usage and load profile) + required brief questions + checks (agent's recommendation; agent's first proposal was H2 without competitors and load, superseded after the human's Revise) — chosen
+  - H2 (market and ICP only) — rejected by the human's Revise: missed competitors, usage timing and load
+  - Revise again — rejected: not asked for
+- Choice · Why: in a factory reused across hiring-partner projects, facing PRD targets and design sizing with no evidence, we chose a bottom-up market and load method with stated formulas and ranges over guessed round numbers, so targets and machine sizing trace to evidence, accepting two more required brief questions and a heavier research pass.
+- Cost accepted: longer research before the PRD. · Reversibility: Type 2 (revert 071beeb) · Confidence: high
+- Revisit if: market questions routinely end as gaps with no public data. · Evidence: software-factory-kit FINDINGS.md F4, skills/gather-evidence/references/market-research.md; approval G-L5 2026-10-09 19:42 CDT · Interview line: "Before designing, I size the market and the expected load bottom-up with stated assumptions, so my targets and my machine sizing come from evidence, not round numbers."
