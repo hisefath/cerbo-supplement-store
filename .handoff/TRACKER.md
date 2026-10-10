@@ -134,6 +134,7 @@ several harnesses read it and the repo is public.
 | 2026-10-10 17:28 CDT | M4 review pass 6 R7 disposition: keep (cancel vs checkout race already safe) | .handoff/reviews/M4-pass6.md | "a, keep R7 and R12, merge M4" |
 | 2026-10-10 17:28 CDT | M4 review pass 6 R12 disposition: keep (S2 copy built in T005, matches screens.md) | .handoff/reviews/M4-pass6.md | "a, keep R7 and R12, merge M4" |
 | 2026-10-10 17:28 CDT | G5 M4: merge milestone/m4-tracer-bullet to main via MR with a merge commit | milestone/m4-tracer-bullet@2604a27 | "a, keep R7 and R12, merge M4" |
+| 2026-10-10 17:48 CDT | G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) | H7@0a9aa1f06a59 | "Approve, adopt H7" |
 
 ## Log
 
