@@ -7,11 +7,11 @@ several harnesses read it and the repo is public.
 ## Resume
 
 <!-- Rewritten as the LAST edit of every supervisor move. Times come from `date`. -->
-- **As of:** 2026-10-10 16:20 CDT
-- **In flight:** demo deploy prep (D55): GAP tasks M4-T901 (/healthz), M4-T902 (/version), M4-T903 (demo seed) running in parallel. M4 build T001-T011 squashed (last 1dafd61); check-security answered (D49-D54); ship-milestone STOP B (runbook, HEALTH.md, smoke.sh committed 11b3425).
-- **Next:** verify and squash T901-T903; human does runbook FS-1 to FS-8 (web-v2, postgres-v2, roles, domain, variables incl. TRUST_PROXY=1, migrations, seed); then /ship-milestone again for the deploy ask. Later: re-run /check-security and /report-milestone, then the D48 merge chain M1 to M4. After M4: design-lld catch-up (helper unitCostFromLowestAllowedPrice; D47 SM-1 guard; FM-3 new-key retry; failure_reason NULL meaning; acceptance Q-1 to Q-4); define-acceptance re-run (D47 test); FM-7 reconcile owner; milestone review items pass2 R6, R7, pass3 R3, R5.
-- **Waiting on:** M4-T901, M4-T902, M4-T903 workers.
-- **Verified:** 1dafd61 make check OK (108 unit + 43 M4 acceptance); built-app CSP hash matches
+- **As of:** 2026-10-10 18:31 CDT
+- **In flight:** nothing. M1-M4 merged to main (10a020e, GitHub mirrored); demo live at web-v2 (1130822, smoke GREEN). route-failure M4 retro closed: F5-F26 filed; H4-H15 all adopted in software-factory-kit (last b8560d0, pushed to GitLab + GitHub); D57-D69 recorded; docs/decisions/REVIEW.md (project review by topic and weight) generated and checked by make check.
+- **Next:** home the unpushed Cerbo commits d4c77e6..de232d2 (on merged milestone/m4-tracer-bullet) on main via a small MR; then /quiz-me (milestone close chain). Queued: M5-R01 design-lld catch-up, M5-R02 define-acceptance, M5-R03 clarify-spec M5 scope; next route-failure pass: neutral examples in H4/H8, update Cerbo's scripts/scope-guard.sh copy, record H4-H15 adopted in HARNESS_CHANGELOG, draw-diagrams trace bugs (Log 2026-10-10 00:03). Also: G-live probe, re-run /check-security, redeploy from main, align D33 Postgres 16 vs 18.
+- **Waiting on:** the human: git identity for software-factory-kit (no ~/.gitconfig; kit commits used Mastershefu <mastershefu@MacBook-Pro-4.local> via env), uptime probe on /healthz.
+- **Verified:** de232d2 make decisions OK (REVIEW.md current); 30a0de4 make check OK (unit + 43 M4 acceptance + decisions); kit b8560d0 scripts/test.sh 131 passed, 0 failed
 
 ## Tasks
 
@@ -21,6 +21,9 @@ several harnesses read it and the repo is public.
 | id | ask (link) | track/phase | harness+model | state | since | owns | result |
 |---|---|---|---|---|---|---|---|
 | M1-S01 | repo setup: backup, init-repo, AGENTS commands, make check, remotes, journal import (human's kickoff message) | Full / phase 0 (G-init) | supervisor (claude-opus-5-5) | done | 2026-10-08 22:33 CDT | scaffold paths, AGENTS.md Commands, Makefile, .gitignore, docs/decisions/DECISION_JOURNAL.md | 1ed9fd1 (G-init) |
+| M5-R01 | F20: design-lld catch-up before M5 (Q-1 to Q-4, D47 SM-1 guard, FM-3 new-key retry, pagination wording, EP-23 429, pay_rate_attempts) | Standard / design-lld | supervisor | todo | 2026-10-10 18:31 CDT | docs/architecture/lld.md, contracts/openapi.yaml | — |
+| M5-R02 | F21: acceptance tests for review-fixed behaviours (key release, stuck attempt, parallel limits, cancel states) | Standard / define-acceptance | supervisor | todo | 2026-10-10 18:31 CDT | specs/M4-tracer-bullet/acceptance.md, tests/acceptance/** | — |
+| M5-R03 | F22: M5 scope in the PRD (patient order list /orders 404, provider view of EP-4, needs-review amounts, copy gaps) | Standard / clarify-spec | supervisor | todo | 2026-10-10 18:31 CDT | docs/product/prd.md | — |
 
 ## Approvals
 
@@ -134,6 +137,21 @@ several harnesses read it and the repo is public.
 | 2026-10-10 17:28 CDT | M4 review pass 6 R7 disposition: keep (cancel vs checkout race already safe) | .handoff/reviews/M4-pass6.md | "a, keep R7 and R12, merge M4" |
 | 2026-10-10 17:28 CDT | M4 review pass 6 R12 disposition: keep (S2 copy built in T005, matches screens.md) | .handoff/reviews/M4-pass6.md | "a, keep R7 and R12, merge M4" |
 | 2026-10-10 17:28 CDT | G5 M4: merge milestone/m4-tracer-bullet to main via MR with a merge commit | milestone/m4-tracer-bullet@2604a27 | "a, keep R7 and R12, merge M4" |
+| 2026-10-10 17:48 CDT | G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) | H7@0a9aa1f06a59 | "Approve, adopt H7" |
+| 2026-10-10 17:52 CDT | G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) | H5@e6b50c35ca04 | "Approve, adopt H5 and H6" |
+| 2026-10-10 17:52 CDT | G-L5 (approval covers apply and project commit) | H6@d14103b14077 | "Approve, adopt H5 and H6" |
+| 2026-10-10 17:54 CDT | G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) | H10@50ef7d53d151 | "Approve, adopt H10" |
+| 2026-10-10 17:55 CDT | G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) | H4@85c575806b75 | "Approve, adopt H4" |
+| 2026-10-10 17:56 CDT | G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) | H8@d830e46064b7 | "approve" |
+| 2026-10-10 17:57 CDT | G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) | H9@bb53b6150e83 | "Approve, adopt H9" |
+| 2026-10-10 17:59 CDT | G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) | H11@dfce8aaa4377 | "Approve, adopt H11" |
+| 2026-10-10 18:14 CDT | design approval (no G-L5; diffs still need their own H@hash yes): decision review views — topic + 3-level weight + one-liner per entry, generated docs/decisions/REVIEW.md (by topic, workflow history, by day), --check in make check, quiz-me review order, Cerbo backfill table D1-D64 | chat design card | "a, approve the design" |
+| 2026-10-10 18:23 CDT | G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) | H13@732be0c264af | "Approve, adopt H13 and H14" |
+| 2026-10-10 18:23 CDT | G-L5 (approval covers apply and project commit, incl. the D1-D64 backfill table) | H14@eb8d763f6268 | "Approve, adopt H13 and H14" |
+| 2026-10-10 18:28 CDT | G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) | H15@5fe6c05fbd96 | "Approve, adopt H15" |
+| 2026-10-10 18:30 CDT | G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) | H12@562b8efd0be7 | "Approve, adopt H12" |
+| 2026-10-10 18:31 CDT | G-L5 (block decision: rows without a diff) | software-factory-kit FINDINGS.md F14-F24 | "Approve, accept all as listed" |
+| 2026-10-10 18:32 CDT | push + MR + merge to main: M4 close-out (route-failure retro record, D57-D69, REVIEW.md) | milestone/m4-close-retro@1836d05+ | "yes, open the MR and merge to main" |
 
 ## Log
 
@@ -313,3 +331,7 @@ several harnesses read it and the repo is public.
 2026-10-10 17:05 CDT FAIL process: commits were per step, not per decision or result, and nothing was pushed or opened as a PR per milestone; history landed on main unreadable. Route to route-failure: commit grouping per decision/result, PR per milestone with TL;DR + filled template, auto-merge on standing yes, and a hook to commit software-factory-kit improvements to its repo
 2026-10-10 17:24 CDT MERGE M1 !1 (8ddfc80), M2 !2 (371224a), M3 !3 (8377ce0) to main with merge commits; main mirrored to GitHub; main tree equals original 5a984b8; M4 still local (old history, rebuild on milestone/m3-design pending)
 2026-10-10 17:28 CDT HISTORY M4 rebuilt as 20 grouped commits on milestone/m3-design (89 originals kept at backup/m4-tracer-bullet); final tree identical; app files identical to deployed 1130822; make check OK (122 unit + 43 acceptance)
+2026-10-10 18:01 CDT ROUTE human-requested factory change: topic + importance weight for evidence and decisions under an umbrella topic; a daily decision log (standup view) that also feeds the project journal; one-liners for these ledgers → route-failure F25+ and G-L5 after design questions; H12 card still open
+2026-10-10 18:05 CDT ROUTE design answer Q1 weight scale: "a, 3 levels" (●●● critical / ●●○ important / ●○○ minor)
+2026-10-10 18:06 CDT ROUTE design answer Q2 topic list: "a, project list from the factory default" (default Product, Data, Security, Money, Infrastructure, Process; changes are decisions)
+2026-10-10 18:12 CDT ROUTE design answer Q3: keep the chronological journal as the AI-usage ledger; topic + weight bucketing is a separate project-review document; embed it in the existing learning/review path (quiz-me) rather than a new one; Cerbo keeps its workflow-improvement history

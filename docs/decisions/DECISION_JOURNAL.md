@@ -8,6 +8,10 @@ Why each design choice was made and what it cost (software-factory-kit WORKFLOW.
   `superseded-by D<m>`. Rejected options stay visible.
 - One-way (Type 1) decisions are also promoted to `docs/decisions/NNNN-<slug>.md`.
 - Who said yes, word for word, lives in `.handoff/TRACKER.md ## Approvals`; this file holds the reasoning.
+- Topics group decisions in the project review, `docs/decisions/REVIEW.md`, which
+  `scripts/decision-views.sh` generates from this ledger. Changing the list is itself a decision.
+
+Topics: Product · Data · Security · Money · Infrastructure · Process
 
 ## Entry schema
 
@@ -21,6 +25,7 @@ Copy this block for each new entry (D-ids increase by one, starting at D1):
 - Choice · Why (Y-statement: in context C, facing F, we chose X over Y to get Z, accepting W)
 - Cost accepted · Reversibility (Type 1 one-way / Type 2 two-way) · Confidence (low/med/high)
 - Revisit if · Evidence (file:line, R/S ids) · Interview line (one sentence you'd say out loud)
+- Review: Topic <topic> · Weight <●●●|●●○|●○○> · One-liner: <at most 15 words>
 ```
 
 ## Entries
@@ -638,3 +643,151 @@ Copy this block for each new entry (D-ids increase by one, starting at D1):
 - Choice: a · Why: In the context of a demo on a fresh Railway database, facing a template that ships PostgreSQL 18, we chose to keep 18 over recreating on 16, because M4 uses only long-standing features (identity, checks, triggers, advisory locks) and the smoke test checks the live app, accepting a version gap between tests and the demo.
 - Cost accepted: tests run on 16, the demo on 18. · Reversibility: Type 2 two-way — recreate on 16 or move tests to 18 later · Confidence: med
 - Revisit if: any smoke or demo step fails on the database, or before the real release (align docker-compose.yml and D33 with production). · Evidence: railway service list (postgres-ssl:18); railway connect (server 18.6); D33; approval 2026-10-10 16:39 CDT · Interview line: "Railway's template gave us Postgres 18 while tests ran on 16; we kept 18 for the demo because M4 uses only stable features, and logged it to align before the real release."
+
+### D57 One script applies, tests, commits and pushes kit changes  [status: accepted]
+- Date 2026-10-10 17:48 CDT · phase 15 route-failure (G-L5) · milestone M4 · Decided by: human, G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) 2026-10-10 17:48 CDT: "Approve, adopt H7" · Proposed by: route-failure (Claude Code, claude-opus-5-5) · artifact: HARNESS_CHANGELOG.md H7@0a9aa1f06a59
+- Context and forces: the human asked that every factory improvement be committed to the software-factory-kit repo automatically (FINDINGS F7). Applying a proposal was a pasted awk pipeline, and committing and pushing were separate manual steps, so an applied change could sit uncommitted on one laptop.
+- Options:
+  - Do nothing / simplest (shown as "C do nothing"): keep committing by hand — cost: nothing now; an applied change can sit uncommitted again — rejected: the human asked for automatic commits
+  - A adopt H7: scripts/apply-proposal.sh refuses unless the approved hash matches, applies, runs the kit tests, reverts on failure, then commits and pushes; route-failure's STOP calls it (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: one more kit script; approving a proposal now also approves pushing it to both remotes — chosen
+  - B a Claude Code or git hook that commits after edits in the kit — cost: fires on every edit, including unapproved ones, so half-finished work gets pushed — rejected: a hook cannot tell approved from experimental changes
+- Choice: A · Why: In the context of factory improvements that must reach the kit repo, facing manual apply, commit and push steps, we chose one hash-checked script over a commit hook to get only approved, tested changes into the kit's history, accepting that each approval now includes the push.
+- Cost accepted: a G-L5 approval now also authorises pushing the kit to GitLab and GitHub; one more script to maintain. · Reversibility: Type 2 two-way — delete the script and restore the pasted command · Confidence: high
+- Revisit if: an adopted change is found uncommitted in the kit, or the script pushes something that was not approved. · Evidence: software-factory-kit FINDINGS.md F7; HARNESS_CHANGELOG.md H7; kit commit 37e386c; approval G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) 2026-10-10 17:48 CDT · Interview line: "Factory changes are approved by fingerprint, then one script applies, tests, commits and pushes them, so an improvement never sits uncommitted on one machine."
+
+### D58 Commit per decision, MR per milestone, TL;DR first  [status: accepted]
+- Date 2026-10-10 17:52 CDT · phase 15 route-failure (G-L5) · milestone M4 · Decided by: human, G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) 2026-10-10 17:52 CDT: "Approve, adopt H5 and H6" · Proposed by: route-failure (Claude Code, claude-opus-5-5) · artifact: HARNESS_CHANGELOG.md H5@e6b50c35ca04
+- Context and forces: main's history was unreadable because commits were made per tool step and MRs were left to the end (FINDINGS F6). The human asked for commits per decision or result, one MR per milestone with a TL;DR and a filled template citing decisions and specs, and auto-merge on a standing yes.
+- Options:
+  - Do nothing / simplest (shown as "C do nothing"): keep the rules only in the Approvals row — cost: nothing now; they live in one row and the agent's memory — rejected: the human wants it in the process
+  - A adopt H5 and H6: WORKFLOW §8 commit, MR and auto-merge rules plus a TL;DR section in the kit's MR template, and the same section in this project's template (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: three more §8 rules; every MR starts with a one-line TL;DR — chosen
+  - B change only this project (H6) — cost: the next project repeats the unreadable history — rejected: history is a factory rule, not a Cerbo quirk
+- Choice: A · Why: In the context of a factory whose main history must read like a changelog, facing commits per tool step and late MRs, we chose factory-wide §8 rules and a TL;DR template section over a project-only fix, to give every project a legible history, accepting three more rules and a TL;DR on every MR.
+- Cost accepted: three more WORKFLOW §8 rules; commit size stays a judgement no script grades. · Reversibility: Type 2 two-way — revert the kit commit · Confidence: high
+- Revisit if: a milestone lands with per-step commits or an MR without a TL;DR. · Evidence: software-factory-kit FINDINGS.md F6; HARNESS_CHANGELOG.md H5; kit commit a7a8ebd; approval G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) 2026-10-10 17:52 CDT · Interview line: "Each merge to main is one milestone with a one-line TL;DR, and each commit inside it is one decision or result, so history reads like a changelog."
+
+### D59 This project's MR template starts with a TL;DR  [status: accepted]
+- Date 2026-10-10 17:52 CDT · phase 15 route-failure (G-L5) · milestone M4 · Decided by: human, G-L5 (approval covers apply and project commit) 2026-10-10 17:52 CDT: "Approve, adopt H5 and H6" · Proposed by: route-failure (Claude Code, claude-opus-5-5) · artifact: HARNESS_CHANGELOG.md H6@d14103b14077
+- Context and forces: init-repo never overwrites, so this project keeps the old MR template until its own copy changes (FINDINGS F6, project half of D58).
+- Options:
+  - Do nothing / simplest (shown as "C do nothing"): keep the old template here — cost: M5's MR template lacks the TL;DR the human asked for — rejected: the human wants it now
+  - A adopt H5 and H6 (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: one section added to .gitlab/merge_request_templates/Default.md — chosen
+  - B change only this project (H6) — cost: the factory keeps the old template — rejected: chosen together with H5 in D58
+- Choice: A · Why: In the context of this repo's own MR template, facing init-repo never overwriting it, we chose to add the TL;DR section here too, to make the M5 MR start with a TL;DR without anyone remembering, accepting one more template section.
+- Cost accepted: one more section in this project's MR template. · Reversibility: Type 2 two-way — revert the commit · Confidence: high
+- Revisit if: the M5 MR is opened without a TL;DR line. · Evidence: HARNESS_CHANGELOG.md H6; .gitlab/merge_request_templates/Default.md; D58; approval G-L5 (approval covers apply and project commit) 2026-10-10 17:52 CDT · Interview line: "The factory template changed, and this project's copy changed with it, because setup never overwrites a project's files."
+
+### D60 Prove each test fails on broken code  [status: accepted]
+- Date 2026-10-10 17:54 CDT · phase 15 route-failure (G-L5) · milestone M4 · Decided by: human, G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) 2026-10-10 17:54 CDT: "Approve, adopt H10" · Proposed by: route-failure (Claude Code, claude-opus-5-5) · artifact: HARNESS_CHANGELOG.md H10@50ef7d53d151
+- Context and forces: in M4 the verifier found tests that stayed green whatever the code did: fake drivers that ignored WHERE clauses and locks, a CSP hash compared with itself, an "every product" test with one product (FINDINGS F11). Red-first proves a test fails when code is missing, not that it pins the right code.
+- Options:
+  - Do nothing / simplest (shown as "C do nothing"): keep relying on the verifier — cost: these tests keep reaching review — rejected: the human chose to adopt H10
+  - A adopt H10: implement-task step 8 breaks each guarded line once, pastes the red run, restores it, and tests SQL and generated config against the real thing (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: three skill lines and a few minutes per task — chosen
+  - B mutation testing (e.g. Stryker) — cost: a new dependency with its own Ask-first decision, slower checks — rejected: try the free habit first and measure
+- Choice: A · Why: In the context of tests that passed while the code could be wrong, facing no step that proves a test fails on broken code, we chose a break-and-restore step in implement-task over a mutation-testing tool, to catch these tests at no tooling cost, accepting that it relies on workers following the step.
+- Cost accepted: a prompt-layer rule (weakest layer); a few minutes per task. · Reversibility: Type 2 two-way — revert the kit commit · Confidence: med
+- Revisit if: M5's verifier passes have more than one tests-that-lie row (then adopt mutation testing, option B). · Evidence: software-factory-kit FINDINGS.md F11; HARNESS_CHANGELOG.md H10; kit commit 5a0cef4; docs/learnings/tests-must-fail-when-code-breaks.md; approval G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) 2026-10-10 17:54 CDT · Interview line: "A green test is only evidence once I've seen it fail on broken code, so workers break the line once and watch it go red."
+
+### D61 scope-guard reads a bracket in Owns literally  [status: accepted]
+- Date 2026-10-10 17:55 CDT · phase 15 route-failure (G-L5) · milestone M4 · Decided by: human, G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) 2026-10-10 17:55 CDT: "Approve, adopt H4" · Proposed by: route-failure (Claude Code, claude-opus-5-5) · artifact: HARNESS_CHANGELOG.md H4@85c575806b75
+- Context and forces: Nuxt route folders like server/api/orders/[orderId]/ never matched Owns, because scope-guard read [orderId] as a character class; T002's finished work sat uncommitted until four Owns lines were rewritten with * (FINDINGS F5).
+- Options:
+  - Do nothing / simplest (shown as "C do nothing"): keep writing * for bracket folders — cost: the next bracket route blocks a finished task again — rejected: the human chose to adopt H4
+  - A adopt H4: scope-guard escapes [ before matching, plus a scripts/test.sh case (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: Owns can no longer use bracket character classes, which no task used — chosen
+  - B a slice-tasks rule to write * instead of bracket folders — cost: every Nuxt or Next project remembers a workaround, and * owns more than intended — rejected: fix the check, not the people
+- Choice: A · Why: In the context of a boundary check that blocked legal route folders, facing a framework whose folder names contain brackets, we chose to read [ literally in scope-guard over a slicing workaround, to keep Owns exact for every project, accepting no character classes in Owns.
+- Cost accepted: Owns globs lose bracket character classes. · Reversibility: Type 2 two-way — revert the kit commit · Confidence: high
+- Revisit if: a task needs a character class in Owns, or a bracket route is reported out of scope again. · Evidence: software-factory-kit FINDINGS.md F5; HARNESS_CHANGELOG.md H4; kit commit 73d56be (scripts/test.sh 121 passed); approval G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) 2026-10-10 17:55 CDT · Interview line: "Our boundary check misread Nuxt's bracket folders, so we fixed the check itself rather than teach everyone a workaround."
+
+### D62 Slice so each check only its task can pass  [status: accepted]
+- Date 2026-10-10 17:56 CDT · phase 15 route-failure (G-L5) · milestone M4 · Decided by: human, G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) 2026-10-10 17:56 CDT: "approve" · Proposed by: route-failure (Claude Code, claude-opus-5-5) · artifact: HARNESS_CHANGELOG.md H8@d830e46064b7
+- Context and forces: T009's Done-when was green at dispatch because earlier tasks had turned the suite green (FINDINGS F8), and T006's Owns left out AppShell.vue and the sign-in counter migration its Ask assigned, so the countdown was never mounted and the limit never built until review (FINDINGS F9). Both came from the slice-tasks recipe.
+- Options:
+  - Do nothing / simplest (shown as "C do nothing"): keep the recipe — cost: another relaunch each time a check can't fail or Owns misses a file — rejected: the human chose to adopt H8
+  - A adopt H8: the suite-joining task's Done-when starts with make -n check piped to grep -q tests/acceptance; step 7 owns every file the Ask assigns, the mounting component and any migration included (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: four recipe lines; F9 has no mechanical guard — chosen
+  - B an analyze-script check comparing LLD components with Owns — cost: a fragile parser of free-text design docs — rejected: it would break more often than it helps
+- Choice: A · Why: In the context of two slicing defects that each cost a relaunch, facing a recipe that produced both, we chose to fix the recipe over parsing design prose, to make each task's check one only it can pass and its Owns complete, accepting no automatic guard for missing Owns files.
+- Cost accepted: missing Owns files are still caught only by review or an Owns-gap stop. · Reversibility: Type 2 two-way — revert the kit commit · Confidence: med
+- Revisit if: a task's Done-when passes at dispatch, or an Owns gap stops a task, in M5. · Evidence: software-factory-kit FINDINGS.md F8, F9; HARNESS_CHANGELOG.md H8; kit commit 81f0b10; approval G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) 2026-10-10 17:56 CDT · Interview line: "A task's check must be one only that task can turn green, or it passes because of a neighbour's work."
+
+### D63 Design decisions cite a registry check for versions  [status: accepted]
+- Date 2026-10-10 17:57 CDT · phase 15 route-failure (G-L5) · milestone M4 · Decided by: human, G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) 2026-10-10 17:57 CDT: "Approve, adopt H9" · Proposed by: route-failure (Claude Code, claude-opus-5-5) · artifact: HARNESS_CHANGELOG.md H9@bb53b6150e83
+- Context and forces: design-lld recommended "Nuxt 3" in D38 from model memory and G3 approved it; the npm registry showed Nuxt 4 was current, caught only at bootstrap (FINDINGS F10, D44).
+- Options:
+  - Do nothing / simplest (shown as "C do nothing"): no version evidence required — cost: the next stale version may land in code — rejected: the human chose to adopt H9
+  - A adopt H9: a Done-when awk in design-hld and design-lld prints any decision whose recommendation names a version without a registry citation (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: one registry command and its date per version claim — chosen
+  - B an AGENTS.md line asking to check versions — cost: a sentence the model can skim past — rejected: a check that prints the uncited decision cannot be skimmed past
+- Choice: A · Why: In the context of AI-chosen framework versions, facing model memory that lags new majors, we chose a Done-when check in both design skills over a prompt line, to make every version claim cite the registry, accepting one command per claim.
+- Cost accepted: each version in a design decision needs a registry citation; the awk can flag a recommendation that merely contains a digit. · Reversibility: Type 2 two-way — revert the kit commit · Confidence: high
+- Revisit if: a version is found stale after a design gate, or the check flags many non-version digits. · Evidence: software-factory-kit FINDINGS.md F10; HARNESS_CHANGELOG.md H9; kit commit e1f18b5; docs/learnings/check-versions-in-the-registry.md; D38; D44; approval G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) 2026-10-10 17:57 CDT · Interview line: "The AI suggested Nuxt 3 from memory; now every design decision that names a version must cite the registry, and a check enforces it."
+
+### D64 Worker worktrees start from the milestone branch  [status: accepted]
+- Date 2026-10-10 17:59 CDT · phase 15 route-failure (G-L5) · milestone M4 · Decided by: human, G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) 2026-10-10 17:59 CDT: "Approve, adopt H11" · Proposed by: route-failure (Claude Code, claude-opus-5-5) · artifact: HARNESS_CHANGELOG.md H11@dfce8aaa4377
+- Context and forces: in M1, Agent-tool worktrees started from main@778e788 instead of the milestone branch and three workers reset themselves, because the tool's isolation: worktree branches from the default branch and the CLAUDE.md template told the supervisor to use it (FINDINGS F12). Since M4 the supervisor creates worktrees from the milestone branch by hand.
+- Options:
+  - Do nothing / simplest (shown as "C do nothing"): keep the template as is — cost: the next project's workers start from a stale main — rejected: the human chose to adopt H11
+  - A adopt H11: the CLAUDE.md template has the supervisor run git worktree add from the milestone branch, then dispatch with that path (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: one command per dispatch, already run in M4 — chosen
+  - B a script that creates the worktree and dispatches in one call — cost: a new script for what one command does — rejected: one documented command is enough
+- Choice: A · Why: In the context of parallel workers that must build on merged milestone work, facing a tool that branches from the default branch, we chose a documented worktree command in the template over a new script, to start every worker from the milestone branch, accepting one command per dispatch.
+- Cost accepted: one command per dispatch; it relies on the supervisor following the template line. · Reversibility: Type 2 two-way — revert the kit commit · Confidence: high
+- Revisit if: a worker's worktree is found not to contain the milestone branch head. · Evidence: software-factory-kit FINDINGS.md F12; HARNESS_CHANGELOG.md H11; kit commit a32eec3; TRACKER Log M4 DISPATCH lines "from milestone/..."; approval G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) 2026-10-10 17:59 CDT · Interview line: "Each worker's worktree starts from the milestone branch, so it builds on its teammates' merged work instead of an old main."
+
+### D65 Generate a weighted project review from the decision ledger  [status: accepted]
+- Date 2026-10-10 18:23 CDT · phase 15 route-failure (G-L5) · milestone M4 · Decided by: human, G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) 2026-10-10 18:23 CDT: "Approve, adopt H13 and H14" · Proposed by: route-failure (Claude Code, claude-opus-5-5) · artifact: HARNESS_CHANGELOG.md H13@732be0c264af
+- Context and forces: the journal is one chronological ledger, which suits reviewing AI usage; the human asked for decisions bucketed by umbrella topic with importance weights for project review, a daily standup view, one-liners, and a record of how the workflow improved (FINDINGS F25). Design answers: 3-level weight; a project topic list starting from the factory default; the ledger stays as is (TRACKER Approvals 2026-10-10 18:14 CDT design approval).
+- Options:
+  - Do nothing / simplest (shown as "C do nothing"): keep the journal chronological only — cost: no topic, weight or daily view — rejected: the human asked for them
+  - A adopt H13 and H14: scripts/decision-views.sh generates docs/decisions/REVIEW.md (by topic and weight, workflow history, by day); log-decision writes a Review line; make check fails on a stale view; quiz-me teaches ●●● first (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: a topic, weight and one-liner per decision; make check red until the view is regenerated — chosen
+  - B adopt H13 only — cost: Cerbo's history stays out of the topic view — rejected: the human wants that history kept
+- Choice: A · Why: In the context of a ledger that must stay chronological for AI-usage review, facing a need to review decisions by topic and importance, we chose a generated view checked by make check over hand-kept summaries, to keep both views consistent, accepting three more fields per decision.
+- Cost accepted: every decision carries a topic, weight and one-liner; a stale REVIEW.md turns make check red. · Reversibility: Type 2 two-way — revert the kit commit and drop the target · Confidence: high
+- Revisit if: weights are routinely changed after the fact, or REVIEW.md goes unread at standups and reviews. · Evidence: software-factory-kit FINDINGS.md F25; HARNESS_CHANGELOG.md H13; kit commit 5edc69d; approval G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) 2026-10-10 18:23 CDT · Interview line: "Decisions live in one time-ordered ledger; a script turns it into a topic-and-weight review, so the two views never disagree."
+- Review: Topic Process · Weight ●●○ · One-liner: A generated topic-and-weight review sits beside the chronological ledger, checked by make check.
+
+### D66 Backfill topics and weights for D1 to D64  [status: accepted]
+- Date 2026-10-10 18:23 CDT · phase 15 route-failure (G-L5) · milestone M4 · Decided by: human, G-L5 (approval covers apply and project commit, incl. the D1-D64 backfill table) 2026-10-10 18:23 CDT: "Approve, adopt H13 and H14" · Proposed by: route-failure (Claude Code, claude-opus-5-5) · artifact: HARNESS_CHANGELOG.md H14@eb8d763f6268
+- Context and forces: the journal is append-only, so D1 to D64 cannot gain Review lines in place; the human wants Cerbo's design and workflow history in the project review (FINDINGS F25, project half of D65).
+- Options:
+  - Do nothing / simplest (shown as "C do nothing"): no review view here — cost: Cerbo keeps a chronological journal only — rejected: the human chose to adopt
+  - A adopt H13 and H14: this project gets the script, the Topics line, the make check target and docs/decisions/backfill-tags.md tagging D1 to D64 (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: the agent's 64 backfill weights are accepted as a whole — chosen
+  - B adopt H13 only — cost: D1 to D64 show as Untagged — rejected: the history must be in the review
+- Choice: A · Why: In the context of 64 decisions written before Review lines existed, facing an append-only journal, we chose a separate backfill table over rewriting entries, to put the whole history in the review, accepting the agent's weights until a later decision changes them.
+- Cost accepted: backfill weights are the agent's judgement, approved as a whole; a correction is a new decision. · Reversibility: Type 2 two-way — edit the table through a new decision · Confidence: med
+- Revisit if: a backfill weight is disputed in a review or quiz-me session. · Evidence: HARNESS_CHANGELOG.md H14; docs/decisions/backfill-tags.md; D65; approval G-L5 (approval covers apply and project commit, incl. the D1-D64 backfill table) 2026-10-10 18:23 CDT · Interview line: "We tagged the 64 earlier decisions in a side table, so the review covers the whole history without rewriting the ledger."
+- Review: Topic Process · Weight ●○○ · One-liner: D1 to D64 tagged in a side table; the ledger is untouched.
+
+### D67 Apply script looks up fields without a pipe  [status: accepted]
+- Date 2026-10-10 18:28 CDT · phase 15 route-failure (G-L5) · milestone M4 · Decided by: human, G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) 2026-10-10 18:28 CDT: "Approve, adopt H15" · Proposed by: route-failure (Claude Code, claude-opus-5-5) · artifact: HARNESS_CHANGELOG.md H15@5fe6c05fbd96
+- Context and forces: apply-proposal.sh (D57) exited 141 after applying H13 and before testing or committing it, because sed piped into grep -m1 under pipefail dies of SIGPIPE on a large block (FINDINGS F26); the supervisor finished the apply by hand.
+- Options:
+  - Do nothing / simplest (shown as "C do nothing"): keep the pipeline — cost: every large proposal stops half-applied — rejected: the human chose to adopt H15
+  - A adopt H15: one awk per lookup, so no pipe can break (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: none — chosen
+  - B turn pipefail off in the script — cost: real pipe failures elsewhere go silent — rejected: hides other failures
+- Choice: A · Why: In the context of a factory apply script, facing an intermittent SIGPIPE on large proposals, we chose single-process awk lookups over disabling pipefail, to keep every other failure loud, accepting nothing extra.
+- Cost accepted: none beyond the rewritten lookups. · Reversibility: Type 2 two-way — revert the kit commit · Confidence: high
+- Revisit if: apply-proposal.sh stops with exit 141 again. · Evidence: software-factory-kit FINDINGS.md F26; HARNESS_CHANGELOG.md H15; kit commit 253662e; D57; approval G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) 2026-10-10 18:28 CDT · Interview line: "Under pipefail an early-exiting reader can kill its writer, so the apply script reads the file directly instead of through a pipe."
+- Review: Topic Process · Weight ●○○ · One-liner: The apply script's lookups no longer die of SIGPIPE on large proposals.
+
+### D68 log-decision creates a missing journal from the template  [status: accepted]
+- Date 2026-10-10 18:30 CDT · phase 15 route-failure (G-L5) · milestone M4 · Decided by: human, G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) 2026-10-10 18:30 CDT: "Approve, adopt H12" · Proposed by: route-failure (Claude Code, claude-opus-5-5) · artifact: HARNESS_CHANGELOG.md H12@562b8efd0be7
+- Context and forces: log-decision stopped twice on 2026-10-09 because no journal was committed yet, which every new or brownfield repo hits; the human asked that it create its own file (FINDINGS F13).
+- Options:
+  - Do nothing / simplest (shown as "C do nothing"): keep the stop — cost: the first decision on every new repo stalls — rejected: the human chose to adopt H12
+  - A adopt H12: when no journal is committed, copy the kit's journal template, append as usual, and say so in STOP (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: log-decision may create one file it used to refuse — chosen
+  - B make init-repo commit the journal at setup — cost: setup starts committing, and a repo that skipped setup still stalls — rejected: the record should not wait on a setup step
+- Choice: A · Why: In the context of the first decision in a new repo, facing a skill that refused to start a journal, we chose to create it from the kit template over committing at setup, so recording never waits on setup, accepting one more file log-decision may write.
+- Cost accepted: log-decision can create docs/decisions/DECISION_JOURNAL.md; no mechanical guard beyond its STOP line. · Reversibility: Type 2 two-way — revert the kit commit · Confidence: high
+- Revisit if: a created journal differs from the kit template, or log-decision stalls on a missing journal again. · Evidence: software-factory-kit FINDINGS.md F13; HARNESS_CHANGELOG.md H12; kit commit b8560d0; approval G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) 2026-10-10 18:30 CDT · Interview line: "The first decision creates the decision log from the template, so recording never waits on a setup step someone forgot."
+- Review: Topic Process · Weight ●○○ · One-liner: log-decision starts the journal from the kit template when none exists.
+
+### D69 Accept routed and logged M4 findings as listed  [status: accepted]
+- Date 2026-10-10 18:31 CDT · phase 15 route-failure (G-L5) · milestone M4 · Decided by: human, G-L5 (block decision: rows without a diff) 2026-10-10 18:31 CDT: "Approve, accept all as listed" · Proposed by: route-failure (Claude Code, claude-opus-5-5) · artifact: software-factory-kit FINDINGS.md F14-F24
+- Context and forces: the M4 retro found rows that need no factory change: three product fixes for Cerbo's own skills (F20 design-lld catch-up, F21 acceptance tests for review-fixed behaviours, F22 M5 scope in the PRD) and eight one-offs or rules that already exist (F14 to F19, F23, F24).
+- Options:
+  - Do nothing / simplest (shown as "C do nothing"): leave the rows unqueued — cost: the routed fixes are not queued — rejected: the human chose to accept
+  - A accept all as listed: queue F20 to F22 as TRACKER rows M5-R01 to M5-R03; keep the logged rows so a repeat promotes them (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: none now — chosen
+  - B name a row to treat as durable — cost: one more route-failure pass — rejected: none named
+- Choice: A · Why: In the context of a milestone retro, facing findings that are product fixes or one-offs, we chose to route and log them as listed over new harness changes, to keep factory changes for real recurring causes, accepting that a repeat must happen before a logged row is fixed.
+- Cost accepted: logged causes can happen once more before they get a fix. · Reversibility: Type 2 two-way — any row can be promoted in a later pass · Confidence: high
+- Revisit if: any logged row (F14 to F19, F23, F24) recurs. · Evidence: software-factory-kit FINDINGS.md F14-F24; .handoff/TRACKER.md Tasks M5-R01 to M5-R03; approval G-L5 (block decision: rows without a diff) 2026-10-10 18:31 CDT · Interview line: "Only recurring causes earn a factory change; product gaps go back to the owning skill, and one-offs are logged so a repeat is noticed."
+- Review: Topic Process · Weight ●○○ · One-liner: Three product fixes queued for M5; eight one-offs logged, not fixed.

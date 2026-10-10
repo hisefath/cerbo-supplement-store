@@ -6,10 +6,10 @@
 # Commands table in AGENTS.md). Until then they fail on purpose, so an unconfigured repo can never look green.
 # Keep the target names: skills and hooks call `make check`, not the tools directly.
 
-.PHONY: check lint types test setup db-test-up test-acceptance test-acceptance-m4
+.PHONY: check lint types test setup db-test-up test-acceptance test-acceptance-m4 decisions
 
-## check: lint + types + tests + M4 acceptance suite — the gate
-check: lint types test test-acceptance-m4
+## check: lint + types + tests + M4 acceptance suite + decision review in sync — the gate
+check: lint types test test-acceptance-m4 decisions
 	@echo "make check: OK"
 
 ## lint: workflow scripts must parse (docs-only phase: no product code yet; stack tools are added at M3 design)
@@ -24,6 +24,10 @@ types:
 test:
 	npx vitest run --dir tests/unit --passWithNoTests
 	@set -- docs/architecture/*.md; if [ -e "$$1" ]; then bash scripts/embed-diagrams.sh --check "$$@"; fi
+
+## decisions: docs/decisions/REVIEW.md matches the decision journal and backfill-tags.md
+decisions:
+	bash scripts/decision-views.sh --check
 
 ## setup: install the pinned dependencies (package-lock.json)
 setup:
