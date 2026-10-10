@@ -142,6 +142,9 @@ several harnesses read it and the repo is public.
 | 2026-10-10 17:56 CDT | G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) | H8@d830e46064b7 | "approve" |
 | 2026-10-10 17:57 CDT | G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) | H9@bb53b6150e83 | "Approve, adopt H9" |
 | 2026-10-10 17:59 CDT | G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) | H11@dfce8aaa4377 | "Approve, adopt H11" |
+| 2026-10-10 18:14 CDT | design approval (no G-L5; diffs still need their own H@hash yes): decision review views — topic + 3-level weight + one-liner per entry, generated docs/decisions/REVIEW.md (by topic, workflow history, by day), --check in make check, quiz-me review order, Cerbo backfill table D1-D64 | chat design card | "a, approve the design" |
+| 2026-10-10 18:23 CDT | G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) | H13@732be0c264af | "Approve, adopt H13 and H14" |
+| 2026-10-10 18:23 CDT | G-L5 (approval covers apply and project commit, incl. the D1-D64 backfill table) | H14@eb8d763f6268 | "Approve, adopt H13 and H14" |
 
 ## Log
 
@@ -321,3 +324,7 @@ several harnesses read it and the repo is public.
 2026-10-10 17:05 CDT FAIL process: commits were per step, not per decision or result, and nothing was pushed or opened as a PR per milestone; history landed on main unreadable. Route to route-failure: commit grouping per decision/result, PR per milestone with TL;DR + filled template, auto-merge on standing yes, and a hook to commit software-factory-kit improvements to its repo
 2026-10-10 17:24 CDT MERGE M1 !1 (8ddfc80), M2 !2 (371224a), M3 !3 (8377ce0) to main with merge commits; main mirrored to GitHub; main tree equals original 5a984b8; M4 still local (old history, rebuild on milestone/m3-design pending)
 2026-10-10 17:28 CDT HISTORY M4 rebuilt as 20 grouped commits on milestone/m3-design (89 originals kept at backup/m4-tracer-bullet); final tree identical; app files identical to deployed 1130822; make check OK (122 unit + 43 acceptance)
+2026-10-10 18:01 CDT ROUTE human-requested factory change: topic + importance weight for evidence and decisions under an umbrella topic; a daily decision log (standup view) that also feeds the project journal; one-liners for these ledgers → route-failure F25+ and G-L5 after design questions; H12 card still open
+2026-10-10 18:05 CDT ROUTE design answer Q1 weight scale: "a, 3 levels" (●●● critical / ●●○ important / ●○○ minor)
+2026-10-10 18:06 CDT ROUTE design answer Q2 topic list: "a, project list from the factory default" (default Product, Data, Security, Money, Infrastructure, Process; changes are decisions)
+2026-10-10 18:12 CDT ROUTE design answer Q3: keep the chronological journal as the AI-usage ledger; topic + weight bucketing is a separate project-review document; embed it in the existing learning/review path (quiz-me) rather than a new one; Cerbo keeps its workflow-improvement history

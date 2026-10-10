@@ -8,6 +8,10 @@ Why each design choice was made and what it cost (software-factory-kit WORKFLOW.
   `superseded-by D<m>`. Rejected options stay visible.
 - One-way (Type 1) decisions are also promoted to `docs/decisions/NNNN-<slug>.md`.
 - Who said yes, word for word, lives in `.handoff/TRACKER.md ## Approvals`; this file holds the reasoning.
+- Topics group decisions in the project review, `docs/decisions/REVIEW.md`, which
+  `scripts/decision-views.sh` generates from this ledger. Changing the list is itself a decision.
+
+Topics: Product · Data · Security · Money · Infrastructure · Process
 
 ## Entry schema
 
@@ -21,6 +25,7 @@ Copy this block for each new entry (D-ids increase by one, starting at D1):
 - Choice · Why (Y-statement: in context C, facing F, we chose X over Y to get Z, accepting W)
 - Cost accepted · Reversibility (Type 1 one-way / Type 2 two-way) · Confidence (low/med/high)
 - Revisit if · Evidence (file:line, R/S ids) · Interview line (one sentence you'd say out loud)
+- Review: Topic <topic> · Weight <●●●|●●○|●○○> · One-liner: <at most 15 words>
 ```
 
 ## Entries
@@ -726,3 +731,27 @@ Copy this block for each new entry (D-ids increase by one, starting at D1):
 - Choice: A · Why: In the context of parallel workers that must build on merged milestone work, facing a tool that branches from the default branch, we chose a documented worktree command in the template over a new script, to start every worker from the milestone branch, accepting one command per dispatch.
 - Cost accepted: one command per dispatch; it relies on the supervisor following the template line. · Reversibility: Type 2 two-way — revert the kit commit · Confidence: high
 - Revisit if: a worker's worktree is found not to contain the milestone branch head. · Evidence: software-factory-kit FINDINGS.md F12; HARNESS_CHANGELOG.md H11; kit commit a32eec3; TRACKER Log M4 DISPATCH lines "from milestone/..."; approval G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) 2026-10-10 17:59 CDT · Interview line: "Each worker's worktree starts from the milestone branch, so it builds on its teammates' merged work instead of an old main."
+
+### D65 Generate a weighted project review from the decision ledger  [status: accepted]
+- Date 2026-10-10 18:23 CDT · phase 15 route-failure (G-L5) · milestone M4 · Decided by: human, G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) 2026-10-10 18:23 CDT: "Approve, adopt H13 and H14" · Proposed by: route-failure (Claude Code, claude-opus-5-5) · artifact: HARNESS_CHANGELOG.md H13@732be0c264af
+- Context and forces: the journal is one chronological ledger, which suits reviewing AI usage; the human asked for decisions bucketed by umbrella topic with importance weights for project review, a daily standup view, one-liners, and a record of how the workflow improved (FINDINGS F25). Design answers: 3-level weight; a project topic list starting from the factory default; the ledger stays as is (TRACKER Approvals 2026-10-10 18:14 CDT design approval).
+- Options:
+  - Do nothing / simplest (shown as "C do nothing"): keep the journal chronological only — cost: no topic, weight or daily view — rejected: the human asked for them
+  - A adopt H13 and H14: scripts/decision-views.sh generates docs/decisions/REVIEW.md (by topic and weight, workflow history, by day); log-decision writes a Review line; make check fails on a stale view; quiz-me teaches ●●● first (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: a topic, weight and one-liner per decision; make check red until the view is regenerated — chosen
+  - B adopt H13 only — cost: Cerbo's history stays out of the topic view — rejected: the human wants that history kept
+- Choice: A · Why: In the context of a ledger that must stay chronological for AI-usage review, facing a need to review decisions by topic and importance, we chose a generated view checked by make check over hand-kept summaries, to keep both views consistent, accepting three more fields per decision.
+- Cost accepted: every decision carries a topic, weight and one-liner; a stale REVIEW.md turns make check red. · Reversibility: Type 2 two-way — revert the kit commit and drop the target · Confidence: high
+- Revisit if: weights are routinely changed after the fact, or REVIEW.md goes unread at standups and reviews. · Evidence: software-factory-kit FINDINGS.md F25; HARNESS_CHANGELOG.md H13; kit commit 5edc69d; approval G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) 2026-10-10 18:23 CDT · Interview line: "Decisions live in one time-ordered ledger; a script turns it into a topic-and-weight review, so the two views never disagree."
+- Review: Topic Process · Weight ●●○ · One-liner: A generated topic-and-weight review sits beside the chronological ledger, checked by make check.
+
+### D66 Backfill topics and weights for D1 to D64  [status: accepted]
+- Date 2026-10-10 18:23 CDT · phase 15 route-failure (G-L5) · milestone M4 · Decided by: human, G-L5 (approval covers apply and project commit, incl. the D1-D64 backfill table) 2026-10-10 18:23 CDT: "Approve, adopt H13 and H14" · Proposed by: route-failure (Claude Code, claude-opus-5-5) · artifact: HARNESS_CHANGELOG.md H14@eb8d763f6268
+- Context and forces: the journal is append-only, so D1 to D64 cannot gain Review lines in place; the human wants Cerbo's design and workflow history in the project review (FINDINGS F25, project half of D65).
+- Options:
+  - Do nothing / simplest (shown as "C do nothing"): no review view here — cost: Cerbo keeps a chronological journal only — rejected: the human chose to adopt
+  - A adopt H13 and H14: this project gets the script, the Topics line, the make check target and docs/decisions/backfill-tags.md tagging D1 to D64 (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: the agent's 64 backfill weights are accepted as a whole — chosen
+  - B adopt H13 only — cost: D1 to D64 show as Untagged — rejected: the history must be in the review
+- Choice: A · Why: In the context of 64 decisions written before Review lines existed, facing an append-only journal, we chose a separate backfill table over rewriting entries, to put the whole history in the review, accepting the agent's weights until a later decision changes them.
+- Cost accepted: backfill weights are the agent's judgement, approved as a whole; a correction is a new decision. · Reversibility: Type 2 two-way — edit the table through a new decision · Confidence: med
+- Revisit if: a backfill weight is disputed in a review or quiz-me session. · Evidence: HARNESS_CHANGELOG.md H14; docs/decisions/backfill-tags.md; D65; approval G-L5 (approval covers apply and project commit, incl. the D1-D64 backfill table) 2026-10-10 18:23 CDT · Interview line: "We tagged the 64 earlier decisions in a side table, so the review covers the whole history without rewriting the ledger."
+- Review: Topic Process · Weight ●○○ · One-liner: D1 to D64 tagged in a side table; the ledger is untouched.
