@@ -279,3 +279,17 @@ Copy this block for each new entry (D-ids increase by one, starting at D1):
 - Choice · Why: in a 1–2 day graded slice facing a partner who grades money integrity and judgment, we chose a tracer bullet of order → single payment → split recorded to the cent, with pricing and stock in M5, measurement in M6 and campaigns Later, over a broader first build, to prove the core promise first, accepting that stock limits arrive one milestone later.
 - Cost accepted: no overselling protection until M5; campaigns, refunds and refills deferred; HIPAA safeguards are partly stand-ins because sign-in is stubbed. · Reversibility: Type 2 (PRD edit + new G1) · Confidence: medium
 - Revisit if: the partner's feedback weights stock or campaigns over the split, or real patient data is ever in scope. · Evidence: docs/product/prd.md (Milestone cut, NG-10, Interview log Q1-Q8); R08-R13 · Interview line: "I scoped the first build to the money path because that's what they grade, and made it HIPAA-ready rather than claiming compliance, because compliance is an organisational status."
+
+### D26 PRD revision: sign-in, patient notices without health details, dashboards, no patient identity for platform staff  [status: accepted]
+- 2026-10-09 21:50 CDT · write-prd (G1) · M2 · Decided by: human, G1 2026-10-09 21:50 CDT: "approve, then /map-ux-flows" · Proposed by: write-prd (Claude Code, claude-opus-5-5) · artifact: docs/product/prd.md@930a8d7
+- Context and forces: map-ux-flows pass 1 surfaced three gaps (no story owned sign-in; no order-status view; how the patient reaches the order). The human asked for sign-in in the spec, an e-commerce dashboard with order status and bottleneck alerts, and no PII for platform staff (Q9-Q11). FR-039 to FR-050, NFR-004, NFR-012.
+- Options:
+  - Do nothing — rejected: sign-in and order status would be designed with no requirement behind them
+  - Agent's first proposal: sign-in story, order-status list Later, S1 shows the patient's link — revised by the human: order-status list and metrics wanted now; the link question researched
+  - Magic link that opens the order directly — rejected (Q10): anyone holding the email sees health details
+  - Details in the email — rejected (Q10): health information sits in the inbox, against the HIPAA-ready stance (D25)
+  - Everything in M5, or everything in M6 — rejected (Q11) for an M5 practice view and an M6 platform view
+  - Approved PRD 930a8d7 — chosen
+- Choice · Why: in an EHR store whose patients' supplement lists are health information, facing a demo that switches people and a business that needs to see bottlenecks, we chose personal sign-in, detail-free notices, a practice order-status view with alerts in M5, and a de-identified platform health dashboard in M6, over link-only access and a single dashboard, to keep each person to the minimum they need, accepting one more P1 story in the tracer bullet.
+- Cost accepted: M4 grows by sign-in; alert thresholds are agent picks (A-10, A-11) until real data exists. · Reversibility: Type 2 (PRD edit + new G1) · Confidence: medium
+- Revisit if: the partner expects the order to open from the message without sign-in, or alert lines prove noisy. · Evidence: docs/product/prd.md Interview log Q9-Q11; Fullscript support (S02.3); HHS FAQ 570 via Holland & Hart summary · Interview line: "The notice says only who sent an order; the patient signs in to see it, and operations staff audit orders by number without ever seeing who the patient is."

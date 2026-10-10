@@ -4,7 +4,7 @@
 |---|---|
 | Source brief | `specs/M1-in-ehr-supplement-orders/brief.md` @ e8c6621 |
 | Track | Full |
-| Last updated | 2026-10-09 20:27 CDT |
+| Last updated | 2026-10-09 21:45 CDT |
 | Context names | Cerbo, Fullscript |
 | Approval | G1 — recorded in `.handoff/TRACKER.md ## Approvals` (never in this file) |
 
@@ -61,6 +61,7 @@ Non-goals:
 - **NG-7** Refunds, returns and corrections to paid orders — because they need their own money rules; revisit with US-7.
 - **NG-8** Warehouses, multiple stock locations and supplier ordering — because the platform holds the inventory and stock mechanics stay minimal (REQ-08, REQ-10).
 - **NG-9** Discount-off-retail-price pricing — because the assignment asks for a price or a margin per item (REQ-02, Q3).
+- **NG-11** Alerts by email or text — because messaging is a stand-in (NG-1); alerts show on the dashboards only (Q11); revisit after the slice.
 - **NG-10** Formal HIPAA compliance (business associate agreements with every vendor that touches patient data, a risk analysis, written policies, staff training) — because the assignment puts compliance out of scope and compliance belongs to the organisation, not the software (REQ-08, Q8); the slice is HIPAA-ready instead (NFR-003, NFR-004, NFR-007 to NFR-011); revisit before any real patient data.
 
 No-gos:
@@ -71,7 +72,7 @@ No-gos:
 ## Appetite
 
 - Time box: none fixed; the human waived the deadline, and the assignment's guidance of 1–2 days still keeps each milestone small. Hard date: none. Source: REQ-24, brief Appetite and deadlines.
-- If time runs short, cut in this order: US-7 → US-6 → US-5 → US-4. Never cut: US-1, US-2, US-3 and every [Unwanted] requirement they hold.
+- If time runs short, cut in this order: US-7 → US-6 → US-5 → US-4. Never cut: US-1, US-2, US-3, US-8 and every [Unwanted] requirement they hold.
 
 ## User stories
 
@@ -112,21 +113,23 @@ form that records who changed it and why, so that typing mistakes are rare and e
 
 ### US-5 Practice dashboard and stock (P2)
 
-As a provider, I want a dashboard of what sold and what is left in stock, and the system never to sell more than it
-holds, so that I can plan protocols without surprises.
+As a provider, I want a dashboard of my practice's orders and their status, what sold and what is left in stock, with
+alerts for unpaid orders and low stock, and the system never to sell more than it holds, so that I can plan protocols
+without surprises.
 
-- Why this priority: the assignment asks for the dashboard (REQ-06); the human asked that stock never be oversold (Q4).
+- Why this priority: the assignment asks for the dashboard (REQ-06); the human asked that stock never be oversold (Q4) and for an order-status list with alerts (Q9, Q11).
 - Independent test: after two paid orders, the provider's dashboard shows the units sold and the lower stock count.
-- Requirements: FR-025, FR-026, FR-027, FR-028, FR-029, FR-030, FR-038 · Examples: AE-022, AE-023, AE-024, AE-025, AE-026, AE-027, AE-036
+- Requirements: FR-025, FR-026, FR-027, FR-028, FR-029, FR-030, FR-038, FR-045, FR-046, FR-047 · Examples: AE-022, AE-023, AE-024, AE-025, AE-026, AE-027, AE-036, AE-042, AE-043, AE-044
 
-### US-6 Measure in-house volume (P3)
+### US-6 Measure in-house volume and platform health (P3)
 
-As platform leadership, I want a monthly report of each practice's paid volume and fees, so that I can see whether
-volume is moving in-house.
+As platform staff, I want a health dashboard of in-house volume, fees and the measures that show where orders get
+stuck, with alerts and without any patient's identity, so that I can see whether volume is moving in-house and fix
+bottlenecks.
 
-- Why this priority: the assignment asks that its headline metric be measurable later (REQ-09).
+- Why this priority: the assignment asks that its headline metric be measurable later (REQ-09); the human asked for metrics that show issues, bottlenecks and alerts (Q9, Q11).
 - Independent test: a reviewer opens the volume report for a month and sees each practice's paid amount, fees, orders sent and orders paid.
-- Requirements: FR-031, FR-032 · Examples: AE-028, AE-029
+- Requirements: FR-031, FR-032, FR-048, FR-049 · Examples: AE-028, AE-029, AE-045, AE-046
 
 ### US-7 Pricing campaigns (P3)
 
@@ -136,6 +139,15 @@ win early practices, so that the business can trade margin for adoption on purpo
 - Why this priority: the human wants it, after the assignment's rules are in place (Q3).
 - Independent test: an administrator sets a campaign price for one product and a week, and a patient order in that week shows it.
 - Requirements: FR-016, FR-033, FR-034 · Examples: AE-030, AE-033, AE-034
+
+### US-8 Sign in as myself (P1)
+
+As a patient, a provider or platform staff, I want to sign in with my own account and see only what my role allows,
+so that nobody else can see my orders or my patients' orders.
+
+- Why this priority: the human asked for sign-in for patients and providers in the spec (Q9), and every P1 screen depends on knowing who is looking (NFR-004, NFR-007, NFR-008).
+- Independent test: Ana signs in and sees only her order; signed out, the same link shows only the sign-in page.
+- Requirements: FR-039, FR-040, FR-041, FR-042, FR-043, FR-044, FR-050 · Examples: AE-037, AE-038, AE-039, AE-040, AE-041, AE-047
 
 ## Functional requirements
 
@@ -177,13 +189,25 @@ win early practices, so that the business can trade margin for adoption on purpo
 - **FR-036** [Ubiquitous] (US-3) The system shall record each paid line's unit cost as it stood when the order was paid.
 - **FR-037** [Event] (US-4) When 30 minutes pass after a patient started checkout without paying, the system shall return the order to the practice's current prices.
 - **FR-038** [Unwanted] (US-5) If a provider tries to record a stock adjustment, then the system shall refuse it and leave the stock count unchanged.
+- **FR-039** [Event] (US-8) When a person signs in with their own account, the system shall show only the pages their role allows: a patient their own orders, a provider their practice, platform staff the platform pages.
+- **FR-040** [Unwanted] (US-8) If someone who is not signed in opens an order, price, stock or dashboard page, then the system shall show the sign-in page and none of that page's contents.
+- **FR-041** [Event] (US-8) When a signed-in person has been inactive for 15 minutes, the system shall sign them out and show the sign-in page.
+- **FR-042** [Event] (US-8) When a patient signs in after opening an order notice, the system shall open the order the notice was about.
+- **FR-043** [Event] (US-1) When a provider sends an order, the system shall send the patient a stand-in notice that names the practice and asks them to sign in to view and pay.
+- **FR-044** [Ubiquitous] (US-1) The system shall leave item names, quantities, amounts and health details out of every notice to a patient.
+- **FR-045** [Event] (US-5) When a provider opens the practice dashboard, the system shall list the practice's orders with patient, total, status, time sent and time paid.
+- **FR-046** [State] (US-5) While a practice's order has been sent and unpaid for more than 3 days, the system shall flag it on the practice dashboard as awaiting payment.
+- **FR-047** [State] (US-5) While a product has 3 units or fewer in stock, the system shall flag it on the practice dashboard as low stock.
+- **FR-048** [Event] (US-6) When platform staff open the platform health dashboard for a period, the system shall show the sent-to-paid rate, median time to pay, failed payments, out-of-stock refusals, expired checkouts, orders needing review, and in-house paid volume and fees.
+- **FR-049** [State] (US-6) While a health measure is past its alert line, the system shall mark it as needing attention on the platform health dashboard.
+- **FR-050** [Ubiquitous] (US-8) The system shall show platform staff an order number in place of any patient name or contact detail.
 
 ## Non-functional requirements
 
 - **NFR-001** [Performance] Each step of the order journey shows its result within 2 s at the 95th percentile at 60 requests per second. Source: R13 I3 (high end of the first-year range); 2 s confirmed (Q6).
 - **NFR-002** [Capacity] The order journey keeps meeting NFR-001 at 60 requests per second and 270 concurrent users. Source: R13 I3 and I5 (high end of the first-year range).
 - **NFR-003** [Auditability] 100 % of price changes, stock adjustments and paid-order amounts are traceable to a person and a time. Source: REQ-05, (Q3), (Q4).
-- **NFR-004** [Privacy] 0 people outside an order's patient, that patient's practice and the platform reviewers can see the order. Source: (Q4).
+- **NFR-004** [Privacy] 0 people outside an order's patient, that patient's practice and the platform reviewers can see the order, and platform reviewers see it without the patient's identity. Source: (Q4), (Q11).
 - **NFR-005** [Availability] The order journey is available ≥ 99.5 % of each calendar month, with planned downtime only between 05:00 and 11:00 UTC. Source: R12 I2, R13 I6; confirmed (Q6).
 - **NFR-006** [Reliability] 0 orders are lost after the patient has seen a receipt. Source: REQ-05.
 - **NFR-007** [Security] 100 % of people who use the system sign in under their own personal account, with no shared accounts. Source: (Q8); HIPAA Security Rule, unique user identification, 45 CFR 164.312(a)(2)(i).
@@ -191,6 +215,7 @@ win early practices, so that the business can trade margin for adoption on purpo
 - **NFR-009** [Security] 100 % of traffic between people and the system is encrypted in transit. Source: (Q8); 45 CFR 164.312(e)(2)(ii).
 - **NFR-010** [Privacy] The system's logs hold 0 records containing a patient's name, an order's items or payment details. Source: (Q8).
 - **NFR-011** [Privacy] 0 records from real patients are used in the demo, examples or tests; every person is fictional. Source: (Q8).
+- **NFR-012** [Privacy] Platform staff see 0 records containing a patient's name or contact details on any page or report. Source: (Q11).
 
 ## Success criteria
 
@@ -244,6 +269,17 @@ cost → default patient price): Vitamin D3 $9.00 → $18.00; Magnesium Glycinat
 - **AE-034** (FR-016) Given Ana's paid order from AE-009, When an administrator records a correction of -$5.00 to the payout with the reason "goodwill credit", Then a new dated entry shows that correction and who made it, and the original $29.55 still shows.
 - **AE-035** (FR-037, FR-022) Given Ana started checkout at 14:00 with Magnesium Glycinate fixed at $24.00 and Dr. Chen then changed it to $26.00, When Ana returns at 14:31 without having paid, Then her order shows $26.00 with a notice "Magnesium Glycinate: $24.00 → $26.00".
 - **AE-036** (FR-038) Given 8 Vitamin D3 are in stock, When Dr. Chen tries to record an adjustment of +5, Then it is refused and stock still shows 8.
+- **AE-037** (FR-039) Given Ana Ruiz has her own patient account, When she signs in, Then she sees only her own orders and no practice or platform pages.
+- **AE-038** (FR-040) Given nobody is signed in, When someone opens the link to Ana's order, Then they see the sign-in page and nothing about the order.
+- **AE-039** (FR-041) Given Dr. Chen is signed in, When 15 minutes pass with no activity, Then she is signed out and sees the sign-in page.
+- **AE-040** (FR-043, FR-042) Given Dr. Chen sends Ana's $60.00 order, When Ana opens the notice and signs in, Then the notice reads "Willow Creek Wellness sent you a supplement order. Sign in to view and pay." and her $60.00 order opens.
+- **AE-041** (FR-044) Given the notice for Ana's $60.00 order of Vitamin D3 and Magnesium Glycinate, When anyone reads it, Then it contains no item name, quantity or amount.
+- **AE-042** (FR-045) Given Willow Creek has Ana's paid $60.00 order and Ben Ortiz's sent $30.00 order, When Dr. Chen opens the practice dashboard, Then she sees both orders with their totals, the statuses "Paid" and "Sent", and their times.
+- **AE-043** (FR-046) Given Ben's order was sent on 2026-10-10 and is still unpaid on 2026-10-14, When Dr. Chen opens the practice dashboard, Then Ben's order is flagged "Awaiting payment for 4 days".
+- **AE-044** (FR-047) Given 3 Omega-3 are in stock, When Dr. Chen opens the practice dashboard, Then Omega-3 is flagged "Low stock: 3 left".
+- **AE-045** (FR-048) Given that in October 10 orders were sent, 8 were paid with a median time to pay of 20 hours, 1 payment failed and 1 checkout expired, When platform staff open the health dashboard for October, Then it shows an 80% sent-to-paid rate, 20 hours, 1 failed payment and 1 expired checkout.
+- **AE-046** (FR-049) Given 1 order needs review and its alert line is 1, When platform staff open the health dashboard, Then "Orders needing review: 1" is marked as needing attention.
+- **AE-047** (FR-050) Given Ana's paid order number 1042, When a platform reviewer opens it, Then it shows "Order 1042" and no patient name or contact detail.
 
 ## Edge cases
 
@@ -259,6 +295,8 @@ cost → default patient price): Vitamin D3 $9.00 → $18.00; Magnesium Glycinat
 - **EC-10** The payment step fails or never answers → expected: the order stays unpaid and the patient is told no money was taken (FR-035)
 - **EC-11** A product's cost changes after an order was paid → expected: the paid order keeps the cost it was paid at (FR-036)
 - **EC-12** Someone tries to edit a paid order, a price history entry or a stock history entry → expected: refused, original kept (FR-015, FR-021)
+- **EC-13** A patient's session ends during checkout → expected: she signs in again and returns to her order; prices stay held until 30 minutes after checkout started (FR-041, FR-042, FR-037)
+- **EC-14** Someone forwards the order notice → expected: the reader sees only the practice name and a sign-in page (FR-044, FR-040)
 
 ## Assumptions and open questions
 
@@ -271,6 +309,9 @@ Assumptions:
 - **A-6** Sign-in, payment, email and shipping are stand-ins, and the docs list each one. — Basis: REQ-07.
 - **A-7** The provider pays the platform fee out of their margin. — Basis: (Q2), R05.
 - **A-9** A session ends after 15 minutes without activity. — Basis: assumed by agent; confirm at G1.
+- **A-10** The practice alerts fire at more than 3 days unpaid and at 3 units or fewer in stock. — Basis: assumed by agent; confirm at G1.
+- **A-11** Each health measure's alert line is set after 30 days of real orders, except orders needing review, which alerts at 1. — Basis: assumed by agent; confirm at G1.
+- **A-12** Sign-in is a stand-in: each fictional person has their own account, and no real identity check runs. — Basis: REQ-07, (Q9).
 - **A-8** The success targets rest on R10 and R11 estimates (an outside seller's claimed patients per provider, a $50 median monthly supplement spend, 22% first-year adoption). — Basis: R10, R11; each target is aspirational until real orders exist.
 
 Open questions:
@@ -290,6 +331,9 @@ Answered from sources: Problem → brief Problem, REQ-01, R02, R08, R10 · Users
 | Q6 | G1 review: the eight open questions of the first draft (2 s at p95; 99.5 % a month with downtime 05:00–11:00 UTC; 30-minute checkout lock then refresh with a notice; margin as share of price; default price = cost + 50% margin; stock adjustments by platform staff only; ask the partner for the outside-seller baseline; set the SC-003 target after 30 days) | Each recommended answer as listed | "yes, all looks good here for all reccomendations" | NFR-001, NFR-005, FR-017, FR-018, FR-030, FR-037, FR-038, SC-002, SC-003, EC-6 |
 | Q7 | G1 review: confirm agent assumptions A-2 to A-5 | Confirm each | "yes to each of these, also remember that this needs to be a hipaa compliant software, check me on that" | A-2, A-3, A-4, A-5 |
 | Q8 | How should the PRD treat HIPAA? | HIPAA-ready, not HIPAA-compliant: compliance stays out of scope (REQ-08), add the technical safeguards of 45 CFR 164.312 as NFRs, fictional data only, list what real compliance adds — because REQ-08 and 45 CFR 164.312 | "yes, hipaa ready" | NG-10, NFR-007 to NFR-011, A-9 |
+| Q9 | G-ux open questions: a stand-in sign-in screen, an order-status list, and how the patient gets the link | Add a P1 sign-in story; order-status list Later; S1 shows the link | "1. yes, def need auth flow fr patients, and providers designed and also in spec, 2. yes, we need a dashboard as this is ecommerce and order status list is needed on that dashboard, and also we should be able to track multiple metrics on that dashboard for ecommerce, that will tell us any issues or bottle necks or alerts.  3. should the patient only click the click from inside the platform how do other companies solve this today, especially for a hipaa compliant ecommerce platform?" | US-8, FR-039 to FR-042, US-5, US-6 |
+| Q10 | How does the patient reach their order? | A notice with no details, then sign-in — because the Fullscript integration emails the patient (S02.3) and HHS guidance (FAQ 570, via a law-firm summary) says to limit health information in email | "ok" | FR-042, FR-043, FR-044, EC-14 |
+| Q11 | Who sees the e-commerce dashboard, what is on it, and which milestone builds it? | Order-status list and practice alerts for the provider in M5; platform health dashboard for platform staff in M6; alerts on the dashboard only | "yes, thats good seperation, platform staff should also not see any pii data, just eccommerce related data" | FR-045 to FR-050, NFR-004, NFR-012, NG-11, A-10, A-11 |
 
 ## Risks
 
@@ -308,9 +352,9 @@ Answered from sources: Problem → brief Problem, REQ-01, R02, R08, R10 · Users
 | M1 Research | Approved brief + cited research | none (docs only) | G0 approval | A reviewer reads the brief and every R01 to R13 note. |
 | M2 Product | Approved PRD (+ clarifications) | none (docs only) | G1 approval | A reviewer reads docs/product/prd.md. |
 | M3 Design | Approved HLD, LLD, data design, contract, diagrams | none (docs only) | G2-G3 approvals | A reviewer can read every design doc from docs/README.md. |
-| M4 Tracer bullet | Provider sends an order, patient pays once, the split is recorded and shown to the cent | FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-007, FR-008, FR-009, FR-010, FR-011, FR-012, FR-013, FR-014, FR-015, FR-017, FR-031, FR-035, FR-036 | AE-001 to AE-015, AE-028, AE-031, AE-032 | Dr. Chen sends Ana a $60.00 order, Ana pays it with the test payment, and a reviewer sees $30.00 + $29.55 + $0.45. |
-| M5 Prices and stock | Price-change form with history, price notices, checkout lock, stock limits, practice dashboard | FR-018, FR-019, FR-020, FR-021, FR-022, FR-023, FR-024, FR-025, FR-026, FR-027, FR-028, FR-029, FR-030, FR-037, FR-038 | AE-016 to AE-027, AE-035, AE-036 | Dr. Chen changes a price, Ana sees the notice, pays, and the dashboard shows the sale and lower stock. |
-| M6 Measurement | Monthly volume report per practice | FR-032 | AE-029, SC-001, SC-002, SC-003 | A reviewer opens October's report and reads Willow Creek's paid amount, fees, sent and paid orders. |
+| M4 Tracer bullet | Each person signs in; provider sends an order, patient pays once, the split is recorded and shown to the cent | FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-007, FR-008, FR-009, FR-010, FR-011, FR-012, FR-013, FR-014, FR-015, FR-017, FR-031, FR-035, FR-036, FR-039, FR-040, FR-041, FR-042, FR-043, FR-044, FR-050 | AE-001 to AE-015, AE-028, AE-031, AE-032, AE-037 to AE-041, AE-047 | Dr. Chen sends Ana a $60.00 order, Ana pays it with the test payment, and a reviewer sees $30.00 + $29.55 + $0.45. |
+| M5 Prices and stock | Price-change form with history, price notices, checkout lock, stock limits, practice dashboard | FR-018, FR-019, FR-020, FR-021, FR-022, FR-023, FR-024, FR-025, FR-026, FR-027, FR-028, FR-029, FR-030, FR-037, FR-038, FR-045, FR-046, FR-047 | AE-016 to AE-027, AE-035, AE-036, AE-042 to AE-044 | Dr. Chen changes a price, Ana sees the notice, pays, and the dashboard shows the sale and lower stock. |
+| M6 Measurement | Platform health dashboard with the monthly volume report and alerts | FR-032, FR-048, FR-049 | AE-029, AE-045, AE-046, SC-001, SC-002, SC-003 | Platform staff open October's health dashboard, see 80% sent-to-paid and one order flagged for review, with no patient names. |
 | Later | Not in this appetite: pricing campaigns and corrections | FR-016, FR-033, FR-034 | — | — |
 
 ## Constraints
@@ -353,6 +397,7 @@ Answered from sources: Problem → brief Problem, REQ-01, R02, R08, R10 · Users
 | 2026-10-09 20:13 CDT | First draft | all | G1 |
 | 2026-10-09 20:24 CDT | G1 Revise: answered the 8 open questions (Q6) and confirmed A-2 to A-5 (Q7); added FR-037 checkout lock expiry and FR-038 providers cannot adjust stock | NFR-001, NFR-005, FR-017, FR-018, FR-030, FR-037, FR-038, SC-002, SC-003, AE-015, AE-027, AE-035, AE-036, EC-6, A-2 to A-5 | G1 |
 | 2026-10-09 20:27 CDT | G1 Revise: HIPAA-ready, not HIPAA-compliant (Q8); added NFR-007 to NFR-011, NG-10, A-9 | NFR-007, NFR-008, NFR-009, NFR-010, NFR-011, NG-10, A-9 | G1 |
+| 2026-10-09 21:45 CDT | G1 Revise (Q9-Q11): sign-in story US-8, notices without health details, order-status list and practice alerts in M5, platform health dashboard in M6, no patient identity for platform staff | US-5, US-6, US-8, FR-039 to FR-050, NFR-004, NFR-012, AE-037 to AE-047, EC-13, EC-14, NG-11, A-10 to A-12 | G1 |
 
 ## Clarifications
 
