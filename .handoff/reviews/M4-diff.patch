@@ -1,0 +1,1452 @@
+diff --git a/app/components/AppShell.vue b/app/components/AppShell.vue
+new file mode 100644
+index 0000000..abcb63b
+--- /dev/null
++++ b/app/components/AppShell.vue
+@@ -0,0 +1,23 @@
++<!-- FE-1 AppShell (lld.md §3): fetches the signed-in viewer (ST-1, EP-17), provides it to pages, and shows the help
++     footer. The idle countdown (ST-2) and the signed-out redirect arrive with the sign-in page (M4-T006). -->
++<script setup lang="ts">
++const { data: viewer } = await useFetch('/api/session', { key: 'viewer' })
++provide('viewer', viewer)
++const staff = computed(() => !!viewer.value && viewer.value.role !== 'patient')
++</script>
++
++<template>
++  <div class="shell">
++    <main>
++      <slot />
++    </main>
++    <footer class="help">
++      {{ staff ? 'Questions? Contact platform support' : 'Questions? Contact your practice' }}
++    </footer>
++  </div>
++</template>
++
++<style scoped>
++.shell { max-width: 1280px; margin: 0 auto; padding: 16px; font-family: system-ui, sans-serif; color: #1a1a1a; }
++.help { margin-top: 32px; color: #444; font-size: 14px; }
++</style>
+diff --git a/app/components/ProblemMessage.vue b/app/components/ProblemMessage.vue
+new file mode 100644
+index 0000000..fce1bc1
+--- /dev/null
++++ b/app/components/ProblemMessage.vue
+@@ -0,0 +1,50 @@
++<!-- FE-23 ProblemMessage (lld.md §3): turns a problem (RFC 9457) into the screen's exact copy. `copy` overrides the
++     text per problem slug; `names` turns product ids into names for stock and price-floor problems. -->
++<script setup lang="ts">
++export interface Problem {
++  type?: string
++  title?: string
++  status?: number
++  productIds?: number[]
++  unitsAvailable?: number[]
++  lowestAllowedPriceCents?: number
++}
++
++const props = defineProps<{ problem: Problem | null; copy?: Record<string, string>; names?: Record<number, string> }>()
++const emit = defineEmits<{ retry: [] }>()
++
++const slug = computed(() => props.problem?.type?.replace('/problems/', '') ?? 'offline')
++const dollars = (c: number) => `$${(c / 100).toFixed(2)}`
++const text = computed(() => {
++  const p = props.problem
++  if (props.copy?.[slug.value]) return props.copy[slug.value]
++  switch (slug.value) {
++    case 'unauthenticated':
++      return 'You were signed out after 15 minutes without activity.'
++    case 'insufficient-stock':
++      return `Only ${p?.unitsAvailable?.[0] ?? 0} in stock. Lower the quantity.`
++    case 'below-price-floor': {
++      const name = props.names?.[p?.productIds?.[0] ?? -1] ?? 'A product'
++      const floor = p?.lowestAllowedPriceCents === undefined ? '' : ` of ${dollars(p.lowestAllowedPriceCents)}`
++      return `${name} is below its lowest allowed price${floor}. Remove it or change its price in Practice prices.`
++    }
++    case 'offline':
++      return "You're offline. Try again when you're back online."
++    default:
++      return p?.title ?? 'Something went wrong on our side. Try again.'
++  }
++})
++const retryable = computed(() => slug.value === 'internal' || slug.value === 'offline')
++</script>
++
++<template>
++  <div v-if="problem" role="alert" class="problem">
++    <p>{{ text }}</p>
++    <NuxtLink v-if="slug === 'unauthenticated'" to="/sign-in">Sign in</NuxtLink>
++    <button v-if="retryable" type="button" @click="emit('retry')">Try again</button>
++  </div>
++</template>
++
++<style scoped>
++.problem { border: 2px solid #b00020; padding: 8px 12px; margin: 8px 0; }
++</style>
+diff --git a/app/components/order-builder/OrderPanel.vue b/app/components/order-builder/OrderPanel.vue
+new file mode 100644
+index 0000000..85768dc
+--- /dev/null
++++ b/app/components/order-builder/OrderPanel.vue
+@@ -0,0 +1,69 @@
++<!-- FE-6 OrderPanel (S1): the draft lines, total due, platform fee and payout, and Send. Stateless. -->
++<script setup lang="ts">
++import type { Problem } from '../ProblemMessage.vue'
++
++export interface PanelLine {
++  productId: number
++  name: string
++  quantity: number
++  lineTotalCents: number
++}
++export interface Totals {
++  totalCents: number
++  feeCents: number
++  payoutCents: number
++}
++
++defineProps<{
++  lines: PanelLine[]
++  totals: Totals
++  patientName: string
++  problem?: Problem | null
++  names?: Record<number, string>
++  sending?: boolean
++  sentMessage?: string | null
++  cleared?: boolean
++}>()
++const emit = defineEmits<{ remove: [productId: number]; send: []; retry: [] }>()
++const dollars = (c: number) => `${c < 0 ? '-' : ''}$${(Math.abs(c) / 100).toFixed(2)}`
++</script>
++
++<template>
++  <section aria-labelledby="order-heading" class="panel">
++    <h2 id="order-heading">Your order</h2>
++    <p v-if="sentMessage" role="status">{{ sentMessage }}</p>
++    <p v-else-if="lines.length === 0">
++      {{ cleared ? 'Your order is empty. Add a supplement to continue.' : 'No supplements added yet. Add one from the list.' }}
++    </p>
++    <ul v-else class="lines">
++      <li v-for="l in lines" :key="l.productId">
++        <span class="name">{{ l.name }}</span> x{{ l.quantity }} <span>{{ dollars(l.lineTotalCents) }}</span>
++        <button type="button" :aria-label="`Remove ${l.name}`" @click="emit('remove', l.productId)">Remove</button>
++      </li>
++    </ul>
++    <dl aria-live="polite">
++      <dt>Total due</dt><dd>{{ dollars(totals.totalCents) }}</dd>
++      <dt>Platform fee (0.75%)</dt><dd>-{{ dollars(totals.feeCents) }}</dd>
++      <dt>Your payout</dt><dd>{{ dollars(totals.payoutCents) }}</dd>
++    </dl>
++    <ProblemMessage
++      :problem="problem ?? null"
++      :names="names"
++      :copy="{ internal: 'We couldn\'t send the order. Nothing was sent. Try again.', offline: 'You\'re offline. Your order is kept; send it when you\'re back online.', validation: 'Add at least one supplement before sending.' }"
++      @retry="emit('send')"
++    />
++    <button type="button" class="send" :disabled="lines.length === 0 || sending" @click="emit('send')">
++      {{ sending ? 'Sending…' : `Send to ${patientName}` }}
++    </button>
++  </section>
++</template>
++
++<style scoped>
++.panel { border: 1px solid #ccc; padding: 12px; align-self: start; position: sticky; top: 16px; }
++.lines { list-style: none; padding: 0; }
++.lines li { padding: 4px 0; }
++.name { overflow-wrap: anywhere; }
++dl { display: grid; grid-template-columns: 1fr auto; gap: 4px; }
++dd { margin: 0; text-align: right; }
++.send { width: 100%; min-height: 44px; font-weight: 600; }
++</style>
+diff --git a/app/components/order-builder/ProductPicker.vue b/app/components/order-builder/ProductPicker.vue
+new file mode 100644
+index 0000000..5233f17
+--- /dev/null
++++ b/app/components/order-builder/ProductPicker.vue
+@@ -0,0 +1,66 @@
++<!-- FE-5 ProductPicker (S1): products with price and stock; Quantity + Add per product. Stateless. -->
++<script setup lang="ts">
++export interface CatalogItem {
++  product_id: number
++  name: string
++  price_cents: number
++  units_in_stock: number
++  lowest_allowed_price_cents: number
++}
++export interface DraftLine {
++  productId: number
++  quantity: number
++}
++
++const props = defineProps<{ items: CatalogItem[]; lines: DraftLine[] }>()
++const emit = defineEmits<{ add: [productId: number, quantity: number] }>()
++
++const qty = reactive<Record<number, number>>({})
++const dollars = (c: number) => `$${(c / 100).toFixed(2)}`
++const inOrder = (id: number) => props.lines.find((l) => l.productId === id)?.quantity ?? 0
++function add(item: CatalogItem) {
++  const q = Math.floor(Number(qty[item.product_id] ?? 1))
++  if (q >= 1) emit('add', item.product_id, q)
++}
++</script>
++
++<template>
++  <section aria-labelledby="products-heading">
++    <h2 id="products-heading">Products</h2>
++    <ul class="products">
++      <li v-for="item in items" :key="item.product_id">
++        <div class="name">{{ item.name }}</div>
++        <div>
++          {{ dollars(item.price_cents) }} ·
++          <template v-if="item.units_in_stock > 0">{{ item.units_in_stock }} in stock</template>
++          <template v-else>Out of stock</template>
++        </div>
++        <form v-if="item.units_in_stock > 0" @submit.prevent="add(item)">
++          <label>
++            Quantity
++            <input
++              v-model.number="qty[item.product_id]"
++              type="number"
++              min="1"
++              :max="Math.max(1, item.units_in_stock - inOrder(item.product_id))"
++              placeholder="1"
++              :aria-label="`Quantity, ${item.name}`"
++              aria-describedby="qty-help"
++            />
++          </label>
++          <button type="submit">Add</button>
++        </form>
++      </li>
++    </ul>
++    <p id="qty-help" class="help">Up to the number in stock.</p>
++  </section>
++</template>
++
++<style scoped>
++.products { list-style: none; padding: 0; }
++.products li { padding: 8px 0; border-bottom: 1px solid #ddd; }
++.name { font-weight: 600; overflow-wrap: anywhere; }
++input { width: 4em; margin: 0 8px; }
++button { min-width: 24px; min-height: 24px; }
++.help { color: #444; font-size: 14px; }
++</style>
+diff --git a/app/pages/notices/[token].vue b/app/pages/notices/[token].vue
+new file mode 100644
+index 0000000..ecace0f
+--- /dev/null
++++ b/app/pages/notices/[token].vue
+@@ -0,0 +1,32 @@
++<!-- FE-3 NoticePage (S9, EP-2): the stand-in message. Names only the practice (FR-044). -->
++<script setup lang="ts">
++import type { Problem } from '~/components/ProblemMessage.vue'
++
++const route = useRoute()
++const { data: notice, error } = await useFetch<{ practice_name: string; sign_in_path: string }>(
++  `/api/notices/${encodeURIComponent(String(route.params.token))}`,
++)
++useHead({ title: () => (notice.value ? `Message from ${notice.value.practice_name}` : 'Message') })
++</script>
++
++<template>
++  <AppShell>
++    <article v-if="notice" class="card">
++      <h1>Message from {{ notice.practice_name }}</h1>
++      <p>{{ notice.practice_name }} sent you a supplement order. Sign in to view and pay.</p>
++      <NuxtLink :to="notice.sign_in_path" class="button">Sign in to view</NuxtLink>
++      <p class="note">Stand-in message: in a real launch this arrives by email or text.</p>
++    </article>
++    <ProblemMessage
++      v-else-if="error"
++      :problem="(error.data as Problem) ?? null"
++      :copy="{ 'not-found': 'We can\'t find this order.' }"
++    />
++  </AppShell>
++</template>
++
++<style scoped>
++.card { max-width: 480px; margin: 0 auto; overflow-wrap: anywhere; }
++.button { display: block; text-align: center; min-height: 44px; line-height: 44px; background: #1a4d8f; color: #fff; text-decoration: none; }
++.note { color: #444; font-size: 14px; }
++</style>
+diff --git a/app/pages/patients/[patientId]/supplements.vue b/app/pages/patients/[patientId]/supplements.vue
+new file mode 100644
+index 0000000..9a88553
+--- /dev/null
++++ b/app/pages/patients/[patientId]/supplements.vue
+@@ -0,0 +1,117 @@
++<!-- FE-4 OrderBuilderPage (S1, EP-3): build an order from the catalog (EP-18) and send it (EP-19). -->
++<script setup lang="ts">
++import type { CatalogItem, DraftLine } from '~/components/order-builder/ProductPicker.vue'
++import type { Problem } from '~/components/ProblemMessage.vue'
++import { payoutCents, platformFeeCents, unitCostFromLowestAllowedPrice } from '~~/server/services/money'
++
++const route = useRoute()
++const patientId = Number(route.params.patientId)
++const { data: catalog, error, refresh, status } = await useFetch<{ patient_display_name: string; items: CatalogItem[] }>(
++  `/api/patients/${patientId}/catalog`,
++)
++
++const lines = ref<DraftLine[]>([]) // ST-3
++const key = ref<string | null>(null) // ST-9: minted with the first line, reused for every retry of this draft
++const problem = ref<Problem | null>(null)
++const sending = ref(false)
++const sentMessage = ref<string | null>(null)
++const cleared = ref(false)
++
++const patientName = computed(() => catalog.value?.patient_display_name ?? 'the patient')
++useHead({ title: () => `Supplement order for ${patientName.value}` })
++const byId = computed(() => new Map((catalog.value?.items ?? []).map((i) => [i.product_id, i])))
++const names = computed(() => Object.fromEntries((catalog.value?.items ?? []).map((i) => [i.product_id, i.name])))
++const panelLines = computed(() =>
++  lines.value.flatMap((l) => {
++    const item = byId.value.get(l.productId)
++    return item ? [{ productId: l.productId, name: item.name, quantity: l.quantity, lineTotalCents: item.price_cents * l.quantity }] : []
++  }),
++)
++// Same rule as BE-6 Money, so the panel matches what the server records.
++const totals = computed(() => {
++  let total = 0
++  let cost = 0
++  for (const l of lines.value) {
++    const item = byId.value.get(l.productId)
++    if (!item) continue
++    total += item.price_cents * l.quantity
++    cost += unitCostFromLowestAllowedPrice(item.lowest_allowed_price_cents) * l.quantity
++  }
++  const fee = platformFeeCents(total)
++  return { totalCents: total, feeCents: fee, payoutCents: payoutCents(total, cost, fee) }
++})
++
++function add(productId: number, quantity: number) {
++  sentMessage.value = null
++  problem.value = null
++  key.value ??= crypto.randomUUID()
++  const existing = lines.value.find((l) => l.productId === productId)
++  if (existing) existing.quantity += quantity
++  else lines.value.push({ productId, quantity })
++}
++function remove(productId: number) {
++  lines.value = lines.value.filter((l) => l.productId !== productId)
++  cleared.value = lines.value.length === 0
++}
++async function send() {
++  if (lines.value.length === 0 || sending.value) return
++  sending.value = true
++  problem.value = null
++  try {
++    await $fetch('/api/orders', {
++      method: 'POST',
++      headers: { 'idempotency-key': key.value ?? crypto.randomUUID() },
++      body: { patient_id: patientId, lines: lines.value.map((l) => ({ product_id: l.productId, quantity: l.quantity })) },
++    })
++    sentMessage.value = `Sent. ${patientName.value} will get a notice to sign in and pay.`
++    lines.value = []
++    key.value = null
++    cleared.value = false
++    await refresh()
++  } catch (e: unknown) {
++    const data = (e as { data?: Problem }).data
++    problem.value = data?.type ? data : { type: navigator.onLine ? '/problems/internal' : undefined }
++  } finally {
++    sending.value = false
++  }
++}
++const pageProblem = computed<Problem | null>(() => (error.value ? (error.value.data as Problem) ?? { type: '/problems/internal' } : null))
++</script>
++
++<template>
++  <AppShell>
++    <header class="chart">{{ catalog?.patient_display_name ?? 'Patient' }} · chart <span>Supplements (selected)</span></header>
++    <h1>Supplement order for {{ patientName }}</h1>
++    <ProblemMessage
++      v-if="pageProblem"
++      :problem="pageProblem"
++      :copy="{ 'not-found': 'You can\'t open supplement orders for this patient.', forbidden: 'You can\'t open supplement orders for this patient.' }"
++      @retry="refresh()"
++    />
++    <p v-else-if="status === 'pending'">Loading products…</p>
++    <div v-else-if="catalog" class="builder">
++      <OrderBuilderProductPicker :items="catalog.items" :lines="lines" @add="add" />
++      <OrderBuilderOrderPanel
++        :lines="panelLines"
++        :totals="totals"
++        :patient-name="patientName"
++        :problem="problem"
++        :names="names"
++        :sending="sending"
++        :sent-message="sentMessage"
++        :cleared="cleared"
++        @remove="remove"
++        @send="send"
++      />
++    </div>
++    <p>Prices are set in Practice prices. <NuxtLink to="/practice/prices">Practice prices</NuxtLink></p>
++  </AppShell>
++</template>
++
++<style scoped>
++.chart { display: flex; justify-content: space-between; border-bottom: 1px solid #ccc; padding-bottom: 8px; }
++.builder { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
++@media (max-width: 767px) {
++  .builder { grid-template-columns: 1fr; }
++}
++</style>
+diff --git a/db/migrations/1760000001000_core-orders.sql b/db/migrations/1760000001000_core-orders.sql
+new file mode 100644
+index 0000000..e9bc5c9
+--- /dev/null
++++ b/db/migrations/1760000001000_core-orders.sql
+@@ -0,0 +1,129 @@
++-- Up Migration
++-- M4-T001 core tables (lld.md §1): practices, users, sessions, products, practice_prices, orders, order_lines, notices.
++-- Runs as supplements_owner (Q-3, Q-4). orders and order_lines get every §1 column now; the paid-order checks and
++-- triggers (ck_orders_hold_when_in_checkout, ck_orders_paid_fields, ck_orders_split_balances, ck_orders_payout_nonneg,
++-- tg_orders_paid_frozen, ...) arrive with M4-T002.
++
++create table practices (
++  id bigint generated always as identity constraint pk_practices primary key,
++  name text not null constraint ck_practices_name_len check (char_length(name) between 1 and 120),
++  created_at timestamptz not null default now()
++);
++
++create table users (
++  id bigint generated always as identity constraint pk_users primary key,
++  email text not null,
++  password_hash text not null,
++  display_name text not null constraint ck_users_display_name_len check (char_length(display_name) between 1 and 120),
++  role varchar(30) not null constraint ck_users_role check (
++    role in ('patient', 'provider', 'finance_lead', 'operations_specialist', 'sre', 'data_analyst', 'none')),
++  practice_id bigint constraint fk_users_practice references practices (id) on delete restrict,
++  role_changed_at timestamptz,
++  created_at timestamptz not null default now(),
++  constraint ck_users_practice_matches_role check ((practice_id is not null) = (role in ('patient', 'provider'))),
++  constraint uq_users_id_practice unique (id, practice_id)
++);
++create unique index uq_users_email_lower on users (lower(email));
++create index ix_users_practice_role on users (practice_id, role);
++create index ix_users_role on users (role);
++
++create table sessions (
++  id bigint generated always as identity constraint pk_sessions primary key,
++  token_hash bytea not null constraint uq_sessions_token_hash unique,
++  user_id bigint not null constraint fk_sessions_user references users (id) on delete cascade,
++  created_at timestamptz not null default now(),
++  last_seen_at timestamptz not null default now(),
++  ended_at timestamptz
++);
++create index ix_sessions_user on sessions (user_id);
++
++create table products (
++  id bigint generated always as identity constraint pk_products primary key,
++  sku text not null constraint uq_products_sku unique,
++  name text not null constraint ck_products_name_len check (char_length(name) between 1 and 120),
++  unit_cost_cents integer not null constraint ck_products_cost_positive check (unit_cost_cents > 0),
++  units_in_stock integer not null default 0 constraint ck_products_stock_nonneg check (units_in_stock >= 0),
++  created_at timestamptz not null default now()
++);
++
++create table practice_prices (
++  practice_id bigint not null constraint fk_practice_prices_practice references practices (id) on delete restrict,
++  product_id bigint not null constraint fk_practice_prices_product references products (id) on delete restrict,
++  price_cents integer not null constraint ck_practice_prices_positive check (price_cents > 0),
++  set_by bigint not null constraint fk_practice_prices_set_by references users (id) on delete restrict,
++  set_at timestamptz not null default now(),
++  constraint pk_practice_prices primary key (practice_id, product_id)
++);
++
++create table orders (
++  id bigint generated always as identity (start with 1001) constraint pk_orders primary key,
++  practice_id bigint not null constraint fk_orders_practice references practices (id) on delete restrict,
++  provider_id bigint not null,
++  patient_id bigint not null,
++  status varchar(20) not null default 'sent' constraint ck_orders_status check (
++    status in ('sent', 'in_checkout', 'payment_failed', 'paid', 'needs_review', 'cancelled')),
++  sent_at timestamptz not null default now(),
++  checkout_started_at timestamptz,
++  prices_held_until timestamptz,
++  paid_at timestamptz,
++  cancelled_at timestamptz,
++  amount_paid_cents integer,
++  item_cost_cents integer,
++  provider_payout_cents integer,
++  platform_fee_cents integer,
++  constraint fk_orders_provider_in_practice foreign key (provider_id, practice_id)
++    references users (id, practice_id) on delete restrict,
++  constraint fk_orders_patient_in_practice foreign key (patient_id, practice_id)
++    references users (id, practice_id) on delete restrict
++);
++create index ix_orders_practice_sent on orders (practice_id, sent_at desc, id desc);
++create index ix_orders_patient on orders (patient_id);
++create index ix_orders_status_paid on orders (status, paid_at desc, id desc);
++create index ix_orders_needs_review on orders (id) where status = 'needs_review';
++create index ix_orders_sent_at on orders (sent_at);
++
++create table order_lines (
++  id bigint generated always as identity constraint pk_order_lines primary key,
++  order_id bigint not null constraint fk_order_lines_order references orders (id) on delete restrict,
++  product_id bigint not null constraint fk_order_lines_product references products (id) on delete restrict,
++  product_name text not null,
++  quantity integer not null constraint ck_order_lines_quantity_positive check (quantity >= 1),
++  sent_unit_price_cents integer not null,
++  held_unit_price_cents integer,
++  paid_unit_price_cents integer,
++  unit_cost_cents_at_payment integer,
++  fee_share_cents integer constraint ck_order_lines_fee_share_nonneg check (fee_share_cents >= 0),
++  constraint ck_order_lines_prices_positive check (
++    sent_unit_price_cents > 0
++    and (held_unit_price_cents is null or held_unit_price_cents > 0)
++    and (paid_unit_price_cents is null or paid_unit_price_cents > 0)
++    and (unit_cost_cents_at_payment is null or unit_cost_cents_at_payment > 0)),
++  constraint uq_order_lines_order_product unique (order_id, product_id)
++);
++create index ix_order_lines_product on order_lines (product_id);
++
++create table notices (
++  id bigint generated always as identity constraint pk_notices primary key,
++  order_id bigint not null constraint fk_notices_order references orders (id) on delete restrict
++    constraint uq_notices_order unique,
++  patient_id bigint not null constraint fk_notices_patient references users (id) on delete restrict,
++  practice_id bigint not null constraint fk_notices_practice references practices (id) on delete restrict,
++  token text not null constraint uq_notices_token unique,
++  created_at timestamptz not null default now()
++);
++
++-- The app connects as supplements_app (Q-3): no DELETE on orders or order_lines (INV-4).
++grant select on practices, users, products, practice_prices to supplements_app;
++grant select, insert, update on sessions to supplements_app;
++grant select, insert, update on orders, order_lines to supplements_app;
++grant select, insert on notices to supplements_app;
++
++-- Down Migration
++drop table notices;
++drop table order_lines;
++drop table orders;
++drop table practice_prices;
++drop table products;
++drop table sessions;
++drop table users;
++drop table practices;
+diff --git a/server/api/notices/[token].get.ts b/server/api/notices/[token].get.ts
+new file mode 100644
+index 0000000..19bd645
+--- /dev/null
++++ b/server/api/notices/[token].get.ts
+@@ -0,0 +1,6 @@
++// EP-24 GET /api/notices/{token} (getNotice): public; the practice name and where to sign in, nothing else (FR-044).
++import { getRouterParam } from 'h3'
++import { getNotice } from '../../services/messaging'
++import { defineApiHandler } from '../../utils/problem'
++
++export default defineApiHandler(async (event) => getNotice(getRouterParam(event, 'token') ?? ''))
+diff --git a/server/api/orders/index.post.ts b/server/api/orders/index.post.ts
+new file mode 100644
+index 0000000..8976455
+--- /dev/null
++++ b/server/api/orders/index.post.ts
+@@ -0,0 +1,25 @@
++// EP-19 POST /api/orders (sendOrder): sends an order to a patient. The Idempotency-Key header is accepted; storing
++// and replaying it (BE-5) arrives with M4-T003.
++import { setResponseStatus } from 'h3'
++import { z } from 'zod'
++import { assertRole } from '../../services/access-policy'
++import { sendOrder } from '../../services/orders'
++import { requireViewer } from '../../services/session'
++import { defineApiHandler, parseBody } from '../../utils/problem'
++
++const SendOrderRequest = z.strictObject({
++  patient_id: z.int().positive(),
++  lines: z.array(z.strictObject({ product_id: z.int().positive(), quantity: z.int().min(1) })).min(1),
++})
++
++export default defineApiHandler(async (event) => {
++  const viewer = await requireViewer(event)
++  assertRole(viewer, ['provider'])
++  const body = await parseBody(event, SendOrderRequest)
++  const order = await sendOrder(viewer, {
++    patientId: BigInt(body.patient_id),
++    lines: body.lines.map((l) => ({ productId: BigInt(l.product_id), quantity: l.quantity })),
++  })
++  setResponseStatus(event, 201)
++  return order
++})
+diff --git a/server/api/patients/[patientId]/catalog.get.ts b/server/api/patients/[patientId]/catalog.get.ts
+new file mode 100644
+index 0000000..200c54a
+--- /dev/null
++++ b/server/api/patients/[patientId]/catalog.get.ts
+@@ -0,0 +1,14 @@
++// EP-18 GET /api/patients/{patientId}/catalog (getCatalog): products at this practice's prices, with stock.
++import { getRouterParam } from 'h3'
++import { assertRole } from '../../../services/access-policy'
++import { catalogForPatient } from '../../../services/catalog'
++import { requireViewer } from '../../../services/session'
++import { defineApiHandler, ProblemError } from '../../../utils/problem'
++
++export default defineApiHandler(async (event) => {
++  const viewer = await requireViewer(event)
++  assertRole(viewer, ['provider'])
++  const id = getRouterParam(event, 'patientId') ?? ''
++  if (!/^\d{1,18}$/.test(id)) throw new ProblemError('not-found')
++  return catalogForPatient(viewer, BigInt(id))
++})
+diff --git a/server/api/session/index.get.ts b/server/api/session/index.get.ts
+new file mode 100644
+index 0000000..7f201fa
+--- /dev/null
++++ b/server/api/session/index.get.ts
+@@ -0,0 +1,5 @@
++// EP-17 GET /api/session (getSession): who is signed in; 401 once idle 15 minutes.
++import { requireViewer, toMe } from '../../services/session'
++import { defineApiHandler } from '../../utils/problem'
++
++export default defineApiHandler(async (event) => toMe(await requireViewer(event)))
+diff --git a/server/api/session/index.post.ts b/server/api/session/index.post.ts
+new file mode 100644
+index 0000000..7b63e3b
+--- /dev/null
++++ b/server/api/session/index.post.ts
+@@ -0,0 +1,14 @@
++// EP-15 POST /api/session (signIn): checks email and password, sets the session cookie, returns Me.
++import { getRequestIP } from 'h3'
++import { z } from 'zod'
++import { setSessionCookie, signIn, toMe } from '../../services/session'
++import { defineApiHandler, parseBody } from '../../utils/problem'
++
++const SignInRequest = z.strictObject({ email: z.email(), password: z.string().min(1) })
++
++export default defineApiHandler(async (event) => {
++  const body = await parseBody(event, SignInRequest)
++  const { viewer, cookieToken } = await signIn(body.email, body.password, getRequestIP(event) ?? '')
++  setSessionCookie(event, cookieToken)
++  return toMe(viewer)
++})
+diff --git a/server/services/access-policy.ts b/server/services/access-policy.ts
+new file mode 100644
+index 0000000..19a768c
+--- /dev/null
++++ b/server/services/access-policy.ts
+@@ -0,0 +1,48 @@
++// BE-4 AccessPolicy (lld.md §2): one place that answers who may see or do what. Deny by default; pure.
++import { ProblemError } from '../utils/problem'
++import type { Role, Viewer } from './session'
++
++export interface PatientRef {
++  id: bigint
++  role: string
++  practiceId: bigint | null
++}
++
++export interface OrderOwnership {
++  patientId: bigint
++  practiceId: bigint
++}
++
++export interface StaffRef {
++  userId: bigint
++}
++
++export function assertRole(viewer: Viewer | null, allowed: Role[]): asserts viewer is Viewer {
++  if (!viewer) throw new ProblemError('unauthenticated')
++  if (!allowed.includes(viewer.role)) throw new ProblemError('forbidden')
++}
++
++/** The order's patient, or a provider of its practice. Unknown and forbidden look the same (FR-009). */
++export function assertCanViewOrder(viewer: Viewer, order: OrderOwnership): void {
++  const ok =
++    (viewer.role === 'patient' && viewer.userId === order.patientId) ||
++    (viewer.role === 'provider' && viewer.practiceId === order.practiceId)
++  if (!ok) throw new ProblemError('not-found')
++}
++
++/** A provider acting on a patient of their own practice (FR-009, LINV-3). */
++export function assertCanActOnPatient(viewer: Viewer, patient: PatientRef | undefined): asserts patient is PatientRef {
++  const ok =
++    patient !== undefined &&
++    viewer.role === 'provider' &&
++    patient.role === 'patient' &&
++    viewer.practiceId !== null &&
++    patient.practiceId === viewer.practiceId
++  if (!ok) throw new ProblemError('not-found')
++}
++
++/** Only an SRE changes operations roles, and never their own (FR-055, FR-056). */
++export function assertCanChangeRole(actor: Viewer, target: StaffRef): void {
++  if (actor.role !== 'sre') throw new ProblemError('forbidden')
++  if (actor.userId === target.userId) throw new ProblemError('self-role-change')
++}
+diff --git a/server/services/catalog.ts b/server/services/catalog.ts
+new file mode 100644
+index 0000000..96eeaed
+--- /dev/null
++++ b/server/services/catalog.ts
+@@ -0,0 +1,72 @@
++// BE-7 CatalogService (lld.md §2, SEQ-1 steps 3-4): products at the practice's current prices, with stock.
++import { useDb } from '../utils/db'
++import { assertCanActOnPatient, type PatientRef } from './access-policy'
++import { defaultPriceCents, lowestAllowedPriceCents } from './money'
++import type { Viewer } from './session'
++
++export interface CatalogItem {
++  product_id: number
++  name: string
++  price_cents: number
++  units_in_stock: number
++  lowest_allowed_price_cents: number
++}
++
++export interface Catalog {
++  patient_display_name: string
++  items: CatalogItem[]
++}
++
++export async function loadPatient(patientId: bigint): Promise<(PatientRef & { displayName: string }) | undefined> {
++  const u = await useDb()
++    .selectFrom('users')
++    .select(['id', 'role', 'practice_id', 'display_name'])
++    .where('id', '=', patientId.toString())
++    .executeTakeFirst()
++  return u && {
++    id: BigInt(u.id),
++    role: u.role,
++    practiceId: u.practice_id === null ? null : BigInt(u.practice_id),
++    displayName: u.display_name,
++  }
++}
++
++export async function catalogForPatient(viewer: Viewer, patientId: bigint): Promise<Catalog> {
++  const patient = await loadPatient(patientId)
++  assertCanActOnPatient(viewer, patient)
++  const rows = await useDb()
++    .selectFrom('products')
++    .leftJoin('practice_prices', (j) =>
++      j.onRef('practice_prices.product_id', '=', 'products.id').on('practice_prices.practice_id', '=', patient.practiceId!.toString()),
++    )
++    .select(['products.id', 'products.name', 'products.unit_cost_cents', 'products.units_in_stock', 'practice_prices.price_cents'])
++    .orderBy('products.name')
++    .execute()
++  return {
++    patient_display_name: patient.displayName,
++    items: rows.map((r) => ({
++      product_id: Number(r.id),
++      name: r.name,
++      price_cents: r.price_cents ?? defaultPriceCents(r.unit_cost_cents),
++      units_in_stock: r.units_in_stock,
++      lowest_allowed_price_cents: lowestAllowedPriceCents(r.unit_cost_cents),
++    })),
++  }
++}
++
++/** The practice price, else the default (FR-017, FR-022). */
++export async function currentPrices(practiceId: bigint, productIds: bigint[]): Promise<Map<bigint, number>> {
++  const prices = new Map<bigint, number>()
++  if (productIds.length === 0) return prices
++  const ids = productIds.map(String)
++  const rows = await useDb()
++    .selectFrom('products')
++    .leftJoin('practice_prices', (j) =>
++      j.onRef('practice_prices.product_id', '=', 'products.id').on('practice_prices.practice_id', '=', practiceId.toString()),
++    )
++    .select(['products.id', 'products.unit_cost_cents', 'practice_prices.price_cents'])
++    .where('products.id', 'in', ids)
++    .execute()
++  for (const r of rows) prices.set(BigInt(r.id), r.price_cents ?? defaultPriceCents(r.unit_cost_cents))
++  return prices
++}
+diff --git a/server/services/messaging.ts b/server/services/messaging.ts
+new file mode 100644
+index 0000000..b700a3c
+--- /dev/null
++++ b/server/services/messaging.ts
+@@ -0,0 +1,36 @@
++// BE-12 MessagingGateway (lld.md §2, SEAM-4): the stand-in notice is a row in `notices`. Its input has no field for
++// items, amounts or health details, so a notice can't carry them (FR-044, LINV-5).
++import { randomBytes } from 'node:crypto'
++import type { Kysely } from 'kysely'
++import { useDb } from '../utils/db'
++import type { Database } from '../utils/db-types'
++import { ProblemError } from '../utils/problem'
++
++export interface Notice {
++  practice_name: string
++  sign_in_path: string
++}
++
++/** Joins the caller's transaction when given one (sendOrder); a real send would happen after commit. */
++export async function sendOrderNotice(
++  input: { orderId: bigint; patientId: bigint; practiceId: bigint },
++  db: Kysely<Database> = useDb(),
++): Promise<{ token: string }> {
++  const token = randomBytes(32).toString('base64url')
++  await db
++    .insertInto('notices')
++    .values({ order_id: input.orderId, patient_id: input.patientId, practice_id: input.practiceId, token })
++    .execute()
++  return { token }
++}
++
++export async function getNotice(token: string): Promise<Notice> {
++  const row = await useDb()
++    .selectFrom('notices')
++    .innerJoin('practices', 'practices.id', 'notices.practice_id')
++    .select(['practices.name', 'notices.order_id'])
++    .where('notices.token', '=', token)
++    .executeTakeFirst()
++  if (!row) throw new ProblemError('not-found')
++  return { practice_name: row.name, sign_in_path: `/sign-in?next=/orders/${row.order_id}` }
++}
+diff --git a/server/services/money.ts b/server/services/money.ts
+new file mode 100644
+index 0000000..6d6ac17
+--- /dev/null
++++ b/server/services/money.ts
+@@ -0,0 +1,79 @@
++// BE-6 Money (lld.md §2): every money calculation in whole cents with one rounding rule. Pure, no I/O.
++// Also imported by the order builder (FE-4) so its live totals use the same rule.
++
++export interface Split {
++  amountPaidCents: number
++  itemCostCents: number
++  providerPayoutCents: number
++  platformFeeCents: number
++}
++
++export class SplitMismatch extends Error {
++  constructor(public readonly split: Split) {
++    super('split does not balance')
++  }
++}
++
++/** 0.75% of the amount, rounded half-up once: (amount × 75 + 5000) ÷ 10000, floored (FR-011). */
++export function platformFeeCents(amountPaidCents: number): number {
++  return Math.floor((amountPaidCents * 75 + 5000) / 10000)
++}
++
++/** amount − cost − fee (FR-012). May be negative; callers check the floor. */
++export function payoutCents(amountPaidCents: number, itemCostCents: number, feeCents: number): number {
++  return amountPaidCents - itemCostCents - feeCents
++}
++
++/** Each line's share of the order's one fee, proportional; leftover cents go to the largest remainders, ties to the
++ *  earlier line. Sums to feeCents exactly (FR-028, Q-2). */
++export function allocateFee(lineAmountsCents: number[], feeCents: number): number[] {
++  const total = lineAmountsCents.reduce((a, b) => a + b, 0)
++  if (total === 0) return lineAmountsCents.map(() => 0)
++  const shares = lineAmountsCents.map((a) => Math.floor((a * feeCents) / total))
++  let left = feeCents - shares.reduce((a, b) => a + b, 0)
++  const order = lineAmountsCents
++    .map((a, i) => ({ i, rem: (a * feeCents) % total }))
++    .sort((x, y) => y.rem - x.rem || x.i - y.i)
++  for (const { i } of order) {
++    if (left <= 0) break
++    shares[i] = shares[i]! + 1
++    left -= 1
++  }
++  return shares
++}
++
++/** Cost plus a 50% margin of the price, i.e. 2 × cost (FR-017). */
++export function defaultPriceCents(unitCostCents: number): number {
++  return unitCostCents * 2
++}
++
++/** cost ÷ (1 − margin), rounded half-up to a cent (FR-018). Margin in basis points (5000 = 50%). */
++export function priceFromMargin(unitCostCents: number, marginBasisPoints: number): number {
++  const d = 10000 - marginBasisPoints
++  return Math.floor((2 * unitCostCents * 10000 + d) / (2 * d))
++}
++
++/** The smallest price whose payout on one unit after its fee is ≥ 0 (FR-020). */
++export function lowestAllowedPriceCents(unitCostCents: number): number {
++  let p = unitCostCents
++  while (payoutCents(p, unitCostCents, platformFeeCents(p)) < 0) p += 1
++  return p
++}
++
++/** The unit cost behind a lowest allowed price: the payout at the floor is exactly $0.00, because the payout grows
++ *  by at most one cent per cent of price. Lets the order builder show the payout live from the Catalog (SEQ-1 step 5),
++ *  which carries the floor but not the cost. */
++export function unitCostFromLowestAllowedPrice(lowestAllowedCents: number): number {
++  return lowestAllowedCents - platformFeeCents(lowestAllowedCents)
++}
++
++/** Refuses a split that is not whole cents or does not add up (FR-013). */
++export function assertSplitBalances(split: Split): void {
++  const parts = [split.amountPaidCents, split.itemCostCents, split.providerPayoutCents, split.platformFeeCents]
++  if (
++    !parts.every(Number.isInteger) ||
++    split.amountPaidCents !== split.itemCostCents + split.providerPayoutCents + split.platformFeeCents
++  ) {
++    throw new SplitMismatch(split)
++  }
++}
+diff --git a/server/services/orders.ts b/server/services/orders.ts
+new file mode 100644
+index 0000000..ef32060
+--- /dev/null
++++ b/server/services/orders.ts
+@@ -0,0 +1,113 @@
++// BE-9 OrderService (lld.md §2, SEQ-1, SM-1): send an order. Later tasks add show, checkout and cancel here.
++import { useDb } from '../utils/db'
++import { ProblemError } from '../utils/problem'
++import { assertCanActOnPatient } from './access-policy'
++import { currentPrices, loadPatient } from './catalog'
++import { sendOrderNotice } from './messaging'
++import { payoutCents, platformFeeCents } from './money'
++import type { Viewer } from './session'
++
++export interface SendOrderInput {
++  patientId: bigint
++  lines: { productId: bigint; quantity: number }[]
++}
++
++export interface OrderLine {
++  product_id: number
++  name: string
++  quantity: number
++  unit_price_cents: number
++  line_total_cents: number
++}
++
++export interface Order {
++  order_id: number
++  status: string
++  lines: OrderLine[]
++  total_cents: number
++  platform_fee_cents: number
++  provider_payout_cents: number
++  sent_at: string
++}
++
++export async function sendOrder(viewer: Viewer, input: SendOrderInput): Promise<Order> {
++  const patient = await loadPatient(input.patientId)
++  assertCanActOnPatient(viewer, patient)
++  const practiceId = patient.practiceId!
++
++  // One line per product, quantities added (LINV-4).
++  const quantities = new Map<bigint, number>()
++  for (const l of input.lines) quantities.set(l.productId, (quantities.get(l.productId) ?? 0) + l.quantity)
++  if (quantities.size === 0) throw new ProblemError('validation', { errors: [{ pointer: '#/lines', detail: 'Add at least one supplement.' }] })
++  const productIds = [...quantities.keys()]
++
++  const db = useDb()
++  const products = await db
++    .selectFrom('products')
++    .select(['id', 'name', 'unit_cost_cents', 'units_in_stock'])
++    .where('id', 'in', productIds.map(String))
++    .execute()
++  const byId = new Map(products.map((p) => [BigInt(p.id), p]))
++  const unknown = productIds.filter((id) => !byId.has(id))
++  if (unknown.length > 0) {
++    throw new ProblemError('validation', {
++      errors: unknown.map((id) => ({ pointer: '#/lines', detail: `Product ${id} does not exist.` })),
++    })
++  }
++  const short = productIds.filter((id) => quantities.get(id)! > byId.get(id)!.units_in_stock)
++  if (short.length > 0) {
++    throw new ProblemError('insufficient-stock', {
++      productIds: short.map(Number),
++      unitsAvailable: short.map((id) => byId.get(id)!.units_in_stock),
++    })
++  }
++  const prices = await currentPrices(practiceId, productIds)
++
++  const lines = productIds.map((id) => {
++    const p = byId.get(id)!
++    const quantity = quantities.get(id)!
++    const unit = prices.get(id)!
++    return { id, name: p.name, quantity, unit, total: unit * quantity, cost: p.unit_cost_cents * quantity }
++  })
++  const total = lines.reduce((s, l) => s + l.total, 0)
++  const cost = lines.reduce((s, l) => s + l.cost, 0)
++  const fee = platformFeeCents(total)
++
++  const order = await db.transaction().execute(async (trx) => {
++    const o = await trx
++      .insertInto('orders')
++      .values({ practice_id: practiceId, provider_id: viewer.userId, patient_id: input.patientId, status: 'sent' })
++      .returning(['id', 'status', 'sent_at'])
++      .executeTakeFirstOrThrow()
++    await trx
++      .insertInto('order_lines')
++      .values(
++        lines.map((l) => ({
++          order_id: o.id,
++          product_id: l.id,
++          product_name: l.name,
++          quantity: l.quantity,
++          sent_unit_price_cents: l.unit,
++        })),
++      )
++      .execute()
++    await sendOrderNotice({ orderId: BigInt(o.id), patientId: input.patientId, practiceId }, trx)
++    return o
++  })
++
++  return {
++    order_id: Number(order.id),
++    status: order.status,
++    lines: lines.map((l) => ({
++      product_id: Number(l.id),
++      name: l.name,
++      quantity: l.quantity,
++      unit_price_cents: l.unit,
++      line_total_cents: l.total,
++    })),
++    total_cents: total,
++    platform_fee_cents: fee,
++    provider_payout_cents: payoutCents(total, cost, fee),
++    sent_at: order.sent_at.toISOString(),
++  }
++}
+diff --git a/server/services/session.ts b/server/services/session.ts
+new file mode 100644
+index 0000000..d207577
+--- /dev/null
++++ b/server/services/session.ts
+@@ -0,0 +1,143 @@
++// BE-3 SessionService (lld.md §2, SEQ-7): server-side sessions with a 15-minute idle limit (NFR-008, D37).
++// Passwords: scrypt$<N>$<r>$<p>$<salt b64>$<hash b64> (Q-1); the stored value carries its own cost (SEAM-6).
++import { createHash, randomBytes, scrypt, timingSafeEqual } from 'node:crypto'
++import { promisify } from 'node:util'
++import { getCookie, setCookie, type H3Event } from 'h3'
++import { sql } from 'kysely'
++import { useDb } from '../utils/db'
++import { ProblemError } from '../utils/problem'
++
++export type Role = 'patient' | 'provider' | 'finance_lead' | 'operations_specialist' | 'sre' | 'data_analyst' | 'none'
++
++export interface Viewer {
++  userId: bigint
++  displayName: string
++  role: Role
++  practiceId: bigint | null
++  idleExpiresAt: Date
++}
++
++export const SESSION_COOKIE = 'session'
++const IDLE_MS = 15 * 60 * 1000
++
++const scryptAsync = promisify(scrypt) as (
++  password: string,
++  salt: Buffer,
++  keylen: number,
++  options: { N: number; r: number; p: number; maxmem: number },
++) => Promise<Buffer>
++
++const hashToken = (token: string): Buffer => createHash('sha256').update(token).digest()
++
++// Compared against when the email is unknown, so both cases take about the same time.
++const DUMMY_HASH = `scrypt$1024$8$1$${Buffer.alloc(16).toString('base64')}$${Buffer.alloc(64).toString('base64')}`
++
++async function verifyPassword(password: string, stored: string): Promise<boolean> {
++  const [scheme, n, r, p, salt, hash] = stored.split('$')
++  if (scheme !== 'scrypt' || !salt || !hash) return false
++  const N = Number(n)
++  const R = Number(r)
++  const expected = Buffer.from(hash, 'base64')
++  try {
++    const actual = await scryptAsync(password, Buffer.from(salt, 'base64'), expected.length, {
++      N,
++      r: R,
++      p: Number(p),
++      maxmem: 256 * N * R,
++    })
++    return timingSafeEqual(actual, expected)
++  } catch {
++    return false // malformed stored value
++  }
++}
++
++function toViewer(u: { id: string; display_name: string; role: string; practice_id: string | null }, lastSeen: Date): Viewer {
++  return {
++    userId: BigInt(u.id),
++    displayName: u.display_name,
++    role: u.role as Role,
++    practiceId: u.practice_id === null ? null : BigInt(u.practice_id),
++    idleExpiresAt: new Date(lastSeen.getTime() + IDLE_MS),
++  }
++}
++
++// ponytail: no sign-in rate limit yet (lld §4 says 10 tries / 15 min per email or address); no table holds the
++// counts and counting every attempt would refuse the acceptance suite's repeated sign-ins. See result.md Questions.
++export async function signIn(email: string, password: string, _ip: string): Promise<{ viewer: Viewer; cookieToken: string }> {
++  const db = useDb()
++  const user = await db
++    .selectFrom('users')
++    .select(['id', 'display_name', 'role', 'practice_id', 'password_hash'])
++    .where(sql`lower(email)`, '=', email.toLowerCase())
++    .executeTakeFirst()
++  const ok = await verifyPassword(password, user?.password_hash ?? DUMMY_HASH)
++  if (!user || !ok) throw new ProblemError('sign-in-failed')
++  const cookieToken = randomBytes(32).toString('base64url')
++  const s = await db
++    .insertInto('sessions')
++    .values({ token_hash: hashToken(cookieToken), user_id: user.id })
++    .returning('last_seen_at')
++    .executeTakeFirstOrThrow()
++  return { viewer: toViewer(user, s.last_seen_at), cookieToken }
++}
++
++/** The viewer, after moving last_seen_at forward; null when missing, ended or idle 15 minutes or more. */
++export async function resolve(cookieToken: string | undefined): Promise<Viewer | null> {
++  if (!cookieToken) return null
++  const db = useDb()
++  const tokenHash = hashToken(cookieToken)
++  const live = await db
++    .updateTable('sessions')
++    .set({ last_seen_at: sql`now()` })
++    .where('token_hash', '=', tokenHash)
++    .where('ended_at', 'is', null)
++    .where('last_seen_at', '>', sql<Date>`now() - interval '15 minutes'`)
++    .returning(['user_id', 'last_seen_at'])
++    .executeTakeFirst()
++  if (!live) {
++    await db
++      .updateTable('sessions')
++      .set({ ended_at: sql`now()` })
++      .where('token_hash', '=', tokenHash)
++      .where('ended_at', 'is', null)
++      .execute()
++    return null
++  }
++  const user = await db
++    .selectFrom('users')
++    .select(['id', 'display_name', 'role', 'practice_id'])
++    .where('id', '=', live.user_id)
++    .executeTakeFirstOrThrow()
++  return toViewer(user, live.last_seen_at)
++}
++
++export async function signOut(cookieToken: string): Promise<void> {
++  await useDb()
++    .updateTable('sessions')
++    .set({ ended_at: sql`now()` })
++    .where('token_hash', '=', hashToken(cookieToken))
++    .where('ended_at', 'is', null)
++    .execute()
++}
++
++export function setSessionCookie(event: H3Event, cookieToken: string): void {
++  setCookie(event, SESSION_COOKIE, cookieToken, { httpOnly: true, secure: true, sameSite: 'lax', path: '/' })
++}
++
++/** The signed-in viewer, or 401 /problems/unauthenticated. */
++export async function requireViewer(event: H3Event): Promise<Viewer> {
++  const viewer = await resolve(getCookie(event, SESSION_COOKIE))
++  if (!viewer) throw new ProblemError('unauthenticated')
++  return viewer
++}
++
++/** The Me schema (openapi.yaml). */
++export function toMe(v: Viewer) {
++  return {
++    user_id: Number(v.userId),
++    display_name: v.displayName,
++    role: v.role,
++    practice_id: v.practiceId === null ? null : Number(v.practiceId),
++    idle_expires_at: v.idleExpiresAt.toISOString(),
++  }
++}
+diff --git a/server/utils/db-types.ts b/server/utils/db-types.ts
+new file mode 100644
+index 0000000..d8d684b
+--- /dev/null
++++ b/server/utils/db-types.ts
+@@ -0,0 +1,100 @@
++// Kysely table types for db/migrations (lld.md §1). bigint columns come back from pg as strings.
++import type { ColumnType, Generated } from 'kysely'
++
++type Id = ColumnType<string, never, never>
++type Int8 = ColumnType<string, string | number | bigint, string | number | bigint>
++type Timestamp = ColumnType<Date, Date | string, Date | string>
++type DefaultTimestamp = ColumnType<Date, Date | string | undefined, Date | string>
++
++export interface PracticesTable {
++  id: Id
++  name: string
++  created_at: DefaultTimestamp
++}
++
++export interface UsersTable {
++  id: Id
++  email: string
++  password_hash: string
++  display_name: string
++  role: string
++  practice_id: Int8 | null
++  role_changed_at: Timestamp | null
++  created_at: DefaultTimestamp
++}
++
++export interface SessionsTable {
++  id: Id
++  token_hash: Buffer
++  user_id: Int8
++  created_at: DefaultTimestamp
++  last_seen_at: DefaultTimestamp
++  ended_at: Timestamp | null
++}
++
++export interface ProductsTable {
++  id: Id
++  sku: string
++  name: string
++  unit_cost_cents: number
++  units_in_stock: Generated<number>
++  created_at: DefaultTimestamp
++}
++
++export interface PracticePricesTable {
++  practice_id: Int8
++  product_id: Int8
++  price_cents: number
++  set_by: Int8
++  set_at: DefaultTimestamp
++}
++
++export interface OrdersTable {
++  id: Id
++  practice_id: Int8
++  provider_id: Int8
++  patient_id: Int8
++  status: Generated<string>
++  sent_at: DefaultTimestamp
++  checkout_started_at: Timestamp | null
++  prices_held_until: Timestamp | null
++  paid_at: Timestamp | null
++  cancelled_at: Timestamp | null
++  amount_paid_cents: number | null
++  item_cost_cents: number | null
++  provider_payout_cents: number | null
++  platform_fee_cents: number | null
++}
++
++export interface OrderLinesTable {
++  id: Id
++  order_id: Int8
++  product_id: Int8
++  product_name: string
++  quantity: number
++  sent_unit_price_cents: number
++  held_unit_price_cents: number | null
++  paid_unit_price_cents: number | null
++  unit_cost_cents_at_payment: number | null
++  fee_share_cents: number | null
++}
++
++export interface NoticesTable {
++  id: Id
++  order_id: Int8
++  patient_id: Int8
++  practice_id: Int8
++  token: string
++  created_at: DefaultTimestamp
++}
++
++export interface Database {
++  practices: PracticesTable
++  users: UsersTable
++  sessions: SessionsTable
++  products: ProductsTable
++  practice_prices: PracticePricesTable
++  orders: OrdersTable
++  order_lines: OrderLinesTable
++  notices: NoticesTable
++}
+diff --git a/server/utils/db.ts b/server/utils/db.ts
+new file mode 100644
+index 0000000..c5c156a
+--- /dev/null
++++ b/server/utils/db.ts
+@@ -0,0 +1,15 @@
++// One Kysely instance per server process, connected as supplements_app through DATABASE_URL (Q-3, D39).
++import { Kysely, PostgresDialect } from 'kysely'
++import pg from 'pg'
++import type { Database } from './db-types'
++
++let instance: Kysely<Database> | undefined
++
++export function useDb(): Kysely<Database> {
++  if (!instance) {
++    const connectionString = process.env.DATABASE_URL
++    if (!connectionString) throw new Error('DATABASE_URL is not set')
++    instance = new Kysely<Database>({ dialect: new PostgresDialect({ pool: new pg.Pool({ connectionString }) }) })
++  }
++  return instance
++}
+diff --git a/server/utils/problem.ts b/server/utils/problem.ts
+new file mode 100644
+index 0000000..fd41284
+--- /dev/null
++++ b/server/utils/problem.ts
+@@ -0,0 +1,75 @@
++// RFC 9457 problem details (lld.md §4 Problem types). Services throw ProblemError; defineApiHandler turns it into an
++// application/problem+json response, and any unexpected error into /problems/internal.
++import { randomUUID } from 'node:crypto'
++import { defineEventHandler, readBody, setResponseHeader, setResponseStatus, type EventHandlerRequest, type H3Event } from 'h3'
++import type { ZodError, ZodType } from 'zod'
++
++const TITLES = {
++  validation: [422, 'Some fields are invalid'],
++  unauthenticated: [401, 'Please sign in'],
++  forbidden: [403, "You can't open this"],
++  'not-found': [404, "We can't find this"],
++  'sign-in-failed': [401, "That email and password don't match"],
++  'rate-limited': [429, 'Too many tries'],
++  'idempotency-key-missing': [400, 'Idempotency-Key is required'],
++  'idempotency-in-flight': [409, 'This request is still being processed'],
++  'idempotency-mismatch': [422, 'This key was used for a different request'],
++  'invalid-transition': [409, "This order can't do that now"],
++  'checkout-expired': [409, 'Your price hold ended'],
++  'below-price-floor': [422, 'That price is below the lowest allowed'],
++  'insufficient-stock': [422, 'Not enough in stock'],
++  'order-under-review': [422, "We couldn't complete this payment"],
++  'payment-failed': [502, "Your payment didn't go through. No money was taken."],
++  'stale-price': [409, 'This price changed a moment ago'],
++  'stale-stock': [409, 'Stock changed while you were here'],
++  'stale-role': [409, "This person's role changed a moment ago"],
++  'self-role-change': [403, "You can't change your own role"],
++  'last-finance-lead': [422, 'No one would be able to run financial reports'],
++  internal: [500, 'Something went wrong on our side'],
++} satisfies Record<string, [number, string]>
++
++export type ProblemSlug = keyof typeof TITLES
++
++export class ProblemError extends Error {
++  constructor(
++    public readonly slug: ProblemSlug,
++    public readonly extensions: Record<string, unknown> = {},
++  ) {
++    super(slug)
++  }
++}
++
++export function validationProblem(err: ZodError): ProblemError {
++  return new ProblemError('validation', {
++    errors: err.issues.map((i) => ({ pointer: '#/' + i.path.join('/'), detail: i.message })),
++  })
++}
++
++/** The JSON body parsed by `schema`, or 422 /problems/validation (also for a body that is not JSON). */
++export async function parseBody<T>(event: H3Event, schema: ZodType<T>): Promise<T> {
++  const raw = await readBody(event).catch(() => undefined)
++  const parsed = schema.safeParse(raw)
++  if (!parsed.success) throw validationProblem(parsed.error)
++  return parsed.data
++}
++
++function sendProblem(event: H3Event, slug: ProblemSlug, extensions: Record<string, unknown> = {}) {
++  const [status, title] = TITLES[slug]
++  setResponseStatus(event, status)
++  setResponseHeader(event, 'content-type', 'application/problem+json')
++  return { type: `/problems/${slug}`, title, status, ...extensions }
++}
++
++export function defineApiHandler<T>(fn: (event: H3Event<EventHandlerRequest>) => Promise<T>) {
++  // The problem body is typed as T so the route's typed response (useFetch data) stays the success shape.
++  return defineEventHandler(async (event): Promise<T> => {
++    try {
++      return await fn(event)
++    } catch (err) {
++      if (err instanceof ProblemError) return sendProblem(event, err.slug, err.extensions) as T
++      const instance = `urn:uuid:${randomUUID()}`
++      console.error('unexpected error', instance, err)
++      return sendProblem(event, 'internal', { instance }) as T
++    }
++  })
++}
+diff --git a/tests/unit/money.test.ts b/tests/unit/money.test.ts
+new file mode 100644
+index 0000000..00314d2
+--- /dev/null
++++ b/tests/unit/money.test.ts
+@@ -0,0 +1,89 @@
++// BE-6 Money (lld.md §2): whole cents, one rounding rule.
++import { describe, expect, it } from 'vitest'
++import {
++  allocateFee,
++  assertSplitBalances,
++  defaultPriceCents,
++  lowestAllowedPriceCents,
++  payoutCents,
++  platformFeeCents,
++  priceFromMargin,
++  SplitMismatch,
++  unitCostFromLowestAllowedPrice,
++} from '../../server/services/money'
++
++describe('platformFeeCents: 0.75% rounded half-up once', () => {
++  it('AE-001: $60.00 -> $0.45', () => expect(platformFeeCents(6000)).toBe(45))
++  it('triangulation: $90.00 -> $0.68 (67.5 rounds up)', () => expect(platformFeeCents(9000)).toBe(68))
++  it('$12.09 -> $0.09', () => expect(platformFeeCents(1209)).toBe(9))
++  it('zero and tiny amounts', () => {
++    expect(platformFeeCents(0)).toBe(0)
++    expect(platformFeeCents(66)).toBe(0) // 0.495 -> 0
++    expect(platformFeeCents(67)).toBe(1) // 0.5025 -> 1
++  })
++  it('exact half rounds up: 200 cents -> 1.5 -> 2', () => expect(platformFeeCents(200)).toBe(2))
++})
++
++describe('payoutCents', () => {
++  it('AE-001: 6000 - 3000 - 45 = 2955', () => expect(payoutCents(6000, 3000, 45)).toBe(2955))
++  it('can be negative (the caller checks the floor)', () => expect(payoutCents(1208, 1200, 9)).toBe(-1))
++})
++
++describe('defaultPriceCents: cost plus a 50% margin = 2 x cost (FR-017)', () => {
++  it('AE-015: $15.00 -> $30.00', () => expect(defaultPriceCents(1500)).toBe(3000))
++  it('$9.00 -> $18.00', () => expect(defaultPriceCents(900)).toBe(1800))
++})
++
++describe('lowestAllowedPriceCents: smallest price with payout >= 0 after the fee (FR-020)', () => {
++  it('cost $12.00 -> $12.09', () => expect(lowestAllowedPriceCents(1200)).toBe(1209))
++  it('the floor really is the smallest', () => {
++    for (const cost of [1, 99, 900, 1200, 1500, 12345]) {
++      const p = lowestAllowedPriceCents(cost)
++      expect(payoutCents(p, cost, platformFeeCents(p))).toBeGreaterThanOrEqual(0)
++      expect(payoutCents(p - 1, cost, platformFeeCents(p - 1))).toBeLessThan(0)
++    }
++  })
++})
++
++describe('priceFromMargin: cost / (1 - margin), half-up to a cent', () => {
++  it('50% of $15.00 -> $30.00', () => expect(priceFromMargin(1500, 5000)).toBe(3000))
++  it('rounds half-up: 1 cent at 33.33% -> 1.4999 -> 1', () => expect(priceFromMargin(1, 3333)).toBe(1))
++  it('100 cents at 40% -> 166.67 -> 167', () => expect(priceFromMargin(100, 4000)).toBe(167))
++})
++
++describe('allocateFee: proportional shares that sum to the fee exactly', () => {
++  it('AE-001 lines 3600 and 2400 share 45 as 27 and 18', () => expect(allocateFee([3600, 2400], 45)).toEqual([27, 18]))
++  it('leftover cents go to the largest remainders, ties to the earlier line', () => {
++    expect(allocateFee([100, 100, 100], 2)).toEqual([1, 1, 0])
++    const shares = allocateFee([3333, 3333, 3334], 10)
++    expect(shares.reduce((a, b) => a + b, 0)).toBe(10)
++  })
++  it('a zero fee or no amount gives zeros', () => {
++    expect(allocateFee([500, 700], 0)).toEqual([0, 0])
++    expect(allocateFee([0, 0], 0)).toEqual([0, 0])
++  })
++})
++
++describe('assertSplitBalances (FR-013)', () => {
++  it('passes when amount = cost + payout + fee', () =>
++    expect(() =>
++      assertSplitBalances({ amountPaidCents: 6000, itemCostCents: 3000, providerPayoutCents: 2955, platformFeeCents: 45 }),
++    ).not.toThrow())
++  it('throws SplitMismatch when it does not add up', () =>
++    expect(() =>
++      assertSplitBalances({ amountPaidCents: 6000, itemCostCents: 3000, providerPayoutCents: 2956, platformFeeCents: 45 }),
++    ).toThrow(SplitMismatch))
++  it('throws on a non-integer amount', () =>
++    expect(() =>
++      assertSplitBalances({ amountPaidCents: 60.5, itemCostCents: 30, providerPayoutCents: 30, platformFeeCents: 0.5 }),
++    ).toThrow(SplitMismatch))
++})
++
++describe('unitCostFromLowestAllowedPrice: inverts lowestAllowedPriceCents exactly', () => {
++  it('cost $12.00 <- floor $12.09', () => expect(unitCostFromLowestAllowedPrice(1209)).toBe(1200))
++  it('round-trips every cost from 1 cent to $200.00', () => {
++    for (let cost = 1; cost <= 20000; cost++) {
++      if (unitCostFromLowestAllowedPrice(lowestAllowedPriceCents(cost)) !== cost) throw new Error(`cost ${cost}`)
++    }
++  })
++})
