@@ -1,5 +1,7 @@
 // BE-11 PaymentGateway (lld.md §2, SEAM-3): the one seam a real payment provider will replace. The stub moves no real
 // money (FR-007) and answers by PAYMENT_STUB_MODE, read per call: succeed (the default), decline or no_answer.
+import { errorFacts } from '../utils/problem'
+
 export interface ChargeRequest {
   orderId: bigint
   amountCents: number
@@ -19,7 +21,7 @@ export async function answerWithin(answer: Promise<ChargeResult>, ms = 10_000): 
   try {
     return await Promise.race([answer, timeout])
   } catch (e) {
-    console.error('payment gateway error, counted as no_answer', e)
+    console.error('payment gateway error, counted as no_answer', errorFacts(e))
     return NO_ANSWER
   } finally {
     clearTimeout(timer)

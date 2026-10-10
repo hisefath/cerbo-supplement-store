@@ -121,6 +121,8 @@ several harnesses read it and the repo is public.
 | 2026-10-10 15:55 CDT | G4 exception: M4 keeps 11 tasks (T011 security hardening) above the 10-task limit | specs/M4-tracer-bullet/tasks@58fa3ee | "a, keep T011 in M4 with an exception" |
 | 2026-10-10 16:07 CDT | verifier pass 7 on M4-T011 before squash | m4/t011-security-hardening-before-g5@182ee45 | "a, run the verifier on T011" |
 | 2026-10-10 16:11 CDT | standing security triage rule for this project: only critical/high findings truly reachable in the expected deployment (inside Cerbo's EHR) block; ship the demo first, fixing only what is exploitable in the demo deployment | milestone/m4-tracer-bullet@4b6aaab | "hey, we should only worry about critical and high severities that we are truly vulnerable to in the expected deployment environment. so inside of Cerbo's EHR, what could we be vulnerable to? thats what we care about. but before then, lets get the code out for demo purposes, and fix anything that may be vulnerable for the demo only" |
+| 2026-10-10 16:12 CDT | demo release: deploy the demo from milestone/m4-tracer-bullet before the M1 to M4 merge chain (option a) | milestone/m4-tracer-bullet@a4b64b4 | "a, deploy the demo from the branch" |
+| 2026-10-10 16:15 CDT | M4-T011 review dispositions (pass 7), option a: squash T011; R1 build-and-compare CSP hash check and R8 runtime-env warning go to ship-milestone smoke and runbook; R3 to LLD/contract catch-up; R2, R4, R5, R6, R7 filed | .handoff/reviews/M4-pass7.md; m4/t011-security-hardening-before-g5@182ee45 | "a, squash T011 then /ship-milestone" |
 
 ## Log
 
@@ -285,3 +287,5 @@ several harnesses read it and the repo is public.
 2026-10-10 15:52 CDT DISPATCH M4-T011 harness=claude-subagent why=G5 security hardening (SEC-4, 6, 7, 8, 9, 11)
 2026-10-10 15:52 CDT FAIL supervisor: dispatched M4-T011 before the slice-tasks analyze pass passed (after: missing T003, T006, T009, now fixed; 11 tasks exceeds the 10-task milestone limit, needs the human)
 2026-10-10 16:07 CDT DISPATCH M4-review-T011 harness=claude-verifier why=security hardening review (pass 7, human yes)
+2026-10-10 16:13 CDT RESULT M4-review-T011 verifier pass 7: 8 rows (1 P1 R1 CSP-hash test cannot fail against built output; 3 P2 R3 openapi payOrder lacks 429, R4 built-in error pages blocked by CSP, R5 no-cache on 404; 4 P3). Supervisor ran the built app (nuxi build; node .output/server; curl /sign-in): the one inline script hash equals the CSP script-src hash, 0 inline styles, nosniff/Referrer-Policy/HSTS present, /api/session 401 with Cache-Control no-store
+2026-10-10 16:15 CDT VERIFY M4-T011 squashed as 1dafd61: scope-guard OK (10 paths); Done-when exit 0; make check OK (108 unit + 43 M4 acceptance); built app CSP hash equals rendered inline script

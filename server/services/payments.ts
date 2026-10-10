@@ -3,7 +3,8 @@
 // reserved and released only in M5 (D42).
 import { sql } from 'kysely'
 import { useDb } from '../utils/db'
-import { ProblemError } from '../utils/problem'
+import { errorFacts, ProblemError } from '../utils/problem'
+import { now } from './clock'
 import { assertIsOrderPatient } from './access-policy'
 import { allocateFee, assertSplitBalances, payoutCents, platformFeeCents, SplitMismatch, type Split } from './money'
 import type { OrderLine } from './orders'
@@ -41,6 +42,47 @@ export function computeSplit(lines: SplitLine[]): { split: Split; feeSharesCents
     },
     feeSharesCents: allocateFee(amounts, fee),
   }
+}
+
+// SEC-9 (TH-3): EP-23 is rate-limited like EP-15 sign-in (session.ts countAttempt): more than 10 payment attempts in
+// 15 minutes for one person or one address answers 429 /problems/rate-limited.
+const MAX_PAY_ATTEMPTS = 10
+const PAY_WINDOW_MS = 15 * 60 * 1000
+const PAY_LOCK = 6023 // advisory-lock class for EP-23 attempt keys (two-int form: its own key space)
+
+/**
+ * Refuses the payment attempt (429) when its person or address already has 10 in the window; otherwise records it.
+ * Locks the person and the address first, so parallel attempts count and record one at a time. EP-23 calls it inside
+ * the idempotency guard, so a replayed stored response is never counted.
+ */
+export async function countPayAttempt(userId: bigint, ip: string): Promise<void> {
+  const t = now()
+  const since = new Date(t.getTime() - PAY_WINDOW_MS)
+  const user = userId.toString()
+  await useDb()
+    .transaction()
+    .execute(async (trx) => {
+      // always person then address, so two attempts can never wait on each other in a circle
+      for (const key of [`user:${user}`, `ip:${ip}`])
+        await sql`select pg_advisory_xact_lock(${PAY_LOCK}, hashtext(${key}))`.execute(trx)
+      const recent = await trx
+        .selectFrom('pay_rate_attempts')
+        .select(['user_id', 'ip', 'attempted_at'])
+        .where('attempted_at', '>', since)
+        .where((eb) => eb.or([eb('user_id', '=', user), eb('ip', '=', ip)]))
+        .orderBy('attempted_at')
+        .execute()
+      let retryAt = 0
+      for (const mine of [recent.filter((a) => String(a.user_id) === user), recent.filter((a) => a.ip === ip)]) {
+        // the next attempt is allowed once all but the newest 9 have left the window
+        if (mine.length >= MAX_PAY_ATTEMPTS)
+          retryAt = Math.max(retryAt, mine[mine.length - MAX_PAY_ATTEMPTS]!.attempted_at.getTime() + PAY_WINDOW_MS)
+      }
+      if (retryAt)
+        throw new ProblemError('rate-limited', { retryAfterSeconds: Math.ceil((retryAt - t.getTime()) / 1000) })
+      await trx.insertInto('pay_rate_attempts').values({ user_id: user, ip, attempted_at: t }).execute()
+      await trx.deleteFrom('pay_rate_attempts').where('attempted_at', '<=', since).execute()
+    })
 }
 
 export async function pay(viewer: Viewer, orderId: bigint, idempotencyKey: string): Promise<Receipt> {
@@ -114,7 +156,7 @@ export async function pay(viewer: Viewer, orderId: bigint, idempotencyKey: strin
     }
     paidAt = await recordPayment(order, lines, split, feeSharesCents, attemptId)
   } catch (e) {
-    await closeAttempt(attemptId).catch((err) => console.error('could not close payment attempt', attemptId, err))
+    await closeAttempt(attemptId).catch((err) => console.error('could not close payment attempt', attemptId, errorFacts(err)))
     throw e
   }
 

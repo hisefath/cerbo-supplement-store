@@ -131,6 +131,13 @@ export interface SignInAttemptsTable {
   attempted_at: DefaultTimestamp
 }
 
+export interface PayRateAttemptsTable {
+  id: Id
+  user_id: Int8
+  ip: string
+  attempted_at: DefaultTimestamp
+}
+
 export interface Database {
   practices: PracticesTable
   users: UsersTable
@@ -144,4 +151,5 @@ export interface Database {
   ledger_entries: LedgerEntriesTable
   idempotency_keys: IdempotencyKeysTable
   sign_in_attempts: SignInAttemptsTable
+  pay_rate_attempts: PayRateAttemptsTable
 }

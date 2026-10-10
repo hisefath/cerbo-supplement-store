@@ -20,6 +20,7 @@ export interface Viewer {
 
 export const SESSION_COOKIE = 'session'
 const IDLE_MS = 15 * 60 * 1000
+const ABSOLUTE_MS = 12 * 60 * 60 * 1000
 
 const scryptAsync = promisify(scrypt) as (
   password: string,
@@ -32,6 +33,9 @@ const hashToken = (token: string): Buffer => createHash('sha256').update(token).
 
 /** Sessions last seen at or before this time are idle (BE-20 Clock, NFR-008). */
 export const idleCutoff = (): Date => new Date(now().getTime() - IDLE_MS)
+
+/** SEC-6: the absolute session lifetime. Sessions created at or before this time are over, however active. */
+export const absoluteCutoff = (): Date => new Date(now().getTime() - ABSOLUTE_MS)
 
 // Compared against when the email is unknown. It uses the configured cost (SEAM-6 SCRYPT_COST, read per call), so
 // an unknown email takes as long as a known email with a wrong password. 16384 is Node's own scrypt default.
@@ -129,15 +133,17 @@ export async function signIn(email: string, password: string, ip: string): Promi
   const ok = await verifyPassword(password, user?.password_hash ?? dummyHash())
   if (!user || !ok) throw new ProblemError('sign-in-failed')
   const cookieToken = randomBytes(32).toString('base64url')
+  const signedInAt = now() // BE-20 time for both, so the absolute lifetime follows the same clock as the idle limit
   const s = await db
     .insertInto('sessions')
-    .values({ token_hash: hashToken(cookieToken), user_id: user.id, last_seen_at: now() })
+    .values({ token_hash: hashToken(cookieToken), user_id: user.id, created_at: signedInAt, last_seen_at: signedInAt })
     .returning('last_seen_at')
     .executeTakeFirstOrThrow()
   return { viewer: toViewer(user, s.last_seen_at), cookieToken }
 }
 
-/** The viewer, after moving last_seen_at forward; null when missing, ended or idle 15 minutes or more. */
+/** The viewer, after moving last_seen_at forward; null (and the session ended) when missing, ended, idle 15 minutes
+ *  or more, or past its absolute lifetime of 12 hours from sign-in. */
 export async function resolve(cookieToken: string | undefined): Promise<Viewer | null> {
   if (!cookieToken) return null
   const db = useDb()
@@ -148,6 +154,7 @@ export async function resolve(cookieToken: string | undefined): Promise<Viewer |
     .where('token_hash', '=', tokenHash)
     .where('ended_at', 'is', null)
     .where('last_seen_at', '>', idleCutoff())
+    .where('created_at', '>', absoluteCutoff())
     .returning(['user_id', 'last_seen_at'])
     .executeTakeFirst()
   if (!live) {

@@ -55,6 +55,18 @@ export async function parseBody<T>(event: H3Event, schema: ZodType<T>): Promise<
   return parsed.data
 }
 
+/** What a log may say about an error (NFR-010, SEC-7): its class name, plus a PostgreSQL error code and constraint
+ *  name when present. Never the error itself or its message: a constraint error's message holds the failing row. */
+export function errorFacts(err: unknown): { error: string; code?: string; constraint?: string } {
+  if (err === null || typeof err !== 'object') return { error: err === null ? 'null' : typeof err }
+  const { code, constraint } = err as { code?: unknown; constraint?: unknown }
+  return {
+    error: err.constructor?.name ?? 'Object',
+    ...(typeof code === 'string' && { code }),
+    ...(typeof constraint === 'string' && { constraint }),
+  }
+}
+
 function sendProblem(event: H3Event, slug: ProblemSlug, extensions: Record<string, unknown> = {}) {
   const [status, title] = TITLES[slug]
   setResponseStatus(event, status)
@@ -70,7 +82,7 @@ export function defineApiHandler<T>(fn: (event: H3Event<EventHandlerRequest>) =>
     } catch (err) {
       if (err instanceof ProblemError) return sendProblem(event, err.slug, err.extensions) as T
       const instance = `urn:uuid:${randomUUID()}`
-      console.error('unexpected error', instance, err)
+      console.error('unexpected error', instance, errorFacts(err))
       return sendProblem(event, 'internal', { instance }) as T
     }
   })
