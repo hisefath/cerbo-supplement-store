@@ -294,3 +294,6 @@ several harnesses read it and the repo is public.
 2026-10-10 16:20 CDT DISPATCH M4-T901 harness=claude-subagent why=GAP-1 healthz
 2026-10-10 16:20 CDT DISPATCH M4-T902 harness=claude-subagent why=GAP-2 version
 2026-10-10 16:20 CDT DISPATCH M4-T903 harness=claude-subagent why=GAP-3 demo seed (parallel, disjoint Owns)
+2026-10-10 16:28 CDT VERIFY M4-T902 squashed bab8381: scope-guard OK (2 paths); make check OK; built app GET /version 200 {commit,built_at} no-store from cwd build-info.json
+2026-10-10 16:28 CDT VERIFY M4-T901 squashed 77cc879: scope-guard OK (2 paths); make check OK; built app GET /healthz 200 ok (db up) and 503 unavailable (db down), no-store, log shows only error class and code
+2026-10-10 16:28 CDT VERIFY M4-T903 squashed: scope-guard OK (2 paths); make check OK; loader refuses without flags (exit 1); with DEMO_RESET=yes and a generated password at SCRYPT_COST 16384 loads 2 practices, 9 users, 3 products on the local test DB, password not in output
