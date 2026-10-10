@@ -93,6 +93,7 @@ several harnesses read it and the repo is public.
 | 2026-10-10 12:31 CDT | human-only edit: AGENTS.md Commands row for make check (add the unit-test step) | AGENTS.md | "update AGENTS.md make check row" |
 | 2026-10-10 12:33 CDT | supervisor commits M4-T001 relaunch fixes R2 (session.ts dummy-hash cost) and R7 (remove assertCanChangeRole, StaffRef) after the worker's git add was denied | m4/t001-provider-sends-a-supplement-order worktree: server/services/session.ts, server/services/access-policy.ts | "a, commit both" |
 | 2026-10-10 12:36 CDT | human-only edit: AGENTS.md Commands row for make check (unit-test command now uses --dir) | AGENTS.md | "update AGENTS.md make check row" |
+| 2026-10-10 12:45 CDT | G4 re-approval (Revise, option a): Owns entries server/api/orders/[orderId]/… → server/api/orders/*/… in T002, T003, T005, T008; supervisor commits T002's finished work | specs/M4-tracer-bullet/tasks@fdf9d40 | "a, fix the four Owns lines" |
 
 ## Log
 
@@ -218,3 +219,5 @@ several harnesses read it and the repo is public.
 2026-10-10 12:32 CDT FAIL M4-T001 relaunch: auto-mode classifier denied the worker git add/diff ("Security Weaken", likely the R7 removal of an auth helper); fixes R2, R7 left uncommitted in worktree; worker asked supervisor to commit them; supervisor did not (needs the human's word)
 2026-10-10 12:34 CDT VERIFY M4-T001 squashed as 61c966a: scope-guard OK (22 paths); Done-when exit 0 (6 passed); make check OK (22 unit); verifier pass 1 R2, R7 fixed, R1 by supervisor (3fca7ea, f1cc496)
 2026-10-10 12:34 CDT DISPATCH M4-T002 harness=claude-subagent why=riskiest slice (payments, ledger, DB guards), watched on Claude; worktree .claude/worktrees/m4-t002 from milestone/m4-tracer-bullet@f1cc496
+2026-10-10 12:42 CDT FAIL slice-tasks M4: Owns entries used literal Nuxt route folders [orderId], which scope-guard reads as a glob character class, so they can never match; T002 build green but uncommitted (human_review)
+2026-10-10 12:45 CDT DISPATCH M4-review-T002 harness=claude-verifier why=per-task review before squash (pass 2)

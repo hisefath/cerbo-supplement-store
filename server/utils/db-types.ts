@@ -88,6 +88,28 @@ export interface NoticesTable {
   created_at: DefaultTimestamp
 }
 
+export interface PaymentAttemptsTable {
+  id: Id
+  order_id: Int8
+  idempotency_key: string
+  status: Generated<string>
+  amount_cents: number
+  failure_reason: string | null
+  created_at: DefaultTimestamp
+  finished_at: Timestamp | null
+}
+
+export interface LedgerEntriesTable {
+  id: Id
+  order_id: Int8
+  payment_attempt_id: Int8
+  practice_id: Int8
+  provider_id: Int8
+  category: 'patient_payment' | 'item_cost' | 'provider_payout' | 'platform_fee'
+  amount_cents: number
+  occurred_at: Timestamp
+}
+
 export interface Database {
   practices: PracticesTable
   users: UsersTable
@@ -97,4 +119,6 @@ export interface Database {
   orders: OrdersTable
   order_lines: OrderLinesTable
   notices: NoticesTable
+  payment_attempts: PaymentAttemptsTable
+  ledger_entries: LedgerEntriesTable
 }

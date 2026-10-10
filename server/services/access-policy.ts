@@ -36,3 +36,8 @@ export function assertCanActOnPatient(viewer: Viewer, patient: PatientRef | unde
     patient.practiceId === viewer.practiceId
   if (!ok) throw new ProblemError('not-found')
 }
+
+/** Only the order's own patient may check out and pay (SM-1 guard); anyone else gets not-found (FR-009). */
+export function assertIsOrderPatient(viewer: Viewer, order: OrderOwnership): void {
+  if (!(viewer.role === 'patient' && viewer.userId === order.patientId)) throw new ProblemError('not-found')
+}

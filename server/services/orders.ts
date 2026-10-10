@@ -1,7 +1,9 @@
-// BE-9 OrderService (lld.md §2, SEQ-1, SM-1): send an order. Later tasks add show, checkout and cancel here.
+// BE-9 OrderService (lld.md §2, SEQ-1, SEQ-2, SM-1): send an order and start its checkout. Later tasks add show and
+// cancel here.
+import { sql } from 'kysely'
 import { useDb } from '../utils/db'
 import { ProblemError } from '../utils/problem'
-import { assertCanActOnPatient } from './access-policy'
+import { assertCanActOnPatient, assertIsOrderPatient } from './access-policy'
 import { currentPrices, loadPatient } from './catalog'
 import { sendOrderNotice } from './messaging'
 import { payoutCents, platformFeeCents } from './money'
@@ -110,4 +112,56 @@ export async function sendOrder(viewer: Viewer, input: SendOrderInput): Promise<
     provider_payout_cents: payoutCents(total, cost, fee),
     sent_at: order.sent_at.toISOString(),
   }
+}
+
+export interface Checkout {
+  order_id: number
+  total_cents: number
+  prices_held_until: string
+}
+
+/** SM-1: sent or payment_failed (or a hold that has ended) -> in_checkout, holding today's prices for 30 minutes
+ *  (FR-023, FR-037, INV-8). Pressed again while the hold is live, it returns the same hold. */
+export async function startCheckout(viewer: Viewer, orderId: bigint): Promise<Checkout> {
+  return useDb()
+    .transaction()
+    .execute(async (trx) => {
+      const o = await trx
+        .selectFrom('orders')
+        .select(['id', 'patient_id', 'practice_id', 'status', 'prices_held_until', sql<boolean>`prices_held_until > now()`.as('hold_live')])
+        .where('id', '=', orderId.toString())
+        .forUpdate()
+        .executeTakeFirst()
+      if (!o) throw new ProblemError('not-found')
+      assertIsOrderPatient(viewer, { patientId: BigInt(o.patient_id), practiceId: BigInt(o.practice_id) })
+      const lines = await trx
+        .selectFrom('order_lines')
+        .select(['id', 'product_id', 'quantity', 'held_unit_price_cents'])
+        .where('order_id', '=', o.id)
+        .execute()
+
+      if (o.status === 'in_checkout' && o.hold_live) {
+        return {
+          order_id: Number(o.id),
+          total_cents: lines.reduce((s, l) => s + l.held_unit_price_cents! * l.quantity, 0),
+          prices_held_until: o.prices_held_until!.toISOString(),
+        }
+      }
+      if (!['sent', 'payment_failed', 'in_checkout'].includes(o.status)) throw new ProblemError('invalid-transition')
+
+      const prices = await currentPrices(BigInt(o.practice_id), lines.map((l) => BigInt(l.product_id)))
+      let total = 0
+      for (const l of lines) {
+        const held = prices.get(BigInt(l.product_id))!
+        total += held * l.quantity
+        await trx.updateTable('order_lines').set({ held_unit_price_cents: held }).where('id', '=', l.id).execute()
+      }
+      const held = await trx
+        .updateTable('orders')
+        .set({ status: 'in_checkout', checkout_started_at: sql`now()`, prices_held_until: sql`now() + interval '30 minutes'` })
+        .where('id', '=', o.id)
+        .returning('prices_held_until')
+        .executeTakeFirstOrThrow()
+      return { order_id: Number(o.id), total_cents: total, prices_held_until: held.prices_held_until!.toISOString() }
+    })
 }
