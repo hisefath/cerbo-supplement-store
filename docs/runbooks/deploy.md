@@ -4,10 +4,10 @@
 |---|---|
 | Platform | Railway, CLI 5.57.7 (`railway --version`, read 2026-10-10 16:18 CDT) |
 | Services | v2 demo: a new web service `web-v2` and a new managed PostgreSQL `postgres-v2` in project `cerbo-supplement-store` (to be created, FS-2). The project's existing `app` service and `Postgres` database run the v1 Laravel build and stay untouched (D22) |
-| Environments | production (Railway environment `production`): v2 demo at ⚠ set after FS-5 · v1 at https://supplement-store-slice.up.railway.app (not this release) |
+| Environments | production (Railway environment `production`): v2 demo at https://web-v2-production-6640.up.railway.app · v1 at https://supplement-store-slice.up.railway.app (not this release) |
 | Method | clean `git archive` upload of the release SHA with `railway up --path-as-root` |
-| Current release | none yet — see §8 |
-| Last updated | 2026-10-10 16:18 CDT |
+| Current release | M4 demo @ 1130822 — see §8 |
+| Last updated | 2026-10-10 16:52 CDT |
 | Written by | ship-milestone (Claude Code, claude-opus-5-5) |
 | Approvals | deploy and rollback yes-es live in `.handoff/TRACKER.md ## Approvals` (never in this file) |
 
@@ -28,12 +28,12 @@
 
 ## 1. What gets deployed and how
 
-- **Release:** M4 demo at milestone-branch SHA `13a816aab92d7800abb7d12abc89e455c149c10a` (`milestone/m4-tracer-bullet`). It is **not merged to main**: D55 (Approvals "a, deploy the demo from the branch") chose a demo from the reviewed branch before the M1 to M4 merge chain (D48). PRE-1 and PRE-2 are replaced by PRE-1b for this demo; the real release redeploys from main after G5.
+- **Release:** M4 demo at milestone-branch SHA `11308222f1ea5f74dbe4f2595cce23205b14988b` (`milestone/m4-tracer-bullet`). It is **not merged to main**: D55 (Approvals "a, deploy the demo from the branch") chose a demo from the reviewed branch before the M1 to M4 merge chain (D48). PRE-1 and PRE-2 are replaced by PRE-1b for this demo; the real release redeploys from main after G5.
 - **Live before this release:** nothing for v2 (first deploy of `web-v2`). The v1 `app` service is live (deployment c1fd5077…, 2026-10-05) and is not touched.
 - **How the SHA reaches the platform:** DEP-1 exports the SHA with `git archive` into a clean folder; DEP-2 writes `build-info.json`; DEP-3 uploads that folder with `railway up --path-as-root`.
 - **Why this method:** it ships exactly one committed SHA, never uncommitted or git-ignored files, and deploying stays its own human yes.
-- **Build and start:** Railway's Node builder runs `npm ci` and `npm run build` (`nuxt build`, `package.json` scripts) and starts `node .output/server/index.mjs` (⚠ confirm the detected start command in the build log at the first deploy, Q-2).
-- **How the app knows its version:** DEP-2 writes `build-info.json` {"commit","built_at"} into the upload; `GET /version` reads it — ⚠ the route does not exist yet (GAP-2 in `docs/ops/HEALTH.md` §6).
+- **Build and start:** Railway's Railpack builder installs with `npm ci` (its `postinstall` runs `nuxt prepare`), builds with `npm run build` and starts `node .output/server/index.mjs`; build command, start command and the deploy health check `/healthz` (120 s) are set on the web-v2 service (agent, standing yes, `railway api serviceInstanceUpdate`). Node comes from `package.json` engines `>=22.22.0` (⚠ confirm the version in the first build log, Q-2).
+- **How the app knows its version:** DEP-2 writes `build-info.json` {"commit","built_at"} into the upload root; `GET /version` (`server/routes/version.get.ts`, M4-T902) reads it from the server's working directory.
 - **Migrations in this release:** every migration is new: `db/migrations/1760000001000_core-orders.sql`, `1760000002000_payments-ledger.sql`, `1760000003000_idempotency-keys.sql`, `1760000006000_sign-in-attempts.sql`, `1760000011000_pay-attempt-limits.sql`. They run as the database owner role and grant to the app role (acceptance Q-3, Q-4), so FS-4 creates both roles first.
 
 ## 2. Preflight (read-only, before every deploy)
@@ -41,7 +41,7 @@
 | Id | Command | Expect | If not |
 |---|---|---|---|
 | PRE-1 | `git fetch origin main && git merge-base --is-ancestor "$SHA" origin/main && echo on-main` | `on-main` | Stop: the SHA is not merged. **This demo (D55):** expected to fail; use PRE-1b. |
-| PRE-1b | `git merge-base --is-ancestor "$SHA" milestone/m4-tracer-bullet && git log -1 --format=%H milestone/m4-tracer-bullet` | the SHA is the branch tip | Stop: deploy only the reviewed branch tip named in the deploy ask. |
+| PRE-1b | `git merge-base --is-ancestor "$SHA" milestone/m4-tracer-bullet && git diff --quiet "$SHA" milestone/m4-tracer-bullet -- . ':!docs' ':!.handoff' && echo deployable` | `deployable`: the SHA is on the branch and only docs or tracker changed after it | Stop: deploy only the reviewed code named in the deploy ask. |
 | PRE-2 | `grep -E '^\| M4 ' MILESTONES.md` | after the merge chain: a merge SHA and a main-check SHA | **This demo:** shows `in-progress`, expected under D55. |
 | PRE-3 | `railway --version` | `railway 5.57.7` | Re-read `--help` for every command below before using a different version. |
 | PRE-4 | `railway whoami` | logged in as the owner's account | The human logs in; never let a deploy command start a login or sign-up. |
@@ -55,21 +55,21 @@
 | Id | Setup action | Command or dashboard path | Source | Done when |
 |---|---|---|---|---|
 | FS-1 | Project | n/a: `cerbo-supplement-store` already exists and this directory is linked to it | `railway status` (CLI 5.57.7) | PRE-5 names the project |
-| FS-2 | Add the v2 web service and a separate v2 database (keep v1's `app` and `Postgres` untouched: v1 tables share names like users and orders) | `railway add --service web-v2`; `railway add --database postgres`, then rename the new database service to `postgres-v2` in the dashboard | `railway --help` (CLI 5.57.7); ⚠ read `railway add --help` before running | `railway status` lists `web-v2` and `postgres-v2` |
-| FS-3 | Link this repo directory to the v2 service | `railway service link web-v2` | `railway service --help` (CLI 5.57.7) | PRE-5 shows service `web-v2` |
-| FS-4 | Create the two database roles in `postgres-v2` with passwords you choose: `supplements_owner` (owns the schema, runs migrations) and `supplements_app` (the app's login, granted rights only by the migrations) | `railway connect postgres-v2`, then in psql: create both roles with LOGIN and a password, and make `supplements_owner` the owner of the database's `public` schema | `railway --help` (connect, CLI 5.57.7); acceptance Q-3 | both roles log in |
-| FS-5 | Generate the public HTTPS domain for `web-v2` | `railway domain --service web-v2` | `railway domain --help` (CLI 5.57.7) | the domain is known; it becomes `URL` in §3 |
-| FS-6 | Set every §6 variable by name on `web-v2` (values typed by you) | dashboard → web-v2 → Variables | Railway dashboard | you confirm each §6 name is set (names only) |
-| FS-7 | Run the migrations once against `postgres-v2` as `supplements_owner` | from a clean export of $SHA: `npx node-pg-migrate up -m db/migrations` with `DATABASE_URL` set to the owner's connection string (typed by you, for this one command) | AGENTS.md acceptance Q-4; `node-pg-migrate` 9.0.0 | `pgmigrations` lists the five files |
-| FS-8 | Load the demo data (fictional practices, people, products; demo password typed by you) | ⚠ the seed command does not exist yet (GAP-3) | — | you can sign in as the demo provider |
+| FS-2 | Add the v2 web service and a separate v2 database (keep v1's `app` and `Postgres` untouched: v1 tables share names like users and orders) | `railway add --service web-v2`; `railway add --database postgres`, then rename the new database service to `postgres-v2` in the dashboard | `railway --help` (CLI 5.57.7); ⚠ read `railway add --help` before running | done 2026-10-10: `web-v2` (agent, standing yes) and `postgres-v2` (agent, after the v1 rename mix-up; PostgreSQL 18, D56) |
+| FS-3 | Link this repo directory to the v2 service | `railway service link web-v2` | `railway service --help` (CLI 5.57.7) | done: this directory is linked to `web-v2` |
+| FS-4 | Create the two database roles in `postgres-v2` with passwords you choose: `supplements_owner` (owns the schema, runs migrations) and `supplements_app` (the app's login, granted rights only by the migrations) | `railway connect postgres-v2`, then in psql: create both roles with LOGIN and a password, and make `supplements_owner` the owner of the database's `public` schema | `railway --help` (connect, CLI 5.57.7); acceptance Q-3 | done: both roles exist and log in; `supplements_owner` owns `public` (names-only check) |
+| FS-5 | Generate the public HTTPS domain for `web-v2` | `railway domain --service web-v2` | `railway domain --help` (CLI 5.57.7) | done: https://web-v2-production-6640.up.railway.app (agent, standing yes) |
+| FS-6 | Set every §6 variable by name on `web-v2` (values typed by you) | dashboard → web-v2 → Variables | Railway dashboard | done: `TRUST_PROXY=1` (agent); `DATABASE_URL` by `scripts/railway-setup.sh` (human run) |
+| FS-7 | Run the migrations once against `postgres-v2` as `supplements_owner` | `bash scripts/railway-setup.sh` (human run; passwords in git-ignored `.env.railway`) | AGENTS.md acceptance Q-4; `node-pg-migrate` 9.0.0 | done by `scripts/railway-setup.sh` (human run): 5 migrations recorded, 14 tables |
+| FS-8 | Load the demo data (fictional practices, people, products) | `bash scripts/railway-setup.sh` (human run; `node db/seed/demo.ts`, M4-T903) | `db/seed/demo.ts` | done by `scripts/railway-setup.sh` (human run): 2 practices, 9 users, 3 products; re-run the script to reset the demo |
 
 ## 3. Deploy commands (human-only — run only after a recorded yes)
 
 ```bash
-SHA=13a816aab92d7800abb7d12abc89e455c149c10a            # milestone/m4-tracer-bullet tip named in the deploy ask (D55)
+SHA=11308222f1ea5f74dbe4f2595cce23205b14988b            # milestone/m4-tracer-bullet tip named in the deploy ask (D55)
 ENV=production
 SVC=web-v2
-URL=⚠ set after FS-5
+URL=https://web-v2-production-6640.up.railway.app
 LIVE_SHA=none       # first deploy of web-v2
 EXPORT="$(mktemp -d)/release-$SHA" && mkdir -p "$EXPORT"                                   # DEP-1
 git archive "$SHA" | tar -x -C "$EXPORT"                                                     # DEP-1
@@ -147,12 +147,14 @@ Never add `-y`, `--yes` or `--new` to `railway up`, and never deploy without `--
 | Date (`date`) | Env | Milestone | SHA | Approval (row time) | /version commit | Smoke (last line) | Outcome |
 |---|---|---|---|---|---|---|---|
 | 2026-10-10 16:18 CDT | production (web-v2) | M4 demo | 13a816a | not deployed | n/a: no /version route (GAP-2) | not run | not deployed: blocking GAP-1, GAP-2 |
+| 2026-10-10 16:52 CDT | production (web-v2) | M4 demo | 1130822 | pending deploy ask | — | — | GAP-1 to GAP-3 done (M4-T901 to T903); setup FS-2 to FS-8 done |
+| 2026-10-10 16:56 CDT | production (web-v2) | M4 demo | 1130822 | 2026-10-10 16:54 CDT | 11308222f1ea5f74dbe4f2595cce23205b14988b | SMOKE GREEN: 7 passed, 0 failed against https://web-v2-production-6640.up.railway.app at 11308222f1ea5f74dbe4f2595cce23205b14988b (TLS verified) | live (deployment 59c086de SUCCESS) |
 
 ## 9. Open questions
 
 | Id | Question | Recommended answer | Blocks |
 |---|---|---|---|
-| Q-1 | Deploy the v2 demo to a new `web-v2` service and `postgres-v2` database, leaving v1's `app` running? | yes: v1's database already has users and orders tables, so the v2 migrations would fail there, and v1 stays as history (D22) | FS-2 |
+| Q-1 | ~~New web-v2 and postgres-v2, v1 untouched?~~ answered: yes (setup done) | — | nothing |
 | Q-2 | Does Railway's Node builder pick Node 22.22+ from `engines` and start with `node .output/server/index.mjs`? | confirm in the first build log; if not, a follow-up task adds a `railway.json` (config is implement-task's) | DEP-3 |
-| Q-3 | Should the GAP tasks land on `milestone/m4-tracer-bullet` (the demo branch, D55) instead of the next milestone? | yes: the demo deploys that branch, so its health, version and seed code must be on it | GAP-1, GAP-2, GAP-3 |
+| Q-3 | ~~Should the GAP tasks land on the M4 branch?~~ answered: yes (Approvals "Approve, run the three GAP tasks") | — | nothing |
 | Q-4 | Which uptime monitor watches `/healthz`? | a free external monitor every 5 minutes alerting your email (you create the account) | HEALTH.md §4 |

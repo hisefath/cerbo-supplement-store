@@ -2,18 +2,18 @@
 
 | Field | Value |
 |---|---|
-| Environment | production (Railway service `web-v2`) at ⚠ set after FS-5 in `docs/runbooks/deploy.md` |
-| Live release | none yet: M4 demo @ 13a816a is not deployed (see `docs/runbooks/deploy.md` §8) |
+| Environment | production (Railway service `web-v2`) at https://web-v2-production-6640.up.railway.app |
+| Live release | M4 demo @ 1130822 (deployed 2026-10-10 16:56 CDT); previously 13a816a is not deployed (see `docs/runbooks/deploy.md` §8) |
 | Owner | the project owner (Sefath); alerts by email from the uptime monitor |
-| Last updated | 2026-10-10 16:18 CDT |
+| Last updated | 2026-10-10 16:52 CDT |
 | Written by | ship-milestone (Claude Code, claude-opus-5-5) |
 
 ## 1. Health and version endpoints
 
 | Endpoint | Contract | What it proves | What it does NOT prove | Status |
 |---|---|---|---|---|
-| `/healthz` | 200 text `ok` after one `select 1` on the app's database with a 2 s timeout; 503 when the database does not answer; `Cache-Control: no-store`; no versions, stack traces or config | the process answers and reaches its database | that the reviewed code runs; that the journey works | GAP-1 (no route: `server/api` and `server/routes` hold no health route) |
-| `/version` | 200 JSON `{"commit": "<40 hex>", "built_at": "<ISO-8601 UTC>"}`, `Cache-Control: no-store`, no other fields | which build is running | that it works | GAP-2 (no route) |
+| `/healthz` | 200 text `ok` after one `select 1` on the app's database with a 2 s timeout; 503 when the database does not answer; `Cache-Control: no-store`; no versions, stack traces or config | the process answers and reaches its database | that the reviewed code runs; that the journey works | present at `server/routes/healthz.get.ts:10` (M4-T901, 77cc879) |
+| `/version` | 200 JSON `{"commit": "<40 hex>", "built_at": "<ISO-8601 UTC>"}`, `Cache-Control: no-store`, no other fields | which build is running | that it works | present at `server/routes/version.get.ts:20` (M4-T902, bab8381) |
 
 ## 2. SLO
 
@@ -63,7 +63,7 @@
 
 ## 6. Readiness gaps (filed as tasks)
 
-### GAP-1 No health route
+### GAP-1 No health route (done: M4-T901, 77cc879)
 
 Blocks: G-live · Why: nothing can tell whether the demo process is up and reaching its database, so neither the deploy wait nor the probe has anything to check.
 
@@ -93,7 +93,7 @@ give: docs/ops/HEALTH.md#1-health-and-version-endpoints, server/utils/db.ts, ser
 write $HANDOFF_DIR/runs/M4-T901/result.md
 ```
 
-### GAP-2 No version route
+### GAP-2 No version route (done: M4-T902, bab8381)
 
 Blocks: G-live · Why: without /version nobody can prove which code the demo runs, so a deploy could never be verified.
 
@@ -124,7 +124,7 @@ give: docs/ops/HEALTH.md#1-health-and-version-endpoints, docs/runbooks/deploy.md
 write $HANDOFF_DIR/runs/M4-T902/result.md
 ```
 
-### GAP-3 No demo data loader
+### GAP-3 No demo data loader (done: M4-T903, 69b7e76)
 
 Blocks: nothing (follow-up) · Why: the deploy can be proven without it, but nobody can sign in to the demo until fictional accounts and products exist (runbook FS-8).
 
