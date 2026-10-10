@@ -5,7 +5,7 @@ project: cerbo-supplement-store
 finding: F10
 proposal: H9
 layer: Skill
-status: proposed
+status: adopted
 ---
 
 # Every version named in a design decision cites a registry check run that day.
