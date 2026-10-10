@@ -16,12 +16,13 @@ check: lint types test
 lint:
 	@for f in scripts/*.sh .githooks/pre-push; do bash -n "$$f" || exit 1; done
 
-## types: none until a stack exists
+## types: Vue and TypeScript type check of app, server and tests (vue-tsc via nuxi)
 types:
-	@true
+	npx nuxi typecheck
 
-## test: design docs' embedded diagrams must match their .mmd sources (once docs/architecture/*.md exist)
+## test: implementers' unit tests (tests/unit) + design docs' embedded diagrams must match their .mmd sources
 test:
+	npx vitest run --dir tests/unit --passWithNoTests
 	@set -- docs/architecture/*.md; if [ -e "$$1" ]; then bash scripts/embed-diagrams.sh --check "$$@"; fi
 
 ## setup: install the pinned dependencies (package-lock.json)
@@ -34,7 +35,7 @@ db-test-up:
 
 ## test-acceptance: QA-owned acceptance tests (red until their milestone is built; not part of check until merge)
 test-acceptance:
-	npx vitest run tests/acceptance
+	npx vitest run --dir tests/acceptance
 
 # --- Example: Laravel 13 / PHP 8.5 (Pint + Larastan/PHPStan + Pest or PHPUnit) -------------------------------
 # Replace the three recipes above with these (recipe lines must start with a TAB):

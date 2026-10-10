@@ -9,7 +9,7 @@ per merge request). Every harness (Claude Code, Codex, Cursor, Antigravity) read
 | Setup | `make setup` (npm ci) · `make db-test-up` (PostgreSQL 16 test database on localhost:54329) |
 | Run | `npm run dev` (needs DATABASE_URL; see .env.example) |
 | Acceptance tests | `make test-acceptance` · one test: `npx vitest run tests/acceptance -t M4_AT_001` |
-| **All checks (the one green/red gate)** | `make check` (docs-only until the stack exists: script syntax + diagram embeds in sync) |
+| **All checks (the one green/red gate)** | `make check` (script syntax · `npx nuxi typecheck` (vue-tsc) · unit tests `npx vitest run --dir tests/unit` · diagram embeds in sync; acceptance tests join at the end of M4, see M4-T009) |
 | Deploy | see `docs/runbooks/deploy.md` (human-only) |
 
 ## Where things live

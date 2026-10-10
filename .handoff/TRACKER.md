@@ -7,11 +7,11 @@ several harnesses read it and the repo is public.
 ## Resume
 
 <!-- Rewritten as the LAST edit of every supervisor move. Times come from `date`. -->
-- **As of:** 2026-10-10 11:56 CDT
-- **In flight:** define-acceptance M4 STOP sent (acceptance part of G4): specs/M4-tracer-bullet/acceptance.md@695b94b, 43 red ATs. G3 for lld.md@5a984b8 (D38 → Nuxt 4 revise) still needs re-approval.
-- **Next:** human answers the acceptance decision (Approve / Revise / Stop) and G3 for lld.md@5a984b8; then /slice-tasks. After G4: design-lld catch-up for acceptance Q-1 to Q-4; open Q-5 to Q-9 decided at G4.
-- **Waiting on:** human: acceptance verdict.
-- **Verified:** 695b94b npx vitest run tests/acceptance/M4 → exit 1, 43 failed, all missing table practices
+- **As of:** 2026-10-10 12:34 CDT
+- **In flight:** M4-T002 (payments, split, DB guards) dispatched in .claude/worktrees/m4-t002 from milestone/m4-tracer-bullet@f1cc496. M4-T001 done (61c966a).
+- **Next:** on T002 result: verify → squash → dispatch T003. Routed review items: R8 → T004 (one empty-order check), R4 → design-lld catch-up after M4; R3, R5, R6 filed.
+- **Waiting on:** M4-T002 worker.
+- **Verified:** f1cc496 make check OK (typecheck, 22 unit tests, embeds); T001 Done-when 6/6
 
 ## Tasks
 
@@ -85,6 +85,14 @@ several harnesses read it and the repo is public.
 | 2026-10-10 11:32 CDT | toolchain bootstrap: add dependencies (package.json pins listed in chat), docker test database, app shell, Makefile targets, .gitignore lines, and the AGENTS.md Commands + Stack diff (human-only edit) | chat proposal 2026-10-10 11:3x | "approve, then /define-acceptance" |
 | 2026-10-10 11:59 CDT | G3 (re-approval after Revise "a": D38 → Nuxt 4, journal D44) | docs/architecture/lld.md@5a984b8 | "approve G3 and acceptance, then /slice-tasks" |
 | 2026-10-10 11:59 CDT | G4 acceptance part: M4 definition of done, incl. Q-1 to Q-4 answers and the 7 recommended waivers (EDGE-003, 009, 015, 016, 042, 046, 047); Q-5 to Q-9 stay open to closing G4 | specs/M4-tracer-bullet/acceptance.md@695b94b | "approve G3 and acceptance, then /slice-tasks" |
+| 2026-10-10 12:06 CDT | G4 (option a: 9 vertical slices, tracer bullet first, T006 and T007 parallel, all claude; Q-5 to Q-9 take the recommendations in the STOP) | specs/M4-tracer-bullet/tasks/T001-T009@538db57 + acceptance.md@695b94b | "approve a, yes to vue-tsc, then go M4" |
+| 2026-10-10 12:06 CDT | Ask-first: add devDependency vue-tsc (pinned) and set Makefile types to npx nuxi typecheck (human-only Makefile edit, done by supervisor on this yes) | package.json, package-lock.json, Makefile | "approve a, yes to vue-tsc, then go M4" |
+| 2026-10-10 12:06 CDT | Build: "go M4" — create milestone/m4-tracer-bullet and dispatch implement-task per ready task | milestone/m4-tracer-bullet | "approve a, yes to vue-tsc, then go M4" |
+| 2026-10-10 12:13 CDT | human-only edit: AGENTS.md Commands row for make check (describe the type-check step) | AGENTS.md | "update AGENTS.md make check row" |
+| 2026-10-10 12:29 CDT | M4-T001 review dispositions, option b: relaunch T001 to fix R1 (unit tests in make check), R2 (dummy-hash cost), R7 (remove unused role-change code) before squash; R3, R5, R6 filed; R4 LLD catch-up; R8 to T004 | .handoff/reviews/M4-pass1.md; m4/t001-provider-sends-a-supplement-order@c0553aa | "do b instead" |
+| 2026-10-10 12:31 CDT | human-only edit: AGENTS.md Commands row for make check (add the unit-test step) | AGENTS.md | "update AGENTS.md make check row" |
+| 2026-10-10 12:33 CDT | supervisor commits M4-T001 relaunch fixes R2 (session.ts dummy-hash cost) and R7 (remove assertCanChangeRole, StaffRef) after the worker's git add was denied | m4/t001-provider-sends-a-supplement-order worktree: server/services/session.ts, server/services/access-policy.ts | "a, commit both" |
+| 2026-10-10 12:36 CDT | human-only edit: AGENTS.md Commands row for make check (unit-test command now uses --dir) | AGENTS.md | "update AGENTS.md make check row" |
 
 ## Log
 
@@ -202,3 +210,11 @@ several harnesses read it and the repo is public.
 2026-10-10 11:34 CDT VERIFY bootstrap @d5f5e1a: npm install 684 packages exit 0; PostgreSQL 16.15 test db reachable on 127.0.0.1:54329; vitest 5.0.1; make check OK. Note: user's ~/.docker/config.json has credsStore=desktop while the context is colima, so image pulls need a clean DOCKER_CONFIG (not changed).
 2026-10-10 11:56 CDT VERIFY define-acceptance M4 @695b94b: npx vitest run tests/acceptance/M4 exit=1, 43 failed (43), all "relation practices does not exist" (missing: table, lld.md §1); -t M4_AT_041 exit 1 names it; -t M4_AT_999 exit 0 (Q-5); tsc 0 errors; Done-when checks clean
 2026-10-10 11:59 CDT GATE G3 re-approved lld.md@5a984b8; acceptance (G4 part) approved at 695b94b; next slice-tasks M4
+2026-10-10 12:04 CDT RESULT slice-tasks M4: 9 tasks @538db57, analyze RESULT: PASS (uncovered=0, overlaps=0); G4 presented
+2026-10-10 12:07 CDT DISPATCH M4-T001 harness=claude-subagent why=tracer bullet, watched on Claude (G4 D45); worktree .claude/worktrees/m4-t001 from milestone/m4-tracer-bullet@298358c
+2026-10-10 12:21 CDT DISPATCH M4-review-T001 harness=claude-verifier why=per-task review before squash (pass 1)
+2026-10-10 12:24 CDT RESULT M4-review-T001 verifier pass 1: 8 rows (0 P0/P1, 2 P2: R1 unit tests ungated, R2 dummy-hash timing; 6 P3); saved .handoff/reviews/M4-pass1.md; awaiting dispositions
+2026-10-10 12:29 CDT DISPATCH M4-T001 relaunch harness=claude-subagent why=review fixes R2, R7 (option b); milestone merged into task branch for R1
+2026-10-10 12:32 CDT FAIL M4-T001 relaunch: auto-mode classifier denied the worker git add/diff ("Security Weaken", likely the R7 removal of an auth helper); fixes R2, R7 left uncommitted in worktree; worker asked supervisor to commit them; supervisor did not (needs the human's word)
+2026-10-10 12:34 CDT VERIFY M4-T001 squashed as 61c966a: scope-guard OK (22 paths); Done-when exit 0 (6 passed); make check OK (22 unit); verifier pass 1 R2, R7 fixed, R1 by supervisor (3fca7ea, f1cc496)
+2026-10-10 12:34 CDT DISPATCH M4-T002 harness=claude-subagent why=riskiest slice (payments, ledger, DB guards), watched on Claude; worktree .claude/worktrees/m4-t002 from milestone/m4-tracer-bullet@f1cc496
