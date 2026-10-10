@@ -5,7 +5,7 @@ project: cerbo-supplement-store
 finding: F11
 proposal: H10
 layer: Skill
-status: proposed
+status: adopted
 ---
 
 # A test counts as evidence only after you have seen it fail when the code it guards is wrong.
