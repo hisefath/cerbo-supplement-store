@@ -124,6 +124,9 @@ several harnesses read it and the repo is public.
 | 2026-10-10 16:12 CDT | demo release: deploy the demo from milestone/m4-tracer-bullet before the M1 to M4 merge chain (option a) | milestone/m4-tracer-bullet@a4b64b4 | "a, deploy the demo from the branch" |
 | 2026-10-10 16:15 CDT | M4-T011 review dispositions (pass 7), option a: squash T011; R1 build-and-compare CSP hash check and R8 runtime-env warning go to ship-milestone smoke and runbook; R3 to LLD/contract catch-up; R2, R4, R5, R6, R7 filed | .handoff/reviews/M4-pass7.md; m4/t011-security-hardening-before-g5@182ee45 | "a, squash T011 then /ship-milestone" |
 | 2026-10-10 16:20 CDT | G-live STOP B: approve GAP-1, GAP-2, GAP-3 as task contracts M4-T901, M4-T902, M4-T903 on milestone/m4-tracer-bullet (D55; runbook Q-1 new web-v2 + postgres-v2, Q-3 GAP tasks on the M4 branch) | docs/ops/HEALTH.md@06c8d86 | "Approve, run the three GAP tasks" |
+| 2026-10-10 16:35 CDT | standing yes: the agent may run non-secret Railway setup commands for cerbo-supplement-store (add or rename services and databases, link, generate domains, set non-secret variables); secrets, role passwords, connection strings and the deploy itself stay human | docs/runbooks/deploy.md@a2cdfab | "yes, you may run non-secret Railway setup commands for cerbo-supplement-store" |
+| 2026-10-10 16:39 CDT | demo database version: keep PostgreSQL 18 on postgres-v2 (Railway template) instead of D33's 16 | docs/runbooks/deploy.md@29e27a2 | "done, keep 18" |
+| 2026-10-10 16:49 CDT | demo DB setup by one human-run script reading a git-ignored .env.railway (option a, no Keychain); the agent never reads the file or uses the passwords | scripts/railway-setup.sh | "a, write the script, and only do git ignore .env file, not macos keychain" |
 
 ## Log
 
@@ -297,3 +300,5 @@ several harnesses read it and the repo is public.
 2026-10-10 16:28 CDT VERIFY M4-T902 squashed bab8381: scope-guard OK (2 paths); make check OK; built app GET /version 200 {commit,built_at} no-store from cwd build-info.json
 2026-10-10 16:28 CDT VERIFY M4-T901 squashed 77cc879: scope-guard OK (2 paths); make check OK; built app GET /healthz 200 ok (db up) and 503 unavailable (db down), no-store, log shows only error class and code
 2026-10-10 16:28 CDT VERIFY M4-T903 squashed: scope-guard OK (2 paths); make check OK; loader refuses without flags (exit 1); with DEMO_RESET=yes and a generated password at SCRYPT_COST 16384 loads 2 practices, 9 users, 3 products on the local test DB, password not in output
+2026-10-10 16:36 CDT RAILWAY setup (standing yes 16:3x): renamed v1 database back to Postgres (it had been renamed to postgres-v2 by mistake); added a new database and renamed it postgres-v2 (deployed 2026-10-10 16:36, image postgres-ssl:18); web-v2 linked; v1 app still answers 302
+2026-10-10 16:51 CDT VERIFY railway-setup.sh run by the human: postgres-v2 has the 5 migrations recorded, 14 tables, supplements_app has INSERT,SELECT on ledger_entries and no DELETE on orders or order_lines, demo world loaded (2 practices, 9 users, 3 products, 0 orders), password hashes scrypt N=16384
