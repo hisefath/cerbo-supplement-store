@@ -355,6 +355,74 @@ Copy this block for each new entry (D-ids increase by one, starting at D1):
 - Cost accepted: about 7 seconds per operations beat. · Reversibility: Type 2 · Confidence: medium
 - Revisit if: the demo script cannot fit the beats. · Evidence: docs/design/screens.md Demo layout · Interview line: "Every screen has six designed states, and the demo walks the money from the provider's click to the finance lead's balanced report."
 
+### D32 Application language: TypeScript on Node.js with server-rendered Vue  [status: accepted]
+- 2026-10-09 22:45 CDT · design-hld (G2) · M3 · Decided by: human, G2 2026-10-09 22:45 CDT: "approve" · Proposed by: design-hld (Claude Code, claude-opus-5-5) · artifact: proposed as docs/architecture/hld.md D32 @a5bc4ea
+- Context and forces: no stack mandated (C-1, REQ-14); Cerbo's portal is TypeScript/JavaScript with Vue (R01) and its paired interview is in TypeScript/JavaScript (R07); money must stay whole cents (AGENTS.md:57).
+- Options:
+  - Do nothing / simplest: clickable mock-up with no server — rejected: no money handling to grade
+  - TypeScript on Node.js with server-rendered Vue (agent's recommendation) — chosen
+  - PHP with Laravel — rejected: the human set the earlier build aside (D22); a second language from the portal's
+  - Java with Spring — rejected: heaviest setup for the appetite
+- Choice · Why: In the context of a 1-2 day slice for a partner whose portal runs TypeScript and Vue and who pair-programs in TypeScript, facing the need to show money integrity live, we choose TypeScript on Node.js with server-rendered Vue over Laravel or Spring to get one language the interviewers read and write, accepting that cents must be kept as whole numbers by discipline and tests.
+- Cost accepted: TypeScript numbers are floats, so whole cents rely on tests plus database checks (INV-1, INV-3). · Reversibility: Type 1 · Confidence: med
+- Revisit if: the partner says the work would land in their PHP back end. · Evidence: R01, R07; hld.md §9 D32 · Interview line: "I picked TypeScript and Vue because that's Cerbo's portal stack and the language of their paired interview, and I kept every amount in whole cents because TypeScript numbers are floats."
+
+### D33 Database: PostgreSQL managed by the host  [status: accepted]
+- 2026-10-09 22:58 CDT · design-hld (G2) · M3 · Decided by: human, G2 2026-10-09 22:58 CDT: "approve" · Proposed by: design-hld (Claude Code, claude-opus-5-5) · artifact: proposed as docs/architecture/hld.md D33 @a5bc4ea
+- Context and forces: INV-1 to INV-5 must hold whatever code path runs; NFR-013 3-year retention; Cerbo runs MySQL and Postgres (R01); host Railway.
+- Options:
+  - Do nothing / simplest: SQLite file inside the app — rejected: one machine's file breaks on restart or a second instance
+  - PostgreSQL managed by the host (agent's recommendation) — chosen
+  - MySQL managed by the host — rejected: weaker cross-check support for INV-1
+- Choice · Why: In the context of a money system that must refuse a split that doesn't add up, facing invariants that must hold whatever code path runs, we choose managed PostgreSQL over SQLite or MySQL to get database-enforced checks and permissions, accepting a second container to run and back up.
+- Cost accepted: about $7 a month and a backup to confirm (Q-1). · Reversibility: Type 1 · Confidence: high
+- Revisit if: the partner wants the slice on their MySQL. · Evidence: R01; hld.md §7, §9 D33 · Interview line: "The database itself refuses a paid order whose parts don't add up, so no bug in the app can write bad money."
+
+### D34 One app: pages and logic deploy together  [status: superseded-by D36]
+- 2026-10-09 23:00 CDT · design-hld (G2) · M3 · Decided by: human, G2 2026-10-09 23:00 CDT: "approve" · Proposed by: design-hld (Claude Code, claude-opus-5-5) · artifact: proposed as docs/architecture/hld.md D34 @a5bc4ea
+- Context and forces: peak 31 req/s (R13), NFR-001 2 s p95, $20 a month ceiling, 1-2 day appetite.
+- Options:
+  - Do nothing / simplest: one app that renders pages and holds the logic (agent's recommendation) — chosen
+  - Separate single-page front end and API — rejected: two containers, cross-origin sessions, double deploy and security work
+  - Separate services per area — rejected: nothing in §8 needs it
+- Choice · Why: In the context of 31 requests a second at peak and a $20 ceiling, facing a 1-2 day appetite, we choose one app over a split front end and API to get one deploy and one security perimeter, accepting that the front end can't ship separately.
+- Cost accepted: no independent front-end releases. · Reversibility: Type 2 · Confidence: high
+- Revisit if: a mobile app or partner integration needs the API on its own. · Evidence: hld.md §8, §9 D34 · Interview line: "At 31 requests a second, splitting into services would add failure points without solving any problem I have."
+
+### D35 Money recording: split on the paid order plus an append-only ledger  [status: accepted]
+- 2026-10-09 23:04 CDT · design-hld (G2) · M3 · Decided by: human, G2 2026-10-09 23:04 CDT: "D35, B is approved" · Proposed by: design-hld (Claude Code, claude-opus-5-5) · artifact: proposed as docs/architecture/hld.md D35 @a5bc4ea
+- Context and forces: FR-010 to FR-015, FR-060 to FR-065, NFR-013, NFR-014; R14 (providers report money as summed categories); refunds and corrections later (NG-7).
+- Options:
+  - Do nothing / simplest: split amounts on the paid order only — rejected: reports re-add every order; corrections would edit money in place
+  - Split on the order plus an append-only ledger of payment, item cost, payout and fee (agent's recommendation) — chosen
+  - Full double-entry bookkeeping — rejected: more concepts than the slice needs
+- Choice · Why: In the context of a split that must be auditable to the cent and a finance lead who closes periods, facing future refunds and corrections, we choose an append-only ledger beside the order's split over split-only or full double-entry to get reports that sum categories the way payment providers report them, accepting four extra records per order.
+- Cost accepted: about 2 GB a year more at first-year scale; order and ledger must agree (INV-1, INV-9). · Reversibility: Type 1 · Confidence: med
+- Revisit if: finance asks for double-entry accounts or a refund flow is built. · Evidence: R14 F1, F2, F4; hld.md §9 D35 · Interview line: "The order shows the split; the ledger proves it, and corrections are new lines, never edits."
+
+### D36 One deployable, built API-first  [status: accepted]
+- 2026-10-09 23:14 CDT · design-hld (G2, revision) · M3 · Decided by: human, G2 2026-10-09 23:14 CDT: "approved" (after "c, then /design-hld") · Proposed by: design-hld (Claude Code, claude-opus-5-5) · artifact: proposed as docs/architecture/hld.md D34 @fea2e18 · ids differ: hld.md D34 = journal D36; supersedes D34
+- Context and forces: the feature will live inside Cerbo's Vue portal (R01); Cerbo's front-end and back-end teams are separate; HIPAA-ready access and an activity review (R15 F2, NFR-014); 31 req/s; $20 ceiling; 1-2 day appetite.
+- Options:
+  - Do nothing / simplest: one app, server-rendered pages reading the database directly (first approved as D34) — revised by the human after comparing it with a split front end and API
+  - One deployable, API-first: the Vue front end reads and acts only through our own JSON API on the same web address — chosen
+  - Separate single-page front end and API, two deploys — rejected: two pipelines, token sign-in, cross-origin rules, patient data in the browser
+  - Separate services per area — rejected: nothing needs it
+- Choice · Why: In the context of an EHR add-on that will one day live inside Cerbo's Vue portal, built by a small team for 31 requests a second under a $20 ceiling, facing HIPAA-ready access rules and an activity review, we choose one deployable built API-first over server-rendered pages alone or a split front end and API to get today's small attack surface and single deploy together with an API Cerbo can embed later, accepting a thin API layer whose shape we must keep stable.
+- Cost accepted: about half a day more; the API shape becomes a contract. · Reversibility: Type 2 · Confidence: high
+- Revisit if: Cerbo's front-end team takes over the screens, or a second client needs the API. · Evidence: R01, R15; hld.md §9 D34 · Interview line: "I kept one deployable for security and ops simplicity, but built it API-first, because inside an EHR the feature eventually becomes their screens calling our API."
+
+### D37 Sign-in: seeded test accounts with server-side sessions  [status: accepted]
+- 2026-10-09 23:14 CDT · design-hld (G2) · M3 · Decided by: human, G2 2026-10-09 23:14 CDT: "approve" · Proposed by: design-hld (Claude Code, claude-opus-5-5) · artifact: proposed as docs/architecture/hld.md D36 @fea2e18 · ids differ: hld.md D36 = journal D37
+- Context and forces: FR-039 to FR-041, NFR-007, NFR-008, C-3 (sign-in is a stand-in), A-12; every API call checks the signed-in role (D36).
+- Options:
+  - Do nothing / simplest: a "choose who you are" picker — rejected: anyone can be anyone; breaks NFR-007
+  - Email and password for seeded test accounts, server-side sessions, 15-minute idle limit (agent's recommendation) — chosen
+  - An outside identity provider — rejected: outside account and cost beyond the stand-in rule
+- Choice · Why: In the context of a stand-in sign-in that must still be personal and time out, facing a demo that switches between nine fictional people, we choose seeded test accounts with server-side sessions over a picker or an outside provider to get real per-person access rules at no cost, accepting no two-factor sign-in in the slice.
+- Cost accepted: no two-factor and no password reset. · Reversibility: Type 2 · Confidence: high
+- Revisit if: the slice moves toward real users. · Evidence: hld.md §9 D36, §10 Authentication · Interview line: "Sign-in is a stand-in, but every person still has their own account and session, because the access rules are what I'm proving."
+
 ### D43 Broader holistic-care products parked as a future non-goal (NG-12)  [status: accepted]
 - 2026-10-10 10:58 CDT · clarify-spec (3b) · M2 · Decided by: human, clarify-spec CQ-3 2026-10-10 10:58 CDT: "A, non goals, can revisit later, and marked as was considered for the future of the product" · Proposed by: clarify-spec (Claude Code, claude-opus-5-5) · artifact: docs/product/prd.md@998ed94 NG-12
 - Context and forces: the human raised prescriptions, medical supplies, gym memberships and other holistic-care services at G3; lld.md D42 and Q-7 showed they need product types, a payee per order line, work with no patient present (recurring charges, claims, partner updates) and, for prescriptions, regulation the slice rules out (NG-3, NG-10).

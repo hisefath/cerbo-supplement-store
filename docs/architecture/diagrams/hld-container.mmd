@@ -1,0 +1,39 @@
+%% diagram: hld-container
+%% source: docs/architecture/hld.md#3-containers-c4-level-2 @ db8bab2
+%% source: docs/architecture/hld.md#4-connections @ db8bab2
+%% source: docs/architecture/hld.md#5-trust-boundaries-threats @ db8bab2
+%% drawn: 2026-10-10T04:10:21Z by draw-diagrams (claude, claude-opus-5-5)
+%% render: unverified
+%% render-check: mmdc not on PATH
+%% missing: 0
+%% Generated from the source section. Do not edit by hand: fix the section, then re-run `draw-diagrams hld-container`.
+flowchart LR
+    P1(["Every person's browser<br/>person"])
+    X1[["Uptime monitor<br/>external system"]]
+    X2[["Payment provider (stub)<br/>external system"]]
+    X3[["Messaging provider (stub)<br/>external system"]]
+    X4[["Host platform<br/>external system"]]
+    subgraph TB5 ["TB-5 Host platform → our system"]
+        subgraph TB1 ["TB-1 Internet → web app"]
+            subgraph TB4 ["TB-4 Web app → outside providers"]
+                subgraph TB2 ["TB-2 Between roles inside the app (patient, provider, each operations role)"]
+                    CN1["CN-1 Web app<br/>TypeScript on Node.js 22, Vue pages rendered by the server#59; every data read and action in the browser goes through the app's own JSON API on the same web address (D32, D34)"]
+                end
+            end
+        end
+        subgraph TB3 ["TB-3 Web app → database"]
+            CN2[("CN-2 Database<br/>PostgreSQL 16, managed by the host (D33)")]
+        end
+    end
+    P1 -->|"L-1 HTTPS, sync"| CN1
+    CN1 -->|"L-2 PostgreSQL protocol over the host's private network, sync"| CN2
+    CN1 -->|"L-3 in-process (stub)#59; later: HTTPS to a card processor with an idempotency key, sync"| X2
+    CN1 -->|"L-4 in-process (stub)#59; later: HTTPS to an email or text provider, sync (stub)#59; later async"| X3
+    X1 -->|"L-5 HTTPS, sync"| CN1
+    X4 -.->|"L-6 host deploy and process control, async"| CN1
+    X4 -.->|"L-6 host deploy and process control, async"| CN2
+    style TB1 stroke-dasharray: 5 5
+    style TB2 stroke-dasharray: 5 5
+    style TB3 stroke-dasharray: 5 5
+    style TB4 stroke-dasharray: 5 5
+    style TB5 stroke-dasharray: 5 5
