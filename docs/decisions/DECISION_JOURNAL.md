@@ -266,3 +266,16 @@ Copy this block for each new entry (D-ids increase by one, starting at D1):
 - Choice · Why: in a factory reused across hiring-partner projects, facing PRD targets and design sizing with no evidence, we chose a bottom-up market and load method with stated formulas and ranges over guessed round numbers, so targets and machine sizing trace to evidence, accepting two more required brief questions and a heavier research pass.
 - Cost accepted: longer research before the PRD. · Reversibility: Type 2 (revert 071beeb) · Confidence: high
 - Revisit if: market questions routinely end as gaps with no public data. · Evidence: software-factory-kit FINDINGS.md F4, skills/gather-evidence/references/market-research.md; approval G-L5 2026-10-09 19:42 CDT · Interview line: "Before designing, I size the market and the expected load bottom-up with stated assumptions, so my targets and my machine sizing come from evidence, not round numbers."
+
+### D25 PRD scope: money path first, HIPAA-ready, campaigns later  [status: accepted]
+- 2026-10-09 20:29 CDT · write-prd (G1) · M2 · Decided by: human, G1 2026-10-09 20:29 CDT: "approve, then /map-ux-flows" · Proposed by: write-prd (Claude Code, claude-opus-5-5) · artifact: docs/product/prd.md@425e09c
+- Context and forces: REQ-01 to REQ-06 ask for one order journey with an auditable split; the human added default prices with an auditable price-change form (Q3), must-never-happen rules including no overselling and prices locked only at checkout (Q4), targets grounded in R10 and R11 (Q5), and HIPAA treatment (Q8). FR-001 to FR-038, NFR-001 to NFR-011, SC-001 to SC-003.
+- Options:
+  - Do nothing — rejected: no requirements, design would guess
+  - Agent's first draft (5fe5a0f) with 8 open questions and no HIPAA safeguards — revised by the human: questions answered (Q6), assumptions confirmed (Q7), HIPAA-ready added (Q8)
+  - Claim full HIPAA compliance — rejected (Q8): the assignment puts compliance out of scope and compliance is organisational (BAAs, risk analysis, policies)
+  - Put stock limits and pricing in the tracer bullet — not chosen: the money path (order, one payment, split to the cent) is what the partner grades
+  - Approved PRD 425e09c — chosen
+- Choice · Why: in a 1–2 day graded slice facing a partner who grades money integrity and judgment, we chose a tracer bullet of order → single payment → split recorded to the cent, with pricing and stock in M5, measurement in M6 and campaigns Later, over a broader first build, to prove the core promise first, accepting that stock limits arrive one milestone later.
+- Cost accepted: no overselling protection until M5; campaigns, refunds and refills deferred; HIPAA safeguards are partly stand-ins because sign-in is stubbed. · Reversibility: Type 2 (PRD edit + new G1) · Confidence: medium
+- Revisit if: the partner's feedback weights stock or campaigns over the split, or real patient data is ever in scope. · Evidence: docs/product/prd.md (Milestone cut, NG-10, Interview log Q1-Q8); R08-R13 · Interview line: "I scoped the first build to the money path because that's what they grade, and made it HIPAA-ready rather than claiming compliance, because compliance is an organisational status."

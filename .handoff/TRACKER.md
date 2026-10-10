@@ -7,11 +7,11 @@ several harnesses read it and the repo is public.
 ## Resume
 
 <!-- Rewritten as the LAST edit of every supervisor move. Times come from `date`. -->
-- **As of:** 2026-10-09 19:56 CDT
-- **In flight:** gather-evidence follow-up pass R08-R13 STOPPED @8b161f6 (R08 answered/high, R09 partial/medium, R10 partial/medium, R11 answered/medium, R12 answered/medium, R13 answered/medium; 15 open gaps). `/write-prd` still paused after Q2; Q3 (price input + floor) asked, unanswered.
-- **Next:** human reviews R08-R13 (Approve / Revise / Stop); on Approve, resume `/write-prd` at Q3 with R08-R13 as inputs.
-- **Waiting on:** human: review the research STOP message.
-- **Verified:** 8b161f6 `make check` → OK; gather-evidence Done-when checks on R08-R13 → clean (one eyeballed hit: "recommend" describes Fullscript's feature in R08 Answer)
+- **As of:** 2026-10-09 20:27 CDT
+- **In flight:** PRD revised after G1 Revise; docs/product/prd.md@425e09c re-offered at G1 (7 stories, 3 P1, 38 FR, 11 NFR, 3 SC, 36 AE, 0 open ⚠; HIPAA-ready per Q8). One agent assumption open: A-9 (15-minute inactivity sign-out).
+- **Next:** human answers G1. On Approve: record row, run log-decision, then `/map-ux-flows`. Housekeeping still to decide with the human: M1 merge request and an m2 branch (both need a recorded yes to push).
+- **Waiting on:** human: G1 verdict on docs/product/prd.md@425e09c.
+- **Verified:** 425e09c write-prd Done-when command set → all empty
 
 ## Tasks
 
@@ -44,6 +44,9 @@ several harnesses read it and the repo is public.
 | 2026-10-09 19:40 CDT | G-L5 Revise (before verdict) | H2@98f66b7c8c99 | "also to add, we must think of finding if this product (in this case, a s upplement store tied to the EHR) has already been built by others, soif the problem was already solved or if something similar was already made. how many users they have. what market share of users do we expect. we can find out when our our user base will most likely use our services to plan things like maintenance windows, etc. we can also use how many users we will have on average, to right size the machine instances we plan to purchase in the cloud, and then what the through put may be, this also helps decide what langauge or tool to use, how many users to plan for our system design, infra architecture, etc. user behavior and expected behavior on our app can help plan for edge cases and requests per second. like this. now run /route-failure" |
 | 2026-10-09 19:42 CDT | G-L5 | H3@255e96814097 (approval covers apply + kit push to GitLab and GitHub) | "approve, then /gather-evidence" |
 | 2026-10-09 20:00 CDT | research review (no gate; gather-evidence STOP) | docs/research/R08-R13@8b161f6 | "approve, then /write-prd" |
+| 2026-10-09 20:24 CDT | G1 Revise | docs/product/prd.md@5fe5a0f | "yes, all looks good here for all reccomendations" (the 8 open ⚠) · "yes to each of these, also remember that this needs to be a hipaa compliant software, check me on that" (A-2 to A-5) |
+| 2026-10-09 20:27 CDT | decision: HIPAA treatment in the PRD (option 1, HIPAA-ready not HIPAA-compliant) | chat options card; lands in docs/product/prd.md NG-10, NFR-007 to NFR-011 | "yes, hipaa ready" |
+| 2026-10-09 20:29 CDT | G1 | docs/product/prd.md@425e09c (A-9 15-minute sign-out taken as recommended) | "approve, then /map-ux-flows" |
 
 ## Log
 
@@ -74,3 +77,6 @@ several harnesses read it and the repo is public.
 2026-10-09 19:33 CDT ROUTE PRD paused by human: "i think we should pause, and go back to the research phase ... research should be done on our ideal customer profile, and the market of our users in general, and what share of the market will come to us ... where are our customer clusters ... we need an expert skill in this type of research, but we can bundle it under the research skill we already have"
 2026-10-09 19:42 CDT VERIFY H3 applied in software-factory-kit 071beeb (hash 255e96814097 matched; scripts/test.sh 119/0); pushed GitLab + GitHub; D24 logged. Next: gather-evidence follow-up pass R08+ (market, competitors, usage/load)
 2026-10-09 19:56 CDT VERIFY gather-evidence R08-R13 written and committed @8b161f6 (budgets 9, 8, 8, 2, 10, 0 of 20)
+2026-10-09 20:09 CDT FAIL write-prd Q3 card (supervisor, chat): said "No maximum price for now ... Fullscript's 35% cap is their own business rule", treating a cap on the discount off MSRP as a price ceiling; R04 F3 (S04.2) states it correctly. Human corrected: "Fullscript's 35% cap is for their discount, not for their maximum price. be careful. note this down." Carry into docs/AI_USAGE.md (where AI misled) and route at M1 close.
+2026-10-09 20:19 CDT VERIFY write-prd draft docs/product/prd.md@5fe5a0f; Done-when checks clean; offered G1
+2026-10-09 20:29 CDT GATE G1 approved docs/product/prd.md@425e09c; D25 logged; next map-ux-flows
