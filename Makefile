@@ -33,7 +33,7 @@ setup:
 db-test-up:
 	docker compose up -d db-test
 
-## test-acceptance: QA-owned acceptance tests (red until their milestone is built; not part of check until merge)
+## test-acceptance: every milestone's QA-owned acceptance tests (check runs the M4 part via test-acceptance-m4; needs `make db-test-up`)
 test-acceptance:
 	npx vitest run --dir tests/acceptance
 

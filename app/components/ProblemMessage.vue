@@ -12,6 +12,8 @@ export interface Problem {
 
 const props = defineProps<{ problem: Problem | null; copy?: Record<string, string>; names?: Record<number, string> }>()
 const emit = defineEmits<{ retry: [] }>()
+// S2: "Sign in to return to your order." The sign-in page accepts only same-site paths as `next` (safeNext).
+const route = useRoute()
 
 const slug = computed(() => props.problem?.type?.replace('/problems/', '') ?? 'offline')
 const dollars = (c: number) => `$${(c / 100).toFixed(2)}`
@@ -24,9 +26,15 @@ const text = computed(() => {
     case 'insufficient-stock':
       return `Only ${p?.unitsAvailable?.[0] ?? 0} in stock. Lower the quantity.`
     case 'below-price-floor': {
-      const name = props.names?.[p?.productIds?.[0] ?? -1] ?? 'A product'
-      const floor = p?.lowestAllowedPriceCents === undefined ? '' : ` of ${dollars(p.lowestAllowedPriceCents)}`
-      return `${name} is below its lowest allowed price${floor}. Remove it or change its price in Practice prices.`
+      // FR-004: name every item. One item keeps S1's exact copy; the floor is only sent for the first item.
+      const ids = p?.productIds?.length ? p.productIds : [-1]
+      const names = ids.map((id) => props.names?.[id] ?? 'A product')
+      if (names.length === 1) {
+        const floor = p?.lowestAllowedPriceCents === undefined ? '' : ` of ${dollars(p.lowestAllowedPriceCents)}`
+        return `${names[0]} is below its lowest allowed price${floor}. Remove it or change its price in Practice prices.`
+      }
+      const list = `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`
+      return `${list} are below their lowest allowed prices. Remove them or change their prices in Practice prices.`
     }
     case 'offline':
       return "You're offline. Try again when you're back online."
@@ -40,7 +48,7 @@ const retryable = computed(() => slug.value === 'internal' || slug.value === 'of
 <template>
   <div v-if="problem" role="alert" class="problem">
     <p>{{ text }}</p>
-    <NuxtLink v-if="slug === 'unauthenticated'" to="/sign-in">Sign in</NuxtLink>
+    <NuxtLink v-if="slug === 'unauthenticated'" :to="{ path: '/sign-in', query: { next: route.fullPath } }">Sign in</NuxtLink>
     <button v-if="retryable" type="button" @click="emit('retry')">Try again</button>
   </div>
 </template>

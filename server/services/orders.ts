@@ -258,9 +258,9 @@ export async function getOrderForViewer(viewer: Viewer, orderId: bigint): Promis
   }
 }
 
-/** EP-20 (FR-066, FR-067, SM-1): a provider of the order's practice cancels a sent or payment-failed order (or one
- *  whose checkout hold has ended, which SM-1 returns to sent on any action). A live checkout, a paid or a
- *  needs-review order is refused unchanged. Cancelling a cancelled order returns it unchanged (natural repeat). */
+/** EP-20 (FR-066, FR-067, SM-1): a provider of the order's practice cancels a sent or payment-failed order. Any
+ *  checkout (even one whose hold has ended: a payment may still be in flight), a paid or a needs-review order is
+ *  refused unchanged. Cancelling a cancelled order returns it unchanged (natural repeat). */
 export async function cancelOrder(viewer: Viewer, orderId: bigint): Promise<Order> {
   const db = useDb()
   const o = await db
@@ -277,9 +277,7 @@ export async function cancelOrder(viewer: Viewer, orderId: bigint): Promise<Orde
       .updateTable('orders')
       .set({ status: 'cancelled', cancelled_at: sql`now()` })
       .where('id', '=', o.id)
-      .where((eb) =>
-        eb.or([eb('status', 'in', ['sent', 'payment_failed']), eb.and([eb('status', '=', 'in_checkout'), eb('prices_held_until', '<=', sql<Date>`now()`)])]),
-      )
+      .where('status', 'in', ['sent', 'payment_failed'])
       .returning('id')
       .executeTakeFirst()
     if (!done) throw new ProblemError('invalid-transition')

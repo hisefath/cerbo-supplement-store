@@ -100,7 +100,8 @@ describe('belowFloorProductIds: what refuses an order whose payout would be belo
     expect(belowFloorProductIds([line(1, 1800, 900, 2), line(2, 1200, 1200), line(3, 3000, 1500)])).toEqual([2]))
   it('AE-001 order is fine', () => expect(belowFloorProductIds([line(1, 1800, 900, 2), line(2, 2400, 1200)])).toEqual([]))
   it('every product at its floor but the one order fee rounds up below $0.00 -> names every product', () => {
-    // 66c at a 66c cost: fee(66) = 0, payout 0. Two units: fee(132) = 1, payout -1.
+    // 66c at a 66c cost: fee(66) = 0, payout 0. Two such products: fee(132) = 1, payout -1.
+    expect(belowFloorProductIds([line(7, 66, 66), line(8, 66, 66)])).toEqual([7, 8])
     expect(belowFloorProductIds([line(7, 66, 66, 2)])).toEqual([7])
   })
   it('no lines -> nothing named', () => expect(belowFloorProductIds([])).toEqual([]))

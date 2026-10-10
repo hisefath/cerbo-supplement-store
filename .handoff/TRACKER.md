@@ -7,11 +7,11 @@ several harnesses read it and the repo is public.
 ## Resume
 
 <!-- Rewritten as the LAST edit of every supervisor move. Times come from `date`. -->
-- **As of:** 2026-10-10 15:13 CDT
-- **In flight:** M4 build complete: T001-T009 merged on milestone/m4-tracer-bullet (last 9f8295d). Milestone review (verifier pass 6) running over T004, T005, T007, T008, T009 and noted items.
-- **Next:** pass 6 dispositions with the human; then the human types /report-milestone (G5). After M4: design-lld catch-up (helper unitCostFromLowestAllowedPrice; D47 SM-1 guard; FM-3 new-key retry; failure_reason NULL meaning; acceptance Q-1 to Q-4); define-acceptance re-run (D47 test); FM-7 reconcile owner; milestone review items pass2 R6, R7, pass3 R3, R5.
-- **Waiting on:** milestone review (verifier pass 6).
-- **Verified:** 9f8295d make check OK (96 unit + 43 M4 acceptance, now inside the gate)
+- **As of:** 2026-10-10 15:25 CDT
+- **In flight:** none. M4 build complete: T001-T010 on milestone/m4-tracer-bullet@72ad7fa; reviews M4-pass1..6 dispositioned.
+- **Next:** human types /report-milestone (G5). Carry into the report: open items from passes 1-6 (filed and LLD/acceptance catch-ups), M5 spec gap (patient order list), ship-milestone TRUST_PROXY. After M4: design-lld catch-up (helper unitCostFromLowestAllowedPrice; D47 SM-1 guard; FM-3 new-key retry; failure_reason NULL meaning; acceptance Q-1 to Q-4); define-acceptance re-run (D47 test); FM-7 reconcile owner; milestone review items pass2 R6, R7, pass3 R3, R5.
+- **Waiting on:** human: /report-milestone.
+- **Verified:** 72ad7fa make check OK (lint, typecheck, 96 unit, 43 M4 acceptance, embeds)
 
 ## Tasks
 
@@ -103,6 +103,7 @@ several harnesses read it and the repo is public.
 | 2026-10-10 14:33 CDT | verifier pass 5 on the M4-T006 relaunch before squash | m4/t006-sign-in-and-idle-sign-out@610754e | "a, run the verifier on T006" |
 | 2026-10-10 14:54 CDT | T006 review pass5 dispositions, option a: relaunch T006 for R3 (parallel-safe limit), R4 (re-check EP-17 before redirect), R2 local half (TRUST_PROXY setting, no shared unknown-address count; ship-milestone sets and confirms the Railway header), R1 (or-vs-and test); R5, R6 to milestone review; supervisor checks the result without another verifier pass unless asked | specs/M4-tracer-bullet/tasks/T006.md@08a61ae | "a, one more T006 run" |
 | 2026-10-10 15:08 CDT | G4 re-approval (Revise, option a): T009 Done-when becomes make -n check / grep -q "tests/acceptance" && npx vitest run --dir tests/acceptance/M4 && make check; rerun T009 | specs/M4-tracer-bullet/tasks/T009.md@f6f3714 | "a, fix T009's check and rerun" |
+| 2026-10-10 15:19 CDT | G4 re-approval (Revise, option a): add M4-T010 milestone review fixes (pass6 R2 cancel only from sent/payment_failed, R3 sign-in link carries next=, R4 name every below-floor item, R1 test, R15 Makefile comment) and run it; patient order list = M5 spec gap; R5, R6, R8, R9, R11 to LLD/acceptance catch-up; R10, R13, R14 to M5 | specs/M4-tracer-bullet/tasks/T010.md@75c17f0 | "a, add T010 and run it" |
 
 ## Log
 
@@ -259,3 +260,6 @@ several harnesses read it and the repo is public.
 2026-10-10 15:08 CDT DISPATCH M4-T009 relaunch harness=claude-subagent why=stronger Done-when
 2026-10-10 15:12 CDT VERIFY M4-T009 squashed as 9f8295d: scope-guard OK (1 path); make -n check names tests/acceptance (exit 0); make check OK (96 unit + 43 M4 acceptance)
 2026-10-10 15:12 CDT DISPATCH M4-review-milestone harness=claude-verifier why=milestone review covering T004, T005, T007, T008, T009 and noted items (pass 6, review plan approved)
+2026-10-10 15:18 CDT RESULT M4-review-milestone verifier pass 6: 15 rows (1 P1: R2 cancel allowed on in_checkout with an ended hold races a processing payment, against T008 Must-not-change; 2 P2: R3 sign-in link drops next= and patient home /orders has no page, R4 S1 below-floor message names only the first product; 12 P3); saved .handoff/reviews/M4-pass6.md
+2026-10-10 15:19 CDT DISPATCH M4-T010 harness=claude-subagent why=milestone review fixes before G5
+2026-10-10 15:25 CDT VERIFY M4-T010 squashed as 72ad7fa: scope-guard OK (4 paths); Done-when exit 0 (greps + 43 acceptance); make check OK (96 unit + 43 M4 acceptance). M4 build complete (T001-T010)
