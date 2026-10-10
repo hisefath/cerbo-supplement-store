@@ -7,11 +7,11 @@ several harnesses read it and the repo is public.
 ## Resume
 
 <!-- Rewritten as the LAST edit of every supervisor move. Times come from `date`. -->
-- **As of:** 2026-10-10 15:41 CDT
-- **In flight:** G5 for M4: docs/milestones/M4.md verified at 33f8509 (recommendation Revise).
-- **Next:** human answers G5. Recommended Revise: /check-security for M4; merge M1, M2, M3 first per D48; dispositions for pass6 R7, R12; human pushes and opens draft MRs. After M4: design-lld catch-up (helper unitCostFromLowestAllowedPrice; D47 SM-1 guard; FM-3 new-key retry; failure_reason NULL meaning; acceptance Q-1 to Q-4); define-acceptance re-run (D47 test); FM-7 reconcile owner; milestone review items pass2 R6, R7, pass3 R3, R5.
-- **Waiting on:** human: G5 answer.
-- **Verified:** 33f8509 make check exit 0 (96 unit + 43 M4 acceptance) by report-milestone; recipe 12 tallies stable
+- **As of:** 2026-10-10 16:20 CDT
+- **In flight:** demo deploy prep (D55): GAP tasks M4-T901 (/healthz), M4-T902 (/version), M4-T903 (demo seed) running in parallel. M4 build T001-T011 squashed (last 1dafd61); check-security answered (D49-D54); ship-milestone STOP B (runbook, HEALTH.md, smoke.sh committed 11b3425).
+- **Next:** verify and squash T901-T903; human does runbook FS-1 to FS-8 (web-v2, postgres-v2, roles, domain, variables incl. TRUST_PROXY=1, migrations, seed); then /ship-milestone again for the deploy ask. Later: re-run /check-security and /report-milestone, then the D48 merge chain M1 to M4. After M4: design-lld catch-up (helper unitCostFromLowestAllowedPrice; D47 SM-1 guard; FM-3 new-key retry; failure_reason NULL meaning; acceptance Q-1 to Q-4); define-acceptance re-run (D47 test); FM-7 reconcile owner; milestone review items pass2 R6, R7, pass3 R3, R5.
+- **Waiting on:** M4-T901, M4-T902, M4-T903 workers.
+- **Verified:** 1dafd61 make check OK (108 unit + 43 M4 acceptance); built-app CSP hash matches
 
 ## Tasks
 
@@ -123,6 +123,7 @@ several harnesses read it and the repo is public.
 | 2026-10-10 16:11 CDT | standing security triage rule for this project: only critical/high findings truly reachable in the expected deployment (inside Cerbo's EHR) block; ship the demo first, fixing only what is exploitable in the demo deployment | milestone/m4-tracer-bullet@4b6aaab | "hey, we should only worry about critical and high severities that we are truly vulnerable to in the expected deployment environment. so inside of Cerbo's EHR, what could we be vulnerable to? thats what we care about. but before then, lets get the code out for demo purposes, and fix anything that may be vulnerable for the demo only" |
 | 2026-10-10 16:12 CDT | demo release: deploy the demo from milestone/m4-tracer-bullet before the M1 to M4 merge chain (option a) | milestone/m4-tracer-bullet@a4b64b4 | "a, deploy the demo from the branch" |
 | 2026-10-10 16:15 CDT | M4-T011 review dispositions (pass 7), option a: squash T011; R1 build-and-compare CSP hash check and R8 runtime-env warning go to ship-milestone smoke and runbook; R3 to LLD/contract catch-up; R2, R4, R5, R6, R7 filed | .handoff/reviews/M4-pass7.md; m4/t011-security-hardening-before-g5@182ee45 | "a, squash T011 then /ship-milestone" |
+| 2026-10-10 16:20 CDT | G-live STOP B: approve GAP-1, GAP-2, GAP-3 as task contracts M4-T901, M4-T902, M4-T903 on milestone/m4-tracer-bullet (D55; runbook Q-1 new web-v2 + postgres-v2, Q-3 GAP tasks on the M4 branch) | docs/ops/HEALTH.md@06c8d86 | "Approve, run the three GAP tasks" |
 
 ## Log
 
@@ -289,3 +290,7 @@ several harnesses read it and the repo is public.
 2026-10-10 16:07 CDT DISPATCH M4-review-T011 harness=claude-verifier why=security hardening review (pass 7, human yes)
 2026-10-10 16:13 CDT RESULT M4-review-T011 verifier pass 7: 8 rows (1 P1 R1 CSP-hash test cannot fail against built output; 3 P2 R3 openapi payOrder lacks 429, R4 built-in error pages blocked by CSP, R5 no-cache on 404; 4 P3). Supervisor ran the built app (nuxi build; node .output/server; curl /sign-in): the one inline script hash equals the CSP script-src hash, 0 inline styles, nosniff/Referrer-Policy/HSTS present, /api/session 401 with Cache-Control no-store
 2026-10-10 16:15 CDT VERIFY M4-T011 squashed as 1dafd61: scope-guard OK (10 paths); Done-when exit 0; make check OK (108 unit + 43 M4 acceptance); built app CSP hash equals rendered inline script
+2026-10-10 16:19 CDT RESULT ship-milestone M4 demo @13a816a: NOT deployed; blocking GAP-1 (no /healthz), GAP-2 (no /version); GAP-3 demo seed (follow-up); runbook targets new web-v2 + postgres-v2, v1 app untouched; make check unaffected
+2026-10-10 16:20 CDT DISPATCH M4-T901 harness=claude-subagent why=GAP-1 healthz
+2026-10-10 16:20 CDT DISPATCH M4-T902 harness=claude-subagent why=GAP-2 version
+2026-10-10 16:20 CDT DISPATCH M4-T903 harness=claude-subagent why=GAP-3 demo seed (parallel, disjoint Owns)
