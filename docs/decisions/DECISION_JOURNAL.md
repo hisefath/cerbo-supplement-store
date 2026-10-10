@@ -767,3 +767,15 @@ Copy this block for each new entry (D-ids increase by one, starting at D1):
 - Cost accepted: none beyond the rewritten lookups. · Reversibility: Type 2 two-way — revert the kit commit · Confidence: high
 - Revisit if: apply-proposal.sh stops with exit 141 again. · Evidence: software-factory-kit FINDINGS.md F26; HARNESS_CHANGELOG.md H15; kit commit 253662e; D57; approval G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) 2026-10-10 18:28 CDT · Interview line: "Under pipefail an early-exiting reader can kill its writer, so the apply script reads the file directly instead of through a pipe."
 - Review: Topic Process · Weight ●○○ · One-liner: The apply script's lookups no longer die of SIGPIPE on large proposals.
+
+### D68 log-decision creates a missing journal from the template  [status: accepted]
+- Date 2026-10-10 18:30 CDT · phase 15 route-failure (G-L5) · milestone M4 · Decided by: human, G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) 2026-10-10 18:30 CDT: "Approve, adopt H12" · Proposed by: route-failure (Claude Code, claude-opus-5-5) · artifact: HARNESS_CHANGELOG.md H12@562b8efd0be7
+- Context and forces: log-decision stopped twice on 2026-10-09 because no journal was committed yet, which every new or brownfield repo hits; the human asked that it create its own file (FINDINGS F13).
+- Options:
+  - Do nothing / simplest (shown as "C do nothing"): keep the stop — cost: the first decision on every new repo stalls — rejected: the human chose to adopt H12
+  - A adopt H12: when no journal is committed, copy the kit's journal template, append as usual, and say so in STOP (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: log-decision may create one file it used to refuse — chosen
+  - B make init-repo commit the journal at setup — cost: setup starts committing, and a repo that skipped setup still stalls — rejected: the record should not wait on a setup step
+- Choice: A · Why: In the context of the first decision in a new repo, facing a skill that refused to start a journal, we chose to create it from the kit template over committing at setup, so recording never waits on setup, accepting one more file log-decision may write.
+- Cost accepted: log-decision can create docs/decisions/DECISION_JOURNAL.md; no mechanical guard beyond its STOP line. · Reversibility: Type 2 two-way — revert the kit commit · Confidence: high
+- Revisit if: a created journal differs from the kit template, or log-decision stalls on a missing journal again. · Evidence: software-factory-kit FINDINGS.md F13; HARNESS_CHANGELOG.md H12; kit commit b8560d0; approval G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) 2026-10-10 18:30 CDT · Interview line: "The first decision creates the decision log from the template, so recording never waits on a setup step someone forgot."
+- Review: Topic Process · Weight ●○○ · One-liner: log-decision starts the journal from the kit template when none exists.
