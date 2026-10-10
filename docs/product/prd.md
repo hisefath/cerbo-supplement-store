@@ -4,7 +4,7 @@
 |---|---|
 | Source brief | `specs/M1-in-ehr-supplement-orders/brief.md` @ e8c6621 |
 | Track | Full |
-| Last updated | 2026-10-09 21:45 CDT |
+| Last updated | 2026-10-09 22:14 CDT |
 | Context names | Cerbo, Fullscript |
 | Approval | G1 — recorded in `.handoff/TRACKER.md ## Approvals` (never in this file) |
 
@@ -39,6 +39,10 @@ flow in-house and earn its fee on volume that already exists (REQ-09).
 | P-2 Patient | A practice's patient on a supplement protocol, often ongoing (R06) | After the visit, from wherever they read the practice's messages | See what they owe, be told of any price change, pay once | Per order; often monthly |
 | P-3 Platform reviewer | Cerbo finance or operations staff | When checking payouts or answering a provider's question | See where every cent of a paid order went | Weekly or on demand |
 | P-4 Platform leadership | Cerbo product and business owners | Monthly business review | See in-house volume and fees per practice | Monthly |
+| P-5 Finance lead | Cerbo's finance lead (fictional: Fran Fields), sees business data only and no patient's identity, per NFR-012 | Month end, audits, when finance asks | Run the financial report, export it, check it balances, review the access log | Monthly and on demand |
+| P-6 Operations specialist | Cerbo operations staff (fictional: Omar Ortega); plays the platform reviewer and platform staff of US-3 and US-5 | Daily review list and stock deliveries | Audit paid orders, clear the review list, record stock changes | Daily |
+| P-7 SRE | Cerbo's on-call engineer (fictional: Sam Reyes) | When something is slow or down, and when staff join or leave | See system health; grant and remove operations roles | Weekly and on call |
+| P-8 Data analyst | Cerbo's analyst (fictional: Dana Ito) | Monthly business review prep | Read totals and trends, never single orders | Monthly |
 
 Not for: insurance-billed practices (Cerbo's own pages describe a cash, membership and direct-pay customer, R09);
 prescription-medicine dispensing (a different product category, R08); practices outside the US (REQ-08).
@@ -72,7 +76,7 @@ No-gos:
 ## Appetite
 
 - Time box: none fixed; the human waived the deadline, and the assignment's guidance of 1–2 days still keeps each milestone small. Hard date: none. Source: REQ-24, brief Appetite and deadlines.
-- If time runs short, cut in this order: US-7 → US-6 → US-5 → US-4. Never cut: US-1, US-2, US-3, US-8 and every [Unwanted] requirement they hold.
+- If time runs short, cut in this order: US-7 → US-9 → US-10 → US-6 → US-5 → US-4. Never cut: US-1, US-2, US-3, US-8 and every [Unwanted] requirement they hold.
 
 ## User stories
 
@@ -149,6 +153,25 @@ so that nobody else can see my orders or my patients' orders.
 - Independent test: Ana signs in and sees only her order; signed out, the same link shows only the sign-in page.
 - Requirements: FR-039, FR-040, FR-041, FR-042, FR-043, FR-044, FR-050 · Examples: AE-037, AE-038, AE-039, AE-040, AE-041, AE-047
 
+### US-9 Run the financial report (P3)
+
+As the finance lead, I want to run a financial report for any period that balances to the cent, shows revenue gross
+and net, lists each provider's payouts and exports every paid order behind it, so that I can close the books and
+answer an auditor without seeing any patient's identity.
+
+- Why this priority: the human asked that the operations data produce the financial reports when needed (Q12); R14 shows the report shape payment platforms use.
+- Independent test: the finance lead runs October's report and sees $90.00 of patient payments = $45.00 item cost + $44.32 payouts + $0.68 fees, balanced, then exports it.
+- Requirements: FR-060, FR-061, FR-062, FR-063, FR-064, FR-065 · Examples: AE-055, AE-056, AE-057, AE-058, AE-059, AE-060
+
+### US-10 Operations roles and access (P3)
+
+As the platform's operations team, we want four roles, each limited to the data and actions its job needs, with role
+changes made by one person and reviewed by another, so that nobody holds more access than their work requires.
+
+- Why this priority: the human asked for operations identity and access management with a lean team (Q12); HIPAA's minimum-necessary rule and NIST's separation of duties back it (R15).
+- Independent test: the SRE grants Dana the data analyst role; Dana can see totals but not open Order 1042; the finance lead sees the grant in the access log.
+- Requirements: FR-051, FR-052, FR-053, FR-054, FR-055, FR-056, FR-057, FR-058, FR-059 · Examples: AE-048, AE-049, AE-050, AE-051, AE-052, AE-053, AE-054, AE-061, AE-062
+
 ## Functional requirements
 
 - **FR-001** [Event] (US-1) When a provider starts an order for a patient of their practice, the system shall list the practice's products with each product's current patient price and units in stock.
@@ -201,6 +224,21 @@ so that nobody else can see my orders or my patients' orders.
 - **FR-048** [Event] (US-6) When platform staff open the platform health dashboard for a period, the system shall show the sent-to-paid rate, median time to pay, failed payments, out-of-stock refusals, expired checkouts, orders needing review, and in-house paid volume and fees.
 - **FR-049** [State] (US-6) While a health measure is past its alert line, the system shall mark it as needing attention on the platform health dashboard.
 - **FR-050** [Ubiquitous] (US-8) The system shall show platform staff an order number in place of any patient name or contact detail.
+- **FR-051** [Ubiquitous] (US-10) The system shall let only the finance lead run and export financial reports.
+- **FR-052** [Ubiquitous] (US-10) The system shall let only the operations specialist work the review list and record stock adjustments.
+- **FR-053** [Ubiquitous] (US-10) The system shall show the data analyst totals on the health dashboard and volume report and never a single order.
+- **FR-054** [Event] (US-10) When the SRE grants or removes an operations role, the system shall add an access log entry showing who acted, for whom, which role, when and the reason.
+- **FR-055** [Unwanted] (US-10) If anyone other than the SRE tries to grant or remove an operations role, then the system shall refuse and leave every role unchanged.
+- **FR-056** [Unwanted] (US-10) If the SRE tries to grant or remove a role on their own account, then the system shall refuse and leave their roles unchanged.
+- **FR-057** [Event] (US-10) When the finance lead opens the access log for a period, the system shall list every role grant and removal in that period.
+- **FR-058** [Unwanted] (US-10) If an operations person opens a page or action their role does not allow, then the system shall refuse and show none of its contents.
+- **FR-059** [Event] (US-10) When the SRE opens system health for a period, the system shall show availability, error rate and the share of slow pages for that period.
+- **FR-060** [Event] (US-9) When the finance lead runs the financial report for a period, the system shall show that period's patient payments, item cost, provider payouts and platform fees, each in whole cents.
+- **FR-061** [Ubiquitous] (US-9) The system shall show on the financial report whether patient payments equal item cost plus provider payouts plus platform fees to the cent.
+- **FR-062** [Ubiquitous] (US-9) The system shall show revenue on the financial report two ways, each labelled: gross as all patient payments, and net as platform fees only.
+- **FR-063** [Event] (US-9) When the finance lead exports the financial report, the system shall produce the period totals and one line per paid order with its order number and no patient identity.
+- **FR-064** [Event] (US-9) When the finance lead runs the financial report, the system shall list each provider's payout total for the period.
+- **FR-065** [Unwanted] (US-9) If a period's totals do not balance to the cent, then the system shall mark the report as not balanced and name the orders that cause the gap.
 
 ## Non-functional requirements
 
@@ -216,6 +254,8 @@ so that nobody else can see my orders or my patients' orders.
 - **NFR-010** [Privacy] The system's logs hold 0 records containing a patient's name, an order's items or payment details. Source: (Q8).
 - **NFR-011** [Privacy] 0 records from real patients are used in the demo, examples or tests; every person is fictional. Source: (Q8).
 - **NFR-012** [Privacy] Platform staff see 0 records containing a patient's name or contact details on any page or report. Source: (Q11).
+- **NFR-013** [Auditability] 100 % of paid orders, their splits, and the price, stock and access histories are kept for at least 3 years. Source: R14 F7 (IRS record keeping), (Q12).
+- **NFR-014** [Auditability] 100 % of privileged actions (role changes, stock adjustments, price changes, report exports) are logged with who acted and when, and reviewed by someone other than the actor. Source: R15 F2, F4, F5, (Q12).
 
 ## Success criteria
 
@@ -280,6 +320,21 @@ cost → default patient price): Vitamin D3 $9.00 → $18.00; Magnesium Glycinat
 - **AE-045** (FR-048) Given that in October 10 orders were sent, 8 were paid with a median time to pay of 20 hours, 1 payment failed and 1 checkout expired, When platform staff open the health dashboard for October, Then it shows an 80% sent-to-paid rate, 20 hours, 1 failed payment and 1 expired checkout.
 - **AE-046** (FR-049) Given 1 order needs review and its alert line is 1, When platform staff open the health dashboard, Then "Orders needing review: 1" is marked as needing attention.
 - **AE-047** (FR-050) Given Ana's paid order number 1042, When a platform reviewer opens it, Then it shows "Order 1042" and no patient name or contact detail.
+- **AE-048** (FR-051) Given Fran Fields is the finance lead, When Omar Ortega, the operations specialist, tries to run October's financial report, Then he is refused and Fran can run it.
+- **AE-049** (FR-052) Given Order 2001 is on the review list, When Dana Ito, the data analyst, tries to clear it, Then she is refused and Omar can clear it.
+- **AE-050** (FR-053) Given Dana is the data analyst, When she opens the October volume report, Then she sees totals per practice and cannot open Order 1042.
+- **AE-051** (FR-054) Given Sam Reyes is the SRE, When he grants Dana the data analyst role with the reason "new hire", Then the access log shows Sam, Dana, data analyst, the time and "new hire".
+- **AE-052** (FR-055) Given Fran is the finance lead, When she tries to grant Omar the SRE role, Then she is refused and Omar's roles are unchanged.
+- **AE-053** (FR-056) Given Sam is the SRE, When he tries to give himself the finance lead role, Then he is refused and his roles are unchanged.
+- **AE-054** (FR-057) Given Sam granted Dana a role on 2026-10-20, When Fran opens the access log for October, Then she sees that grant.
+- **AE-055** (FR-060, FR-064) Given October had Ana's $60.00 order (cost $30.00, payout $29.55, fee $0.45) and Ben's $30.00 order (cost $15.00, payout $14.77, fee $0.23), both with Dr. Chen, When Fran runs October's report, Then it shows patient payments $90.00, item cost $45.00, payouts $44.32, fees $0.68, and Dr. Chen's payout $44.32.
+- **AE-056** (FR-061) Given the October totals from AE-055, When Fran views the report, Then it shows "Balanced: $90.00 = $45.00 + $44.32 + $0.68".
+- **AE-057** (FR-062) Given the October totals from AE-055, When Fran views the report, Then it shows gross revenue $90.00 and net revenue $0.68, each labelled.
+- **AE-058** (FR-063) Given the October report from AE-055, When Fran exports it, Then the file holds the four totals and two order lines, Order 1042 and Order 1043, with no patient name.
+- **AE-059** (FR-065) Given an October order whose parts add up to one cent less than paid, When Fran runs October's report, Then the report says "Not balanced: $0.01 short" and names that order.
+- **AE-060** (FR-060) Given no orders were paid in September, When Fran runs September's report, Then every total shows $0.00 and the report is balanced.
+- **AE-061** (FR-058) Given Sam is the SRE, When he opens Order 1042's breakdown, Then he is refused and sees no amounts.
+- **AE-062** (FR-059) Given October had 99.7 % availability, 0.4 % errors and 2 % of pages slower than 2 s, When Sam opens system health for October, Then he sees those three figures.
 
 ## Edge cases
 
@@ -297,6 +352,8 @@ cost → default patient price): Vitamin D3 $9.00 → $18.00; Magnesium Glycinat
 - **EC-12** Someone tries to edit a paid order, a price history entry or a stock history entry → expected: refused, original kept (FR-015, FR-021)
 - **EC-13** A patient's session ends during checkout → expected: she signs in again and returns to her order; prices stay held until 30 minutes after checkout started (FR-041, FR-042, FR-037)
 - **EC-14** Someone forwards the order notice → expected: the reader sees only the practice name and a sign-in page (FR-044, FR-040)
+- **EC-15** The SRE leaves and nobody else can grant roles → expected: roles stay as they are until a new SRE is set up outside the product (FR-055); a second SRE account is the fix
+- **EC-16** A period with a refund or correction → expected: corrections are Later (NG-7), so in this slice periods hold only paid orders (FR-060)
 
 ## Assumptions and open questions
 
@@ -311,6 +368,8 @@ Assumptions:
 - **A-9** A session ends after 15 minutes without activity. — Basis: assumed by agent; confirm at G1.
 - **A-10** The practice alerts fire at more than 3 days unpaid and at 3 units or fewer in stock. — Basis: assumed by agent; confirm at G1.
 - **A-11** Each health measure's alert line is set after 30 days of real orders, except orders needing review, which alerts at 1. — Basis: assumed by agent; confirm at G1.
+- **A-13** In M4 and M5 the platform reviewer and platform staff are played by the operations specialist (P-6); the finance lead, SRE and data analyst roles arrive in M6. — Basis: assumed by agent from (Q12); confirm at G1.
+- **A-14** The financial report shows revenue both gross and net because which one applies is an accountant's judgment (R14 I2). — Basis: R14; the human waived the open accounting question (Q12).
 - **A-12** Sign-in is a stand-in: each fictional person has their own account, and no real identity check runs. — Basis: REQ-07, (Q9).
 - **A-8** The success targets rest on R10 and R11 estimates (an outside seller's claimed patients per provider, a $50 median monthly supplement spend, 22% first-year adoption). — Basis: R10, R11; each target is aspirational until real orders exist.
 
@@ -334,6 +393,7 @@ Answered from sources: Problem → brief Problem, REQ-01, R02, R08, R10 · Users
 | Q9 | G-ux open questions: a stand-in sign-in screen, an order-status list, and how the patient gets the link | Add a P1 sign-in story; order-status list Later; S1 shows the link | "1. yes, def need auth flow fr patients, and providers designed and also in spec, 2. yes, we need a dashboard as this is ecommerce and order status list is needed on that dashboard, and also we should be able to track multiple metrics on that dashboard for ecommerce, that will tell us any issues or bottle necks or alerts.  3. should the patient only click the click from inside the platform how do other companies solve this today, especially for a hipaa compliant ecommerce platform?" | US-8, FR-039 to FR-042, US-5, US-6 |
 | Q10 | How does the patient reach their order? | A notice with no details, then sign-in — because the Fullscript integration emails the patient (S02.3) and HHS guidance (FAQ 570, via a law-firm summary) says to limit health information in email | "ok" | FR-042, FR-043, FR-044, EC-14 |
 | Q11 | Who sees the e-commerce dashboard, what is on it, and which milestone builds it? | Order-status list and practice alerts for the provider in M5; platform health dashboard for platform staff in M6; alerts on the dashboard only | "yes, thats good seperation, platform staff should also not see any pii data, just eccommerce related data" | FR-045 to FR-050, NFR-004, NFR-012, NG-11, A-10, A-11 |
+| Q12 | Financial reporting and operations access: research them, add them to the PRD, design their screens in M6, then resume the HLD? | Research R14 and R15, then add a financial-report story and an operations-roles story — because neither was researched or in the spec | "yes to the recommendation, however its just a mock system, the real system would have 0 data loss with cross region replicas, backups, disaster recovery an redundancy in mind. the patient / EHR data cant be lost. and financial reporting and audits are also necessary to think about, thats why we have the platform / operation dashboard, and that data should also be able to create our financial reports when needed (is this portion researched and is it in the spec? do we have ui ux for running that financial report?) also identity and access management of the operational side should be considered, so we can name a few fake users, like CFO vs SRE vs data analyst etc, whatever you think the leanest, necessary team is." · "ok" · "approve, these are not important gaps, dont write them, then /write-prd" | US-9, US-10, P-5 to P-8, FR-051 to FR-065, NFR-013, NFR-014, A-13, A-14 |
 
 ## Risks
 
@@ -354,7 +414,7 @@ Answered from sources: Problem → brief Problem, REQ-01, R02, R08, R10 · Users
 | M3 Design | Approved HLD, LLD, data design, contract, diagrams | none (docs only) | G2-G3 approvals | A reviewer can read every design doc from docs/README.md. |
 | M4 Tracer bullet | Each person signs in; provider sends an order, patient pays once, the split is recorded and shown to the cent | FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-007, FR-008, FR-009, FR-010, FR-011, FR-012, FR-013, FR-014, FR-015, FR-017, FR-031, FR-035, FR-036, FR-039, FR-040, FR-041, FR-042, FR-043, FR-044, FR-050 | AE-001 to AE-015, AE-028, AE-031, AE-032, AE-037 to AE-041, AE-047 | Dr. Chen sends Ana a $60.00 order, Ana pays it with the test payment, and a reviewer sees $30.00 + $29.55 + $0.45. |
 | M5 Prices and stock | Price-change form with history, price notices, checkout lock, stock limits, practice dashboard | FR-018, FR-019, FR-020, FR-021, FR-022, FR-023, FR-024, FR-025, FR-026, FR-027, FR-028, FR-029, FR-030, FR-037, FR-038, FR-045, FR-046, FR-047 | AE-016 to AE-027, AE-035, AE-036, AE-042 to AE-044 | Dr. Chen changes a price, Ana sees the notice, pays, and the dashboard shows the sale and lower stock. |
-| M6 Measurement | Platform health dashboard with the monthly volume report and alerts | FR-032, FR-048, FR-049 | AE-029, AE-045, AE-046, SC-001, SC-002, SC-003 | Platform staff open October's health dashboard, see 80% sent-to-paid and one order flagged for review, with no patient names. |
+| M6 Measurement and operations | Platform health dashboard, volume report, financial report, operations roles, access log and system health | FR-032, FR-048, FR-049, FR-051, FR-052, FR-053, FR-054, FR-055, FR-056, FR-057, FR-058, FR-059, FR-060, FR-061, FR-062, FR-063, FR-064, FR-065 | AE-029, AE-045, AE-046, AE-048 to AE-062, SC-001, SC-002, SC-003 | Fran runs October's report and sees $90.00 = $45.00 + $44.32 + $0.68, balanced; Sam grants Dana a role and Fran sees it in the access log. |
 | Later | Not in this appetite: pricing campaigns and corrections | FR-016, FR-033, FR-034 | — | — |
 
 ## Constraints
@@ -377,7 +437,7 @@ Answered from sources: Problem → brief Problem, REQ-01, R02, R08, R10 · Users
 | REQ-02 | Provider picks supplements and sets price or margin per item | FR-001, FR-002, FR-017, FR-018 |
 | REQ-03 | Patient pays; stand-in payment is fine | FR-006, FR-007, FR-008, FR-035 |
 | REQ-04 | Compute and keep item cost, provider margin, 75 bps fee | FR-010, FR-011, FR-012, C-4 |
-| REQ-05 | Split correct and auditable to the cent | FR-013, FR-014, FR-015, FR-036, NFR-003 |
+| REQ-05 | Split correct and auditable to the cent | FR-013, FR-014, FR-015, FR-036, FR-060, FR-061, FR-065, NFR-003, NFR-013 |
 | REQ-06 | Dashboard of what sold; inventory updates | FR-027, FR-028, FR-029, FR-030 |
 | REQ-07 | Stub external systems with clean seams; say what is stubbed | FR-007, C-3, A-6 |
 | REQ-08 | Out of scope list | NG-1 to NG-4, NG-8, C-5 |
@@ -398,6 +458,7 @@ Answered from sources: Problem → brief Problem, REQ-01, R02, R08, R10 · Users
 | 2026-10-09 20:24 CDT | G1 Revise: answered the 8 open questions (Q6) and confirmed A-2 to A-5 (Q7); added FR-037 checkout lock expiry and FR-038 providers cannot adjust stock | NFR-001, NFR-005, FR-017, FR-018, FR-030, FR-037, FR-038, SC-002, SC-003, AE-015, AE-027, AE-035, AE-036, EC-6, A-2 to A-5 | G1 |
 | 2026-10-09 20:27 CDT | G1 Revise: HIPAA-ready, not HIPAA-compliant (Q8); added NFR-007 to NFR-011, NG-10, A-9 | NFR-007, NFR-008, NFR-009, NFR-010, NFR-011, NG-10, A-9 | G1 |
 | 2026-10-09 21:45 CDT | G1 Revise (Q9-Q11): sign-in story US-8, notices without health details, order-status list and practice alerts in M5, platform health dashboard in M6, no patient identity for platform staff | US-5, US-6, US-8, FR-039 to FR-050, NFR-004, NFR-012, AE-037 to AE-047, EC-13, EC-14, NG-11, A-10 to A-12 | G1 |
+| 2026-10-09 22:14 CDT | G1 Revise (Q12, R14, R15): financial report US-9, operations roles US-10, personas P-5 to P-8, retention and privileged-action logging | US-9, US-10, FR-051 to FR-065, NFR-013, NFR-014, AE-048 to AE-062, EC-15, EC-16, A-13, A-14 | G1 |
 
 ## Clarifications
 

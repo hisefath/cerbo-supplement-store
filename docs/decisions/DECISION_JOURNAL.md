@@ -293,3 +293,15 @@ Copy this block for each new entry (D-ids increase by one, starting at D1):
 - Choice · Why: in an EHR store whose patients' supplement lists are health information, facing a demo that switches people and a business that needs to see bottlenecks, we chose personal sign-in, detail-free notices, a practice order-status view with alerts in M5, and a de-identified platform health dashboard in M6, over link-only access and a single dashboard, to keep each person to the minimum they need, accepting one more P1 story in the tracer bullet.
 - Cost accepted: M4 grows by sign-in; alert thresholds are agent picks (A-10, A-11) until real data exists. · Reversibility: Type 2 (PRD edit + new G1) · Confidence: medium
 - Revisit if: the partner expects the order to open from the message without sign-in, or alert lines prove noisy. · Evidence: docs/product/prd.md Interview log Q9-Q11; Fullscript support (S02.3); HHS FAQ 570 via Holland & Hart summary · Interview line: "The notice says only who sent an order; the patient signs in to see it, and operations staff audit orders by number without ever seeing who the patient is."
+
+### D29 PRD revision: financial report with gross and net, four least-privilege operations roles  [status: accepted]
+- 2026-10-09 22:16 CDT · write-prd (G1) · M2 · Decided by: human, G1 2026-10-09 22:16 CDT: "approve, then /map-ux-flows" · Proposed by: write-prd (Claude Code, claude-opus-5-5) · artifact: docs/product/prd.md@ab9f181
+- Context and forces: the human asked that operations data produce financial reports and that operations access be managed with a lean team (Q12). R14 (report shape, gross vs net, 3-year retention) and R15 (minimum necessary, separation of duties, least privilege). FR-051 to FR-065, NFR-013, NFR-014.
+- Options:
+  - Do nothing — rejected: no way to close the books or control staff access
+  - Pick gross or net revenue in the product — rejected: an accountant's judgment (R14 I2); show both, labelled
+  - One "platform staff" role for everyone — rejected: breaks minimum necessary and separation of duties (R15)
+  - Finance lead, operations specialist, SRE, data analyst; SRE grants roles, finance reviews the access log (agent's proposal, revised after R15 F4) — chosen
+- Choice · Why: for a platform that must close its books and pass an audit, facing a mixed principal-versus-agent case and HIPAA's minimum-necessary rule, we chose a balancing period report with gross and net side by side and four least-privilege roles with separated grant and review, over a single admin role, to keep every person to the data their job needs, accepting four more role screens in M6.
+- Cost accepted: M6 grows; a single SRE is a bottleneck for role changes (EC-15). · Reversibility: Type 2 · Confidence: medium
+- Revisit if: the partner's finance team settles gross vs net, or the team grows beyond four roles. · Evidence: docs/research/R14, R15; docs/product/prd.md US-9, US-10 · Interview line: "The person who hands out access never reviews the access log, and nobody on the ops team ever sees who a patient is."

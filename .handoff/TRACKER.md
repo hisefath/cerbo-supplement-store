@@ -7,11 +7,11 @@ several harnesses read it and the repo is public.
 ## Resume
 
 <!-- Rewritten as the LAST edit of every supervisor move. Times come from `date`. -->
-- **As of:** 2026-10-09 21:45 CDT
-- **In flight:** PRD revised for the G1 Revise raised at G-ux (Q9-Q11) @930a8d7: US-8 sign-in, notices without health details, order-status list + practice alerts (M5), platform health dashboard (M6), no patient identity for platform staff. 8 stories (4 P1), 50 FR, 12 NFR, 3 SC, 47 AE, 0 open ⚠; agent assumptions A-10, A-11 to confirm. map-ux-flows pass 1 (035f1b7) waits: it must add screens for US-8 and the new dashboard parts and drop patient initials from S3/S4 once G1 is re-approved.
-- **Next:** human re-answers G1 on docs/product/prd.md@930a8d7. Then map-ux-flows (pass 1 for new stories), then the G-ux variant picks.
+- **As of:** 2026-10-09 22:14 CDT
+- **In flight:** PRD revised @ab9f181 (Q12, R14, R15): US-9 financial report, US-10 operations roles, P-5..P-8, NFR-013/014. 10 stories (4 P1), 65 FR, 14 NFR, 3 SC, 62 AE, 0 open ⚠. Agent assumption A-13 to confirm.
+- **Next:** human answers G1 on docs/product/prd.md@ab9f181; then map-ux-flows for M6 (health dashboard, financial report, ops roles, access log, system health); then resume design-hld (Q1-Q3 answered).
 - **Waiting on:** human: G1 verdict.
-- **Verified:** 930a8d7 write-prd Done-when command set → all empty
+- **Verified:** ab9f181 write-prd Done-when command set → all empty
 
 ## Tasks
 
@@ -49,6 +49,13 @@ several harnesses read it and the repo is public.
 | 2026-10-09 20:29 CDT | G1 | docs/product/prd.md@425e09c (A-9 15-minute sign-out taken as recommended) | "approve, then /map-ux-flows" |
 | 2026-10-09 21:37 CDT | G1 Revise (raised at G-ux variant half, map-ux-flows open questions) | docs/product/prd.md@425e09c | "1. yes, def need auth flow fr patients, and providers designed and also in spec, 2. yes, we need a dashboard as this is ecommerce and order status list is needed on that dashboard, and also we should be able to track multiple metrics on that dashboard for ecommerce, that will tell us any issues or bottle necks or alerts.  3. should the patient only click the click from inside the platform how do other companies solve this today, especially for a hipaa compliant ecommerce platform?" |
 | 2026-10-09 21:50 CDT | G1 | docs/product/prd.md@930a8d7 (A-10, A-11 taken as recommended) | "approve, then /map-ux-flows" |
+| 2026-10-09 21:52 CDT | G-ux (variant half) | docs/design/screens.md@91997dc (go = S1-V1, S2-V2, S4-V1) | "go, then run pass 2" |
+| 2026-10-09 21:57 CDT | G-ux | docs/design/screens.md@96f2f5f (and docs/design/flows.md@96f2f5f) | "approve, then /design-hld" |
+| 2026-10-09 22:07 CDT | decision: design-hld interview Q1-Q3 (host, cost ceiling, RPO/RTO) | chat (design-hld Step 4; lands in hld.md when written) | Q1 host: "ok" (one PaaS region on the existing Railway account) · Q2: "$20" · Q3: "yes to the recommendation, however its just a mock system, the real system would have 0 data loss with cross region replicas, backups, disaster recovery an redundancy in mind. the patient / EHR data cant be lost. and financial reporting and audits are also necessary to think about, thats why we have the platform / operation dashboard, and that data should also be able to create our financial reports when needed (is this portion researched and is it in the spec? do we have ui ux for running that financial report?) also identity and access management of the operational side should be considered, so we can name a few fake users, like CFO vs SRE vs data analyst etc, whatever you think the leanest, necessary team is." |
+| 2026-10-09 22:07 CDT | decision: route for financial reporting + ops roles (research R14/R15 → write-prd Revise → G1 → map-ux-flows M6 → resume design-hld) | chat options card | "ok" |
+| 2026-10-09 22:13 CDT | research review (no gate; gather-evidence STOP) | docs/research/R14-R15@8c5081c | "approve, these are not important gaps, dont write them, then /write-prd" |
+| 2026-10-09 22:13 CDT | G1 Revise | docs/product/prd.md@930a8d7 (add financial reporting + ops roles per the 22:07 route; R14/R15 gaps waived, not carried as ⚠) | "approve, these are not important gaps, dont write them, then /write-prd" |
+| 2026-10-09 22:16 CDT | G1 | docs/product/prd.md@ab9f181 (A-13 taken as recommended) | "approve, then /map-ux-flows" |
 
 ## Log
 
@@ -85,3 +92,11 @@ several harnesses read it and the repo is public.
 2026-10-09 21:31 CDT VERIFY map-ux-flows pass 1 docs/design@035f1b7; offered G-ux variant half
 2026-10-09 21:45 CDT VERIFY write-prd revise docs/product/prd.md@930a8d7 (Q9-Q11); re-offered G1
 2026-10-09 21:50 CDT GATE G1 approved docs/product/prd.md@930a8d7; D26 logged; next map-ux-flows (pass 1 redo for US-8 and dashboard changes)
+2026-10-09 21:50 CDT VERIFY map-ux-flows pass 1 update docs/design@91997dc; re-offered G-ux variant half
+2026-10-09 21:52 CDT GATE G-ux variant half: S1-V1, S2-V2, S4-V1; D27 logged; map-ux-flows pass 2 started
+2026-10-09 21:55 CDT VERIFY map-ux-flows pass 2 docs/design@96f2f5f; offered G-ux
+2026-10-09 21:57 CDT GATE G-ux approved docs/design@96f2f5f; D28 logged; next design-hld
+2026-10-09 22:07 CDT ROUTE design-hld paused before writing hld.md (Q1-Q3 answered); financial reporting + ops IAM missing from research/PRD/UX; running gather-evidence follow-up R14 (financial reports and reconciliation), R15 (ops roles and separation of duties)
+2026-10-09 22:09 CDT VERIFY gather-evidence R14, R15 committed @8c5081c
+2026-10-09 22:14 CDT VERIFY write-prd revise docs/product/prd.md@ab9f181 (US-9, US-10); re-offered G1
+2026-10-09 22:16 CDT GATE G1 approved docs/product/prd.md@ab9f181; D29 logged; next map-ux-flows pass 1 for M6 (US-6, US-9, US-10)
