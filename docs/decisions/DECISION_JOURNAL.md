@@ -294,6 +294,31 @@ Copy this block for each new entry (D-ids increase by one, starting at D1):
 - Cost accepted: M4 grows by sign-in; alert thresholds are agent picks (A-10, A-11) until real data exists. · Reversibility: Type 2 (PRD edit + new G1) · Confidence: medium
 - Revisit if: the partner expects the order to open from the message without sign-in, or alert lines prove noisy. · Evidence: docs/product/prd.md Interview log Q9-Q11; Fullscript support (S02.3); HHS FAQ 570 via Holland & Hart summary · Interview line: "The notice says only who sent an order; the patient signs in to see it, and operations staff audit orders by number without ever seeing who the patient is."
 
+### D27 Screen layouts: live payout builder, two-step patient checkout, equation-first audit  [status: accepted]
+- 2026-10-09 21:52 CDT · map-ux-flows (G-ux, variant half) · M3 · Decided by: human, G-ux 2026-10-09 21:52 CDT: "go, then run pass 2" · Proposed by: map-ux-flows (Claude Code, claude-opus-5-5) · artifact: docs/design/screens.md@91997dc
+- Context and forces: three key screens carry the demo: the provider's order (FR-001, FR-002, FR-025), the patient's order and checkout (FR-022, FR-023, FR-037), and the reviewer's breakdown (FR-014, FR-050).
+- Options:
+  - Do nothing — rejected: define-acceptance needs a G-ux approval
+  - S1-V2 two steps, S1-V3 search lines — rejected: hide the payout until the end, or hide stock while browsing
+  - S2-V1 one page — rejected: the 30-minute price hold has no visible moment; S2-V3 pay first — rejected: hides the price-change notice (FR-022)
+  - S4-V2 money in and out, S4-V3 item by item — rejected: items hidden, or the check spread over three rows
+  - S1-V1, S2-V2, S4-V1 (agent's recommendation) — chosen
+- Choice · Why: for a demo that must show money integrity, facing a price rule that is final only at checkout, we chose a live payout panel, a separate checkout step and an equation-first audit view over denser or faster layouts, so each screen shows its rule at a glance, accepting one extra tap for the patient.
+- Cost accepted: the patient taps once more; the provider builder needs desktop width. · Reversibility: Type 2 · Confidence: high
+- Revisit if: patients abandon at the checkout step (SC-003). · Evidence: docs/design/screens.md S1, S2, S4 Variants · Interview line: "Each key screen shows its rule at a glance: the provider sees her payout as she builds, the patient sees prices locked when checkout starts, and the auditor sees one equation that adds up."
+
+### D28 UX contract: 9 screens, six states each, 90-second demo  [status: accepted]
+- 2026-10-09 21:57 CDT · map-ux-flows (G-ux) · M3 · Decided by: human, G-ux 2026-10-09 21:57 CDT: "approve, then /design-hld" · Proposed by: map-ux-flows (Claude Code, claude-opus-5-5) · artifact: docs/design/screens.md@96f2f5f
+- Context and forces: M4 and M5 stories US-1 to US-5 and US-8 need screens; the human asked to review both journeys together (Q1); provider desktop, patient phone (Q2); provider order inside the chart (Q3).
+- Options:
+  - Do nothing — rejected: define-acceptance needs G-ux
+  - M4 only (agent's first recommendation) — rejected by the human: review both journeys at once
+  - Happy-path screens only — rejected by the skill's rule: most bugs live in the other five states
+  - 9 screens with six states, copy, accessibility and a 1:30 demo — chosen
+- Choice · Why: for a slice judged on judgment and a live demo, we chose a full state contract for every screen over happy-path mock-ups, so tests and the build have no gaps to guess, accepting a longer design pass.
+- Cost accepted: one open question (fee share per product on S6, FR-028) goes to clarify-spec. · Reversibility: Type 2 · Confidence: high
+- Revisit if: the partner's demo feedback changes the spine. · Evidence: docs/design/flows.md, docs/design/screens.md · Interview line: "Every screen was designed in six states before any code, so the tests come straight from the design."
+
 ### D29 PRD revision: financial report with gross and net, four least-privilege operations roles  [status: accepted]
 - 2026-10-09 22:16 CDT · write-prd (G1) · M2 · Decided by: human, G1 2026-10-09 22:16 CDT: "approve, then /map-ux-flows" · Proposed by: write-prd (Claude Code, claude-opus-5-5) · artifact: docs/product/prd.md@ab9f181
 - Context and forces: the human asked that operations data produce financial reports and that operations access be managed with a lean team (Q12). R14 (report shape, gross vs net, 3-year retention) and R15 (minimum necessary, separation of duties, least privilege). FR-051 to FR-065, NFR-013, NFR-014.
@@ -306,6 +331,154 @@ Copy this block for each new entry (D-ids increase by one, starting at D1):
 - Cost accepted: M6 grows; a single SRE is a bottleneck for role changes (EC-15). · Reversibility: Type 2 · Confidence: medium
 - Revisit if: the partner's finance team settles gross vs net, or the team grows beyond four roles. · Evidence: docs/research/R14, R15; docs/product/prd.md US-9, US-10 · Interview line: "The person who hands out access never reviews the access log, and nobody on the ops team ever sees who a patient is."
 
+### D30 Operations layouts: order funnel, balance-first financial report, people-list access  [status: accepted]
+- 2026-10-09 22:31 CDT · map-ux-flows (G-ux, variant half) · M3 · Decided by: human, G-ux 2026-10-09 22:31 CDT: "go, then run pass 2" · Proposed by: map-ux-flows (Claude Code, claude-opus-5-5) · artifact: docs/design/screens.md@9282682
+- Context and forces: the human asked to see bottlenecks and alerts (Q9, Q11), to produce financial reports (Q12) and to manage operations access (Q12). FR-048, FR-049, FR-060 to FR-065, FR-054 to FR-056.
+- Options:
+  - Do nothing — rejected: define-acceptance for M6 needs G-ux
+  - S10-V1 alert tiles, S10-V3 measures against alert lines — rejected: neither shows where orders stall
+  - S11-V2 statement lines, S11-V3 totals over every order — rejected: harder for non-accountants, or unreadable in a busy month
+  - S12-V2 role cards — rejected: moving a person takes two actions
+  - S10-V2, S11-V1, S12-V1 (agent's recommendation) — chosen
+- Choice · Why: for operations users who need bottlenecks, a balancing month and safe access changes, we chose a funnel, the same balance equation as the order breakdown, and a people list with required reasons, over denser tables, so each screen answers its user's first question, accepting that itemized orders live in the export.
+- Cost accepted: the funnel looks jumpy with few orders. · Reversibility: Type 2 · Confidence: high
+- Revisit if: finance asks for itemized orders on screen. · Evidence: docs/design/screens.md S10-S12 Variants · Interview line: "The ops dashboard is a funnel because the bottleneck is literally the step where the count drops."
+
+### D31 UX contract extended to M6: 14 screens, demo covers every key screen  [status: accepted]
+- 2026-10-09 22:33 CDT · map-ux-flows (G-ux) · M3 · Decided by: human, G-ux 2026-10-09 22:33 CDT: "approve, then /design-hld" · Proposed by: map-ux-flows (Claude Code, claude-opus-5-5) · artifact: docs/design/screens.md@675f650
+- Context and forces: M6 stories US-6, US-9, US-10 added operations screens (S10-S14); the 90-second demo must show every key screen.
+- Options:
+  - Do nothing — rejected: M6 acceptance needs G-ux
+  - Keep the provider dashboard beat and a 2-minute demo — rejected: breaks the 1:30 limit
+  - Nine beats in 1:30 covering all six key screens (agent's proposal) — chosen
+- Choice · Why: for a demo that must show both the money path and the operations side, we chose nine short beats over a longer video, accepting a tight pace that the demo script may split later.
+- Cost accepted: about 7 seconds per operations beat. · Reversibility: Type 2 · Confidence: medium
+- Revisit if: the demo script cannot fit the beats. · Evidence: docs/design/screens.md Demo layout · Interview line: "Every screen has six designed states, and the demo walks the money from the provider's click to the finance lead's balanced report."
+
+### D32 Application language: TypeScript on Node.js with server-rendered Vue  [status: accepted]
+- 2026-10-09 22:45 CDT · design-hld (G2) · M3 · Decided by: human, G2 2026-10-09 22:45 CDT: "approve" · Proposed by: design-hld (Claude Code, claude-opus-5-5) · artifact: proposed as docs/architecture/hld.md D32 @a5bc4ea
+- Context and forces: no stack mandated (C-1, REQ-14); Cerbo's portal is TypeScript/JavaScript with Vue (R01) and its paired interview is in TypeScript/JavaScript (R07); money must stay whole cents (AGENTS.md:57).
+- Options:
+  - Do nothing / simplest: clickable mock-up with no server — rejected: no money handling to grade
+  - TypeScript on Node.js with server-rendered Vue (agent's recommendation) — chosen
+  - PHP with Laravel — rejected: the human set the earlier build aside (D22); a second language from the portal's
+  - Java with Spring — rejected: heaviest setup for the appetite
+- Choice · Why: In the context of a 1-2 day slice for a partner whose portal runs TypeScript and Vue and who pair-programs in TypeScript, facing the need to show money integrity live, we choose TypeScript on Node.js with server-rendered Vue over Laravel or Spring to get one language the interviewers read and write, accepting that cents must be kept as whole numbers by discipline and tests.
+- Cost accepted: TypeScript numbers are floats, so whole cents rely on tests plus database checks (INV-1, INV-3). · Reversibility: Type 1 · Confidence: med
+- Revisit if: the partner says the work would land in their PHP back end. · Evidence: R01, R07; hld.md §9 D32 · Interview line: "I picked TypeScript and Vue because that's Cerbo's portal stack and the language of their paired interview, and I kept every amount in whole cents because TypeScript numbers are floats."
+
+### D33 Database: PostgreSQL managed by the host  [status: accepted]
+- 2026-10-09 22:58 CDT · design-hld (G2) · M3 · Decided by: human, G2 2026-10-09 22:58 CDT: "approve" · Proposed by: design-hld (Claude Code, claude-opus-5-5) · artifact: proposed as docs/architecture/hld.md D33 @a5bc4ea
+- Context and forces: INV-1 to INV-5 must hold whatever code path runs; NFR-013 3-year retention; Cerbo runs MySQL and Postgres (R01); host Railway.
+- Options:
+  - Do nothing / simplest: SQLite file inside the app — rejected: one machine's file breaks on restart or a second instance
+  - PostgreSQL managed by the host (agent's recommendation) — chosen
+  - MySQL managed by the host — rejected: weaker cross-check support for INV-1
+- Choice · Why: In the context of a money system that must refuse a split that doesn't add up, facing invariants that must hold whatever code path runs, we choose managed PostgreSQL over SQLite or MySQL to get database-enforced checks and permissions, accepting a second container to run and back up.
+- Cost accepted: about $7 a month and a backup to confirm (Q-1). · Reversibility: Type 1 · Confidence: high
+- Revisit if: the partner wants the slice on their MySQL. · Evidence: R01; hld.md §7, §9 D33 · Interview line: "The database itself refuses a paid order whose parts don't add up, so no bug in the app can write bad money."
+
+### D34 One app: pages and logic deploy together  [status: superseded-by D36]
+- 2026-10-09 23:00 CDT · design-hld (G2) · M3 · Decided by: human, G2 2026-10-09 23:00 CDT: "approve" · Proposed by: design-hld (Claude Code, claude-opus-5-5) · artifact: proposed as docs/architecture/hld.md D34 @a5bc4ea
+- Context and forces: peak 31 req/s (R13), NFR-001 2 s p95, $20 a month ceiling, 1-2 day appetite.
+- Options:
+  - Do nothing / simplest: one app that renders pages and holds the logic (agent's recommendation) — chosen
+  - Separate single-page front end and API — rejected: two containers, cross-origin sessions, double deploy and security work
+  - Separate services per area — rejected: nothing in §8 needs it
+- Choice · Why: In the context of 31 requests a second at peak and a $20 ceiling, facing a 1-2 day appetite, we choose one app over a split front end and API to get one deploy and one security perimeter, accepting that the front end can't ship separately.
+- Cost accepted: no independent front-end releases. · Reversibility: Type 2 · Confidence: high
+- Revisit if: a mobile app or partner integration needs the API on its own. · Evidence: hld.md §8, §9 D34 · Interview line: "At 31 requests a second, splitting into services would add failure points without solving any problem I have."
+
+### D35 Money recording: split on the paid order plus an append-only ledger  [status: accepted]
+- 2026-10-09 23:04 CDT · design-hld (G2) · M3 · Decided by: human, G2 2026-10-09 23:04 CDT: "D35, B is approved" · Proposed by: design-hld (Claude Code, claude-opus-5-5) · artifact: proposed as docs/architecture/hld.md D35 @a5bc4ea
+- Context and forces: FR-010 to FR-015, FR-060 to FR-065, NFR-013, NFR-014; R14 (providers report money as summed categories); refunds and corrections later (NG-7).
+- Options:
+  - Do nothing / simplest: split amounts on the paid order only — rejected: reports re-add every order; corrections would edit money in place
+  - Split on the order plus an append-only ledger of payment, item cost, payout and fee (agent's recommendation) — chosen
+  - Full double-entry bookkeeping — rejected: more concepts than the slice needs
+- Choice · Why: In the context of a split that must be auditable to the cent and a finance lead who closes periods, facing future refunds and corrections, we choose an append-only ledger beside the order's split over split-only or full double-entry to get reports that sum categories the way payment providers report them, accepting four extra records per order.
+- Cost accepted: about 2 GB a year more at first-year scale; order and ledger must agree (INV-1, INV-9). · Reversibility: Type 1 · Confidence: med
+- Revisit if: finance asks for double-entry accounts or a refund flow is built. · Evidence: R14 F1, F2, F4; hld.md §9 D35 · Interview line: "The order shows the split; the ledger proves it, and corrections are new lines, never edits."
+
+### D36 One deployable, built API-first  [status: accepted]
+- 2026-10-09 23:14 CDT · design-hld (G2, revision) · M3 · Decided by: human, G2 2026-10-09 23:14 CDT: "approved" (after "c, then /design-hld") · Proposed by: design-hld (Claude Code, claude-opus-5-5) · artifact: proposed as docs/architecture/hld.md D34 @fea2e18 · ids differ: hld.md D34 = journal D36; supersedes D34
+- Context and forces: the feature will live inside Cerbo's Vue portal (R01); Cerbo's front-end and back-end teams are separate; HIPAA-ready access and an activity review (R15 F2, NFR-014); 31 req/s; $20 ceiling; 1-2 day appetite.
+- Options:
+  - Do nothing / simplest: one app, server-rendered pages reading the database directly (first approved as D34) — revised by the human after comparing it with a split front end and API
+  - One deployable, API-first: the Vue front end reads and acts only through our own JSON API on the same web address — chosen
+  - Separate single-page front end and API, two deploys — rejected: two pipelines, token sign-in, cross-origin rules, patient data in the browser
+  - Separate services per area — rejected: nothing needs it
+- Choice · Why: In the context of an EHR add-on that will one day live inside Cerbo's Vue portal, built by a small team for 31 requests a second under a $20 ceiling, facing HIPAA-ready access rules and an activity review, we choose one deployable built API-first over server-rendered pages alone or a split front end and API to get today's small attack surface and single deploy together with an API Cerbo can embed later, accepting a thin API layer whose shape we must keep stable.
+- Cost accepted: about half a day more; the API shape becomes a contract. · Reversibility: Type 2 · Confidence: high
+- Revisit if: Cerbo's front-end team takes over the screens, or a second client needs the API. · Evidence: R01, R15; hld.md §9 D34 · Interview line: "I kept one deployable for security and ops simplicity, but built it API-first, because inside an EHR the feature eventually becomes their screens calling our API."
+
+### D37 Sign-in: seeded test accounts with server-side sessions  [status: accepted]
+- 2026-10-09 23:14 CDT · design-hld (G2) · M3 · Decided by: human, G2 2026-10-09 23:14 CDT: "approve" · Proposed by: design-hld (Claude Code, claude-opus-5-5) · artifact: proposed as docs/architecture/hld.md D36 @fea2e18 · ids differ: hld.md D36 = journal D37
+- Context and forces: FR-039 to FR-041, NFR-007, NFR-008, C-3 (sign-in is a stand-in), A-12; every API call checks the signed-in role (D36).
+- Options:
+  - Do nothing / simplest: a "choose who you are" picker — rejected: anyone can be anyone; breaks NFR-007
+  - Email and password for seeded test accounts, server-side sessions, 15-minute idle limit (agent's recommendation) — chosen
+  - An outside identity provider — rejected: outside account and cost beyond the stand-in rule
+- Choice · Why: In the context of a stand-in sign-in that must still be personal and time out, facing a demo that switches between nine fictional people, we choose seeded test accounts with server-side sessions over a picker or an outside provider to get real per-person access rules at no cost, accepting no two-factor sign-in in the slice.
+- Cost accepted: no two-factor and no password reset. · Reversibility: Type 2 · Confidence: high
+- Revisit if: the slice moves toward real users. · Evidence: hld.md §9 D36, §10 Authentication · Interview line: "Sign-in is a stand-in, but every person still has their own account and session, because the access rules are what I'm proving."
+
+### D38 Web framework: Nuxt 3  [status: superseded-by D44]
+- 2026-10-10 09:52 CDT · design-lld (G3) · M3 · Decided by: human, G3 2026-10-10 09:52 CDT: "approve" · Proposed by: design-lld (Claude Code, claude-opus-5-5) · artifact: proposed as docs/architecture/lld.md D38 @9af3b07
+- Context and forces: D32 (TypeScript, server-rendered Vue), D36 (one deployable, API-first), NFR-001, appetite 1-2 days; Cerbo's front end is Vue (R01).
+- Options:
+  - Do nothing / simplest: plain Node with Vue's server renderer wired by hand — rejected: about 2 days of routing, rendering, hydration and build glue
+  - Nuxt 3 (agent's recommendation) — chosen
+  - Express API plus Vue with Vite server rendering — rejected: two halves to glue, about a day more
+- Choice · Why: In the context of one deployable that must serve server-rendered Vue pages and a same-origin JSON API, facing a 1-2 day appetite, we choose Nuxt 3 over a hand-wired server or Express plus Vite to get pages and API routes in one app with no glue, accepting Nuxt's conventions.
+- Cost accepted: Nuxt and Nitro conventions. · Reversibility: Type 1 · Confidence: high
+- Revisit if: Cerbo wants the API in another back end. · Evidence: lld.md Decisions D38, §2 Layering · Interview line: "Nuxt gave me server-rendered Vue and the JSON API in one process, which is the one-deployable, API-first shape I chose."
+
+### D39 Database access: Kysely with plain SQL migrations  [status: accepted]
+- 2026-10-10 09:56 CDT · design-lld (G3) · M3 · Decided by: human, G3 2026-10-10 09:56 CDT: "approve" · Proposed by: design-lld (Claude Code, claude-opus-5-5) · artifact: proposed as docs/architecture/lld.md D39 @9af3b07
+- Context and forces: INV-1 to INV-5 and LINV-1 to LINV-6 rely on partial unique indexes, deferred constraint triggers, insert-only grants and composite foreign keys; D33 (PostgreSQL); AGENTS.md:57.
+- Options:
+  - Do nothing / simplest: pg driver with raw SQL strings — rejected: queries not type-checked
+  - Kysely plus plain SQL migration files (agent's recommendation) — chosen
+  - Prisma ORM — rejected: needs raw-SQL escapes for the very features the money rules use, and hides transaction boundaries
+- Choice · Why: In the context of a design whose money rules live in PostgreSQL constraints, triggers and grants, facing the need to also type-check queries in TypeScript, we choose Kysely with SQL migrations over raw strings or Prisma to get typed queries without hiding the database features we rely on, accepting a type-regeneration step after each migration.
+- Cost accepted: regenerate types after each migration. · Reversibility: Type 2 · Confidence: med
+- Revisit if: the team standardises on another data layer. · Evidence: lld.md Decisions D39, §1, §7 · Interview line: "The money rules are database constraints, so I kept the migrations in plain SQL and used a typed query builder rather than an ORM that would hide them."
+
+### D40 Primary keys: bigint identity, order number = id, random tokens for outside links  [status: accepted]
+- 2026-10-10 09:58 CDT · design-lld (G3) · M3 · Decided by: human, G3 2026-10-10 09:58 CDT: "approved" · Proposed by: design-lld (Claude Code, claude-opus-5-5) · artifact: proposed as docs/architecture/lld.md D40 @9af3b07
+- Context and forces: screens show "Order 1042" (S3, S4, S11); FR-009 (guessing must reveal nothing); every read is access-checked (INV-7, HLD TH-4); the notice link is the only link that leaves the system (FR-044).
+- Options:
+  - Do nothing / simplest: bigint identity ids, order number = id from 1001, random 32-byte tokens only for notice links (agent's recommendation) — chosen
+  - UUID v7 ids everywhere plus a separate readable number — rejected: two identifiers and larger indexes for no safety gain
+- Choice · Why: In the context of a small system where every read is access-checked and staff talk about "Order 1042", facing the risk of guessable ids, we choose bigint identity ids with random tokens for outside links over UUIDs everywhere to get readable numbers and small indexes, accepting that ids reveal volume to people who can already see orders.
+- Cost accepted: ids reveal order volume to authorised viewers. · Reversibility: Type 1 · Confidence: high
+- Revisit if: ids ever appear in links that skip the access check. · Evidence: lld.md Decisions D40, §1 `orders`, `notices` · Interview line: "Guessing an order number gets you 'not found', because every read is checked; the only link that leaves the system carries an unguessable token."
+
+### D41 Idempotency: one shared idempotency_keys table plus database backstops  [status: accepted]
+- 2026-10-10 09:59 CDT · design-lld (G3) · M3 · Decided by: human, G3 2026-10-10 09:59 CDT: "approve, but also explain to me this solution over using a mesage broker like rabbitmq" · Proposed by: design-lld (Claude Code, claude-opus-5-5) · artifact: proposed as docs/architecture/lld.md D41 @9af3b07
+- Context and forces: FR-008; HLD §10 Idempotency; INV-2; five repeatable mutations EP-19, EP-23, EP-28, EP-32, EP-37.
+- Options:
+  - Do nothing / simplest: disable the button after one press — rejected: retries and second tabs still send twice
+  - One idempotency_keys table plus natural backstops (agent's recommendation) — chosen
+  - Natural unique key per operation only — rejected: retries get errors instead of the first answer; rules differ per endpoint
+  - Message broker (raised by the human at the gate) — not an option for this problem: a broker delivers messages at least once, so consumers still need idempotency keys; the payment is synchronous; adding one is an HLD container change
+- Choice · Why: In the context of five mutations that patients and staff can repeat, facing double presses and network retries on a payment, we choose one stored-key table plus database backstops over button-disabling or per-endpoint keys to get identical replay behaviour everywhere and no double charge, accepting a small table with a 24-hour life.
+- Cost accepted: one more table; expired rows purged on write (LLD Q-5). · Reversibility: Type 2 · Confidence: high
+- Revisit if: a mutation needs a key that lives longer than 24 hours, or a broker is added for outbound work (keys stay). · Evidence: lld.md Decisions D41, §4 Idempotency, BE-5, SM-3 · Interview line: "Every mutation carries an Idempotency-Key, and behind it the database still allows only one successful payment per order."
+
+### D42 Payment timing: synchronous charge with short transactions on either side; hybrid with webhooks as the production path  [status: accepted]
+- 2026-10-10 10:49 CDT · design-lld (G3, revise) · M3 · Decided by: human, G3 2026-10-10 10:49 CDT: "approve" (after "a, add D42") · Proposed by: design-lld (Claude Code, claude-opus-5-5) · artifact: proposed as docs/architecture/lld.md D42 @6733116
+- Context and forces: FR-006, FR-035, S2 Loading state, NFR-001, INV-2, INV-5, HLD L-3; tolerance by persona (patients forgive seconds but not uncertainty about money; providers forgive no lag; finance forgives slow reports); the human asked at G3 for sync vs async, lock-up risk, broker comparison and broader holistic-care load to be weighed.
+- Options:
+  - Do nothing / simplest: A, one transaction holding locks across the provider call — rejected: lock-ups, pool exhaustion, charge without a record on commit failure
+  - B, synchronous with short transactions around the call (implied by PRD, UX and HLD L-3; agent's recommendation) — chosen for the slice
+  - C, fully asynchronous queue and worker — rejected: patient left uncertain; new container; still needs idempotency keys
+  - D, hybrid with a pending state and webhooks — chosen as the production path, not built now
+- Choice · Why: In the context of a patient who must know on the spot whether they paid and a stub provider that never answers ambiguously, facing the risk of database lock-ups from slow providers, we choose a synchronous charge with short transactions on either side over holding locks across the call, a fully queued payment, or a hybrid built now, to get a definite answer without lock contention or new infrastructure, accepting crash-recovery logic between the steps and a planned move to the hybrid when a real provider arrives.
+- Cost accepted: FM-7 reconcile logic; ambiguous timeouts once a real provider exists. · Reversibility: Type 2 · Confidence: high
+- Revisit if: a real payment provider, recurring charges or refills, third-party fulfillment (pharmacy, gym), insurance claims, or more than about 100 payments a second for one product. · Evidence: lld.md D42, SEQ-2, BE-10, FM-2, FM-7; R05 · Interview line: "Locks live for milliseconds on either side of the card call, never across it; the patient waits for a definite answer because uncertainty about money is the one thing they won't forgive, and in production I'd add a pending state settled by the provider's webhook."
+
 ### D43 Broader holistic-care products parked as a future non-goal (NG-12)  [status: accepted]
 - 2026-10-10 10:58 CDT · clarify-spec (3b) · M2 · Decided by: human, clarify-spec CQ-3 2026-10-10 10:58 CDT: "A, non goals, can revisit later, and marked as was considered for the future of the product" · Proposed by: clarify-spec (Claude Code, claude-opus-5-5) · artifact: docs/product/prd.md@998ed94 NG-12
 - Context and forces: the human raised prescriptions, medical supplies, gym memberships and other holistic-care services at G3; lld.md D42 and Q-7 showed they need product types, a payee per order line, work with no patient present (recurring charges, claims, partner updates) and, for prescriptions, regulation the slice rules out (NG-3, NG-10).
@@ -317,3 +490,14 @@ Copy this block for each new entry (D-ids increase by one, starting at D1):
 - Choice · Why: In the context of a supplement-only slice whose design (D35 ledger, D41 keys, D42 payment timing) already anticipates broader care, facing the risk of scope creep, we choose to park holistic-care products as a recorded future non-goal over writing stories now or not recording them, to keep the slice small while showing the product's direction, accepting that a later milestone must revisit product types and multi-payee orders.
 - Cost accepted: none now; a future PRD and design pass. · Reversibility: Type 2 · Confidence: high
 - Revisit if: a milestone takes on prescriptions, services or recurring charges (lld.md D42 triggers). · Evidence: prd.md NG-12, ## Clarifications Pass 1 CQ-3; lld.md D42, Q-7 · Interview line: "I parked prescriptions and services on purpose: they need multiple payees and background billing, and the ledger and idempotency design already leave room for them."
+
+### D44 Web framework: Nuxt 4 (supersedes D38's Nuxt 3)  [status: accepted]
+- 2026-10-10 11:30 CDT · design-lld (G3, revise) · M3 · Decided by: human, G3 Revise 2026-10-10 11:30 CDT: "a" · Proposed by: supervisor at toolchain bootstrap (Claude Code, claude-opus-5-5) · artifact: docs/architecture/lld.md D38 (revised) · ids differ: lld.md D38 = journal D44; supersedes D38
+- Context and forces: D38 approved "Nuxt 3", written from model memory; the npm registry check at bootstrap (2026-10-10) showed Nuxt 4 is the current major (4.6.1) and Nuxt 3 the previous major (3.21.11, still patched). The design (route handlers, page guards, file routes, per-page fetch) is the same on both.
+- Options:
+  - Do nothing: setup waits — rejected
+  - Keep Nuxt 3.21.11 as approved — rejected: starts greenfield work on the previous major, so an upgrade is likely within the project's life
+  - Revise to Nuxt 4 (agent's recommendation) — chosen
+- Choice · Why: In the context of a greenfield build on a framework whose current major is 4, facing an approved decision written from out-of-date memory, we choose Nuxt 4 over the approved Nuxt 3 to avoid upgrade debt on day one, accepting a Node 22.22+ engine floor.
+- Cost accepted: Node 22.22+ (local Node 26; Railway pins a supported version). · Reversibility: Type 1 · Confidence: high
+- Revisit if: a Nuxt 4 feature the design needs is missing. · Evidence: npm registry (nuxt dist-tags and release times, 2026-10-10); lld.md D38 · Interview line: "The AI suggested Nuxt 3 from memory; checking the registry before installing showed 4 was current, so I revised the decision before writing a line of code."

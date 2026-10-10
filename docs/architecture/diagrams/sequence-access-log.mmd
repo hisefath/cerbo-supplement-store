@@ -1,0 +1,32 @@
+%% diagram: sequence-access-log
+%% source: docs/architecture/lld.md#seq-11-review-the-access-log-sequence-access-log-covers-us-10-f11-fr-057-ae-054 @ 2e4e445
+%% drawn: 2026-10-10T05:05:37Z by draw-diagrams (claude, claude-opus-5-5)
+%% render: unverified
+%% render-check: mmdc not on PATH
+%% missing: 0
+%% Generated from the source section. Do not edit by hand: fix the section, then re-run `draw-diagrams sequence-access-log`.
+sequenceDiagram
+    autonumber
+    actor P1 as Finance lead
+    actor P2 as Other operations person
+    participant FE20 as FE-20 AccessLogPage
+    participant BE1 as BE-1 ApiHandlers
+    participant BE4 as BE-4 AccessPolicy
+    participant BE18 as BE-18 StaffAccessService
+    participant DB
+    alt main path (steps 1-4)
+        FE20->>BE1: GET access log for the month (EP-38) → BE-4.assertRole(finance_lead) → BE-18.accessLog
+        BE18->>DB: a page of grants, removals and refused attempts, newest first
+        BE1-->>FE20: 200 AccessLogPage
+        alt main path (step 4)
+            FE20->>P1: #quot;3 role changes in October 2026.#quot; and each entry as one sentence, refused ones marked #quot;Refused#quot;
+        else no role changed in the month
+            FE20->>P1: #quot;No roles changed in September 2026.#quot;
+        end
+    else someone other than the finance lead opens it
+        P2->>FE20: opens Access log
+        FE20->>BE1: GET access log (EP-38)
+        BE1->>BE4: assertRole(finance_lead) → forbidden
+        BE1-->>FE20: 403 /problems/forbidden
+        FE20-->>P2: #quot;Only the finance lead reviews the access log.#quot;
+    end

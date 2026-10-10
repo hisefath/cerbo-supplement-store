@@ -1,0 +1,23 @@
+%% diagram: hld-context
+%% source: docs/architecture/hld.md#2-system-context-c4-level-1 @ 026eb08
+%% drawn: 2026-10-10T03:38:58Z by draw-diagrams (claude, claude-opus-5-5)
+%% render: unverified
+%% render-check: mmdc not on PATH
+%% missing: 0
+%% Generated from the source section. Do not edit by hand: fix the section, then re-run `draw-diagrams hld-context`.
+flowchart LR
+    P1(["Provider<br/>person"])
+    P2(["Patient<br/>person"])
+    P3(["Operations staff (finance lead, operations specialist, SRE, data analyst)<br/>person"])
+    SYS["Supplement store (our system)<br/>our system"]
+    X1[["Payment provider (stub)<br/>external system · stub now#59; later a card processor with platform fees (R05)"]]
+    X2[["Messaging provider (stub)<br/>external system · stub now#59; later email or text"]]
+    X3[["Uptime monitor<br/>external system · a free outside monitor (⚠ Q-3)"]]
+    X4[["Host platform (Railway)<br/>external system · Railway"]]
+    P1 -->|"builds and sends orders from a patient's chart, sets prices, reads the practice dashboard: orders, prices, stock levels, sales"| SYS
+    P2 -->|"opens a notice, signs in, reviews and pays an order: order, payment, receipt"| SYS
+    P3 -->|"audit orders by number, record stock, run financial reports, manage roles, read health: de-identified orders, totals, reports, roles, access log"| SYS
+    SYS -->|"we ask it to charge the patient's order and split it#59; it answers paid or failed: payment request, payment result"| X1
+    SYS -->|"we hand it a notice for a patient#59; in the slice it is shown on screen: notice with practice name and sign-in link only"| X2
+    X3 -->|"it checks our health page every minute: up or down, response time"| SYS
+    X4 -->|"deploys us, injects secrets, restarts on crash, backs up the database (⚠ Q-1): build, secrets, process signals, backups"| SYS

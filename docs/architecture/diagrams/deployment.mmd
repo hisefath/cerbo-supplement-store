@@ -1,0 +1,22 @@
+%% diagram: deployment
+%% source: docs/architecture/hld.md#11-deployment-view @ 026eb08
+%% drawn: 2026-10-10T03:38:56Z by draw-diagrams (claude, claude-opus-5-5)
+%% render: unverified
+%% render-check: mmdc not on PATH
+%% missing: 0
+%% Generated from the source section. Do not edit by hand: fix the section, then re-run `draw-diagrams deployment`.
+flowchart TB
+    subgraph ENV_local ["local · the developer's machine: Node.js 22 and PostgreSQL 16 in Docker"]
+        local_CN1["CN-1"]
+        local_CN2["CN-2"]
+    end
+    CI_none["CI: none yet — #quot;later we'll build a ci pipeline#quot; (P-01)#59; until then make check runs before every merge"]
+    staging_none["staging: none · reason: a pilot with fictional data#59; each milestone is checked locally and on production behind its demo"]
+    subgraph ENV_production ["production · Railway, one US region: one app service and one managed PostgreSQL"]
+        production_CN1["CN-1"]
+        production_CN2["CN-2"]
+    end
+    DEP_local(["a developer command, written into AGENTS.md at design-lld"]) -.->|"deployed by"| ENV_local
+    SEC_local[/"secrets from: a git-ignored local environment file"/] -.->|"secrets from"| ENV_local
+    DEP_production(["the human only, after a recorded yes"]) -.->|"deployed by"| ENV_production
+    SEC_production[/"secrets from: Railway's environment secrets"/] -.->|"secrets from"| ENV_production

@@ -1,0 +1,36 @@
+%% diagram: sequence-financial-report
+%% source: docs/architecture/lld.md#seq-9-close-the-month-sequence-financial-report-covers-us-9-f9-fr-051-fr-060-to-fr-065-ae-055-to-ae-060-ae-048 @ 2e4e445
+%% drawn: 2026-10-10T05:06:53Z by draw-diagrams (claude, claude-opus-5-5)
+%% render: unverified
+%% render-check: mmdc not on PATH
+%% missing: 0
+%% Generated from the source section. Do not edit by hand: fix the section, then re-run `draw-diagrams sequence-financial-report`.
+sequenceDiagram
+    autonumber
+    actor P1 as Finance lead
+    actor P2 as Other operations person
+    participant FE18 as FE-18 FinancialReportPage
+    participant FE12 as FE-12 MoneyEquation
+    participant BE1 as BE-1 ApiHandlers
+    participant BE4 as BE-4 AccessPolicy
+    participant BE17 as BE-17 FinanceReportService
+    participant DB
+    alt main path (steps 1-7)
+        FE18->>BE1: GET report for October (EP-34) → BE-4.assertRole(finance_lead) → BE-17.report
+        BE17->>DB: [repeatable-read tx begin] sum ledger entries by category for the period#59; sum provider payouts by provider#59; list orders whose four entries don't balance [tx commit]
+        BE17->>BE17: balanced = payments = cost + payouts + fees#59; gross = payments#59; net = fees
+        alt main path (steps 4)
+            FE18->>FE12: #quot;$90.00 patient payments = $45.00 item cost + $44.32 provider payouts + $0.68 platform fees. Balanced: yes#quot;#59; gross $90.00 and net $0.68 labelled#59; Dr. Chen $44.32
+        else the period does not balance
+            FE12->>P1: #quot;Not balanced: $0.01 short. Order 2001 causes the gap and is on the review list.#quot;
+        end
+        P1->>FE18: presses Export October
+        FE18->>BE1: GET export (EP-35) → BE-17.exportCsv streams the totals, then one line per paid order by number#59; the export is logged as a privileged action (NFR-014)
+        FE18-->>P1: #quot;Exported October 2026: 4 totals and 2 orders.#quot;
+    else someone other than the finance lead asks
+        P2->>FE18: opens Financial report
+        FE18->>BE1: GET report (EP-34)
+        BE1->>BE4: assertRole(finance_lead) → forbidden
+        BE1-->>FE18: 403 /problems/forbidden
+        FE18-->>P2: #quot;Only the finance lead can run financial reports.#quot;
+    end

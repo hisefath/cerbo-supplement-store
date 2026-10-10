@@ -78,6 +78,10 @@ several harnesses read it and the repo is public.
 | 2026-10-10 10:58 CDT | 3b clarify-spec CQ-3 | docs/product/prd.md@998ed94 | "A, non goals, can revisit later, and marked as was considered for the future of the product" |
 | 2026-10-10 11:04 CDT | G1 | docs/product/prd.md@998ed94 (re-approval after clarify-spec pass 1) | "approve, then /map-ux-flows" |
 | 2026-10-10 11:04 CDT | G-ux Revise (bring S2, S6 and flows F2, F5 in line with FR-066 to FR-068) | docs/design/screens.md@675f650 | "approve, then /map-ux-flows" |
+| 2026-10-10 11:11 CDT | G-ux | docs/design/screens.md@bff1dd4 (and flows.md@bff1dd4; cancel on S6, cancelled state on S2) | "approve, then /design-lld" |
+| 2026-10-10 11:11 CDT | G3 Revise (trace FR-066 to FR-069; EP-20 and BE-9 coverage; S6 cancel in FE-15, ST and SEQ-5) | docs/architecture/lld.md@6733116 | "approve, then /design-lld" |
+| 2026-10-10 11:23 CDT | G3 (re-approval after revise for FR-066 to FR-069) | docs/architecture/lld.md@48545f9 + contracts/openapi.yaml + diagrams | "approve, then /define-acceptance" |
+| 2026-10-10 11:30 CDT | G3 Revise D38 (Nuxt 3 → Nuxt 4: the npm registry shows 4 is the current major; D38 named 3 from memory) | docs/architecture/lld.md@48545f9 D38 | "a" |
 
 ## Log
 
@@ -186,3 +190,9 @@ several harnesses read it and the repo is public.
 2026-10-10 10:50 CDT GATE G3 closing approved docs/architecture/lld.md@6733116; next clarify-spec on prd.md (LLD Q-1, Q-2, Q-7)
 2026-10-10 10:58 CDT VERIFY clarify-spec pass 1 docs/product/prd.md@998ed94 (CQ-1, CQ-2 from-source; CQ-3 resolved); D43 logged; G1 to re-present (PRD changed since ab9f181)
 2026-10-10 11:04 CDT GATE G1 re-approved docs/product/prd.md@998ed94; map-ux-flows revise for cancel (S2, S6)
+2026-10-10 11:11 CDT GATE G-ux re-approved docs/design@bff1dd4; design-lld revise for FR-066 to FR-069
+2026-10-10 11:12 CDT DISPATCH M3-D06 harness=claude-subagent why=re-draw fe-components after lld.md revise @36d7dad (ST-12)
+2026-10-10 11:12 CDT DISPATCH M3-D11 harness=claude-subagent why=re-draw sequence-practice-dashboard after lld.md revise @36d7dad (SEQ-5 cancel)
+2026-10-10 11:22 CDT RESULT M3-D06, M3-D11 status=done; embedded at 48545f9; G3 re-presented
+2026-10-10 11:23 CDT GATE G3 re-approved docs/architecture/lld.md@48545f9; next define-acceptance M4
+2026-10-10 11:30 CDT FAIL design-lld D38 named "Nuxt 3" from model memory; npm registry check at bootstrap showed Nuxt 4 is the current major (4.6.1; 3.21.11 maintenance). Route at M1 close (version claims need a registry check). AI_USAGE: AI was out of date.

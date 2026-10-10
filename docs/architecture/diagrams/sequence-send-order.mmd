@@ -1,0 +1,53 @@
+%% diagram: sequence-send-order
+%% source: docs/architecture/lld.md#seq-1-build-and-send-an-order-sequence-send-order-covers-us-1-f1-fr-001-to-fr-005-fr-025-fr-043-ae-001-to-ae-004 @ 2e4e445
+%% drawn: 2026-10-10T05:04:59Z by draw-diagrams (claude, claude-opus-5-5)
+%% render: unverified
+%% render-check: mmdc not on PATH
+%% missing: 0
+%% Generated from the source section. Do not edit by hand: fix the section, then re-run `draw-diagrams sequence-send-order`.
+sequenceDiagram
+    autonumber
+    actor Provider
+    participant FE4 as FE-4 OrderBuilderPage
+    participant BE1 as BE-1 ApiHandlers
+    participant BE5 as BE-5 IdempotencyGuard
+    participant BE9 as BE-9 OrderService
+    participant BE7 as BE-7 CatalogService
+    participant BE12 as BE-12 MessagingGateway
+    participant DB
+    participant BE6 as BE-6
+    Provider->>FE4: opens the chart's Supplements section
+    FE4->>BE1: GET catalog (EP-18)
+    BE1->>BE7: catalogForPatient(viewer, patientId) — checks the patient is in the provider's practice (BE-4)
+    BE7->>DB: read products, practice_prices, stock
+    FE4-->>Provider: product list with prices and stock#59; adding lines updates total, fee and payout locally with the same rule as BE-6
+    Provider->>FE4: presses Send to Ana Ruiz
+    FE4->>BE1: POST order with Idempotency-Key (EP-19)
+    BE1->>BE5: begin(user, key, route, hash) — no row, proceed
+    alt main path (steps 9-16)
+        BE1->>BE9: sendOrder(viewer, input)
+        BE9->>BE7: currentPrices(practice, products)#59; checks quantity ≤ stock and order payout ≥ $0.00 (BE-6)
+        alt main path (steps 11-16)
+            BE9->>DB: [tx begin] insert order (status sent, sent_at) and lines with sent prices
+            BE9->>BE12: sendOrderNotice(order, patient, practice) — inserts the notice row with a random token
+            BE9->>DB: [tx commit]
+            BE1->>BE5: complete(user, key, 201, order)
+            BE1-->>FE4: 201 Order
+            FE4-->>Provider: #quot;Sent. Ana Ruiz will get a notice to sign in and pay.#quot;
+        else a quantity is above the units in stock
+            BE9-->>BE1: InsufficientStock — no transaction was opened
+            BE1->>BE5: release(user, key)
+            BE1-->>FE4: 422 /problems/insufficient-stock
+            FE4-->>Provider: #quot;Only 2 in stock. Lower the quantity.#quot;
+        else a product is priced below its floor
+            BE9->>BE6: lowestAllowedPriceCents(cost) is above the product's practice price — BE-9 raises BelowFloor#59; no transaction was opened
+            BE9-->>BE1: BelowFloor
+            BE1->>BE5: release(user, key)
+            BE1-->>FE4: 422 /problems/below-price-floor with the product named
+            FE4-->>Provider: #quot;Magnesium Glycinate is below its lowest allowed price of $12.09. Remove it or change its price in Practice prices.#quot;
+        end
+    else Send pressed again with the same key
+        BE1->>BE5: begin(user, key, route, hash) — the key is completed with the same hash
+        BE5-->>BE1: replay the stored response
+        BE1-->>FE4: the stored 201 Order#59; no second order is created
+    end

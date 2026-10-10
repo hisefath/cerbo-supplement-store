@@ -1,0 +1,33 @@
+%% diagram: sequence-sign-in
+%% source: docs/architecture/lld.md#seq-7-sign-in-and-idle-sign-out-sequence-sign-in-covers-us-8-f7-fr-039-to-fr-042-ae-037-to-ae-039 @ 2e4e445
+%% drawn: 2026-10-10T05:04:51Z by draw-diagrams (claude, claude-opus-5-5)
+%% render: unverified
+%% render-check: mmdc not on PATH
+%% missing: 0
+%% Generated from the source section. Do not edit by hand: fix the section, then re-run `draw-diagrams sequence-sign-in`.
+sequenceDiagram
+    autonumber
+    actor Person
+    participant FE1 as FE-1 AppShell
+    participant FE2 as FE-2 SignInPage
+    participant BE2 as BE-2 PageGuards
+    participant BE1 as BE-1 ApiHandlers
+    participant BE3 as BE-3 SessionService
+    participant DB
+    Person->>BE2: opens a protected page (e.g. EP-4)
+    BE2->>BE3: resolve(cookie) → null → 303 to EP-1 with next
+    Person->>FE2: enters email and password#59; presses Sign in
+    FE2->>BE1: POST session (EP-15) → BE-3.signIn: rate-limit check#59; scrypt verify#59; insert session with a random token's hash
+    alt main path (steps 5-8)
+        alt main path (steps 5)
+            BE1-->>FE2: 200 Me with the session cookie → FE-2 goes to next or the role's home
+        else the role can't open the page asked for
+            BE2-->>Person: the page's Permission denied state, #quot;Your account can't open that page. Here is your own work.#quot;
+        end
+        Note over FE2: Person: inactive for 15 minutes
+        FE1->>BE1: next GET session (EP-17) → BE-3.resolve: idle 15 min or more → session ended → 401 /problems/unauthenticated
+        FE1->>Person: sign-in page with #quot;You were signed out after 15 minutes without activity.#quot;
+    else wrong email or password
+        BE3->>BE1: 401 /problems/sign-in-failed (same message for both cases)
+        FE2-->>Person: #quot;That email and password don't match. Check them and try again.#quot; with the email kept
+    end

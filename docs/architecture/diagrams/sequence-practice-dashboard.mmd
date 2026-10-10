@@ -1,0 +1,40 @@
+%% diagram: sequence-practice-dashboard
+%% source: docs/architecture/lld.md#seq-5-check-orders-sales-and-stock-sequence-practice-dashboard-covers-us-5-us-1-f5-fr-028-fr-029-fr-045-to-fr-047-fr-066-fr-067-fr-069-ae-025-ae-026-ae-042-to-ae-044-ae-063-ae-064-changed @ 36d7dad
+%% drawn: 2026-10-10T16:21:53Z by draw-diagrams (claude, claude-opus-5-5)
+%% render: unverified
+%% render-check: mmdc not on PATH
+%% missing: 0
+%% Generated from the source section. Do not edit by hand: fix the section, then re-run `draw-diagrams sequence-practice-dashboard`.
+sequenceDiagram
+    autonumber
+    actor Provider
+    participant FE15 as FE-15 PracticeDashboardPage
+    participant FE22 as FE-22 MonthPicker
+    participant BE1 as BE-1 ApiHandlers
+    participant BE4 as BE-4 AccessPolicy
+    participant BE9 as BE-9 OrderService
+    participant BE15 as BE-15 PracticeDashboardQueries
+    participant DB
+    FE15->>BE1: GET dashboard for the month (EP-29) → BE-15.dashboard
+    BE15->>DB: unpaid sent orders older than 3 days#59; products with 3 or fewer in stock#59; per-product units, amounts paid and summed payouts (paid price × quantity − unit cost × quantity − fee share) for the practice's paid orders in the month
+    FE15->>BE1: GET practice orders (EP-30) → BE-15.orders: a page of orders with patient, total, status, times
+    alt main path (steps 4-4)
+        FE15->>Provider: attention items first, then orders, then sales and stock
+    else nothing was sent in the chosen month
+        FE15->>Provider: #quot;No orders were sent in September 2026.#quot; and today's stock
+    end
+    Provider->>FE22: picks September → ST-7 changes → steps 1-4 repeat for that month
+    Provider->>FE15: presses Cancel order on Ben Ortiz's sent order and confirms (ST-12)
+    FE15->>BE1: POST cancel (EP-20)
+    BE1->>BE9: cancelOrder(viewer, order)
+    BE9->>BE4: assertCanViewOrder(viewer, order) — the order is in the provider's practice
+    alt main path (steps 10-12)
+        BE9->>DB: [tx begin] status → cancelled and cancelled_at only where the status is still sent or payment_failed [tx commit]
+        BE1-->>FE15: 200 Order#59; FE-15 refetches EP-30 and EP-29
+        FE15-->>Provider: #quot;Order 1043 cancelled. Ben Ortiz will see that your practice cancelled it.#quot;
+    else the patient has already started checkout
+        BE9->>DB: the conditional update changes no row (the status is in_checkout)
+        BE9-->>BE1: InvalidTransition
+        BE1-->>FE15: 409 /problems/invalid-transition
+        FE15-->>Provider: #quot;This order can't be cancelled: the patient has started checkout.#quot;
+    end

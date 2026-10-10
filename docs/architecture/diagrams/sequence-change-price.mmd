@@ -1,0 +1,36 @@
+%% diagram: sequence-change-price
+%% source: docs/architecture/lld.md#seq-4-change-a-price-on-purpose-sequence-change-price-covers-us-4-f4-fr-017-to-fr-022-ae-015-to-ae-020 @ 2e4e445
+%% drawn: 2026-10-10T05:05:40Z by draw-diagrams (claude, claude-opus-5-5)
+%% render: unverified
+%% render-check: mmdc not on PATH
+%% missing: 0
+%% Generated from the source section. Do not edit by hand: fix the section, then re-run `draw-diagrams sequence-change-price`.
+sequenceDiagram
+    autonumber
+    actor Provider
+    participant FE13 as FE-13 PracticePricesPage
+    participant FE14 as FE-14 PriceChangeDialog
+    participant BE1 as BE-1 ApiHandlers
+    participant BE5 as BE-5 IdempotencyGuard
+    participant BE8 as BE-8 PricingService
+    participant BE6 as BE-6 Money
+    participant DB
+    FE13->>BE1: GET prices (EP-27) → BE-8.listPrices: each product's cost, price, margin, default flag, lowest allowed price and history
+    Provider->>FE14: enters a 60% margin and the reason #quot;new protocol pricing#quot;#59; presses Save new price
+    FE13->>BE1: PUT price with Idempotency-Key (EP-28)#59; BE-5.begin → proceed
+    BE1->>BE8: changePrice(viewer, product, input)
+    BE8->>BE6: priceFromMargin(1500, 6000) = 3750#59; lowestAllowedPriceCents(1500) = 1511
+    alt main path (steps 6-8)
+        BE8->>DB: [tx begin] lock the practice price row#59; check expected current price#59; upsert practice price#59; insert price change (old 3000, new 3750, reason, provider) [tx commit]
+        BE1-->>FE13: 200 PracticePrice#59; FE-13 refetches EP-27
+        FE13->>Provider: #quot;Omega-3 Fish Oil is now $37.50. Orders not yet in checkout will show the new price.#quot;
+    else the new price is below the floor
+        BE8-->>BE1: BelowFloor
+        BE1-->>FE13: 422 /problems/below-price-floor with lowest allowed $15.11
+        FE14-->>Provider: #quot;That price is below the lowest allowed, $15.11. Enter $15.11 or more.#quot;
+    else another provider changed it first
+        BE8->>DB: expected price differs → [tx rollback]
+        BE8-->>BE1: StalePrice
+        BE1-->>FE13: 409 /problems/stale-price
+        FE14-->>Provider: #quot;Dr. Sam Lee changed this price to $36.00 a moment ago. Check it before saving yours.#quot;
+    end

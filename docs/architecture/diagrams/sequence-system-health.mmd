@@ -1,0 +1,25 @@
+%% diagram: sequence-system-health
+%% source: docs/architecture/lld.md#seq-12-check-system-health-sequence-system-health-covers-us-10-f12-fr-058-fr-059-ae-061-ae-062 @ e885abc
+%% drawn: 2026-10-10T04:59:37Z by draw-diagrams (claude, claude-opus-5-5)
+%% render: unverified
+%% render-check: mmdc not on PATH
+%% missing: 0
+%% Generated from the source section. Do not edit by hand: fix the section, then re-run `draw-diagrams sequence-system-health`.
+sequenceDiagram
+    autonumber
+    actor SRE
+    participant X1 as Uptime monitor
+    participant FE21 as FE-21 SystemHealthPage
+    participant BE1 as BE-1 ApiHandlers
+    participant BE4 as BE-4 AccessPolicy
+    participant BE19 as BE-19 RequestMetrics
+    participant DB
+    participant BE2 as BE-2
+    X1->>BE1: GET /health (EP-40) every minute → BE-19.recordPing → DB: insert the minute (ignored if present)
+    alt main path (steps 2-4)
+        FE21->>BE1: GET system health (EP-39) → BE-4.assertRole(sre) → BE-19.systemHealth
+        BE19->>DB: availability = pinged minutes ÷ minutes so far in the month#59; errors and slow responses from request stats
+        FE21->>SRE: #quot;Availability 99.7%, target 99.5%: met#quot; and the other measures
+    else the SRE follows a link to an order breakdown
+        BE2->>BE4: assertRole fails for EP-6 → 403 /problems/forbidden → #quot;Your role can't open order breakdowns.#quot;
+    end

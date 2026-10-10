@@ -1,0 +1,98 @@
+%% diagram: fe-components
+%% source: docs/architecture/lld.md#3-frontend-components @ 36d7dad
+%% drawn: 2026-10-10T16:13:33Z by draw-diagrams (claude, claude-opus-5-5)
+%% render: unverified
+%% render-check: mmdc not on PATH
+%% missing: 0
+%% Generated from the source section. Do not edit by hand: fix the section, then re-run `draw-diagrams fe-components`.
+flowchart TD
+    FE1["FE-1 AppShell<br/>owns: ST-1 (fetches), ST-2"]
+    FE2["FE-2 SignInPage<br/>owns: none (stateless#59; form fields are local inputs)<br/>reads: ST-1"]
+    FE3["FE-3 NoticePage<br/>owns: ST-8 (fetches EP-24)<br/>reads: ST-1"]
+    FE4["FE-4 OrderBuilderPage<br/>owns: ST-3, ST-9, ST-8 (fetches EP-18)<br/>reads: ST-1"]
+    FE5["FE-5 ProductPicker<br/>owns: none (stateless)<br/>reads: ST-3, ST-8"]
+    FE6["FE-6 OrderPanel<br/>owns: none (stateless)<br/>reads: ST-3, ST-8"]
+    FE7["FE-7 PatientOrderPage<br/>owns: ST-8 (fetches EP-21)<br/>reads: ST-1"]
+    FE8["FE-8 CheckoutStep<br/>owns: ST-4<br/>reads: ST-8"]
+    FE9["FE-9 ReceiptView<br/>owns: none (stateless)<br/>reads: ST-8"]
+    FE10["FE-10 OpsOrderListPage<br/>owns: ST-5, ST-8 (fetches EP-25)<br/>reads: ST-1"]
+    FE11["FE-11 OrderBreakdownPage<br/>owns: ST-8 (fetches EP-26)<br/>reads: ST-1"]
+    FE12["FE-12 MoneyEquation<br/>owns: none (stateless)<br/>reads: ST-8"]
+    FE13["FE-13 PracticePricesPage<br/>owns: ST-6, ST-8 (fetches EP-27)<br/>reads: ST-1"]
+    FE14["FE-14 PriceChangeDialog<br/>owns: none (stateless#59; the draft is lifted to FE-13)<br/>reads: ST-6, ST-8"]
+    FE15["FE-15 PracticeDashboardPage<br/>owns: ST-7, ST-12, ST-8 (fetches EP-29, EP-30#59; calls EP-20) (changed)<br/>reads: ST-1"]
+    FE16["FE-16 StockAdjustmentsPage<br/>owns: ST-10, ST-8 (fetches EP-31)<br/>reads: ST-1"]
+    FE17["FE-17 PlatformHealthPage<br/>owns: ST-7, ST-8 (fetches EP-33)<br/>reads: ST-1"]
+    FE18["FE-18 FinancialReportPage<br/>owns: ST-7, ST-8 (fetches EP-34)<br/>reads: ST-1"]
+    FE19["FE-19 OperationsAccessPage<br/>owns: ST-11, ST-8 (fetches EP-36)<br/>reads: ST-1"]
+    FE20["FE-20 AccessLogPage<br/>owns: ST-7, ST-8 (fetches EP-38)<br/>reads: ST-1"]
+    FE21["FE-21 SystemHealthPage<br/>owns: ST-7, ST-8 (fetches EP-39)<br/>reads: ST-1"]
+    FE22["FE-22 MonthPicker<br/>owns: none (stateless)<br/>reads: ST-7"]
+    FE23["FE-23 ProblemMessage<br/>owns: none (stateless)"]
+    FE24["FE-24 OrderFunnel<br/>owns: none (stateless)<br/>reads: ST-8"]
+    FE1 -->|"next?: string"| FE2
+    FE2 -.->|"signedIn(next)"| FE1
+    FE2 -->|"problem: Problem"| FE23
+    FE23 -.->|"retry()"| FE2
+    FE1 -->|"token: string"| FE3
+    FE3 -->|"problem: Problem"| FE23
+    FE23 -.->|"retry()"| FE3
+    FE1 -->|"patientId: number"| FE4
+    FE4 -.->|"orderSent(orderId)"| FE1
+    FE4 -->|"items: CatalogItem[]#59; lines: DraftLine[]"| FE5
+    FE5 -.->|"add(productId, quantity)"| FE4
+    FE4 -->|"lines: DraftLine[]#59; totals: Totals#59; problem?: Problem"| FE6
+    FE6 -.->|"remove(productId), send()"| FE4
+    FE4 -->|"problem: Problem"| FE23
+    FE23 -.->|"retry()"| FE4
+    FE1 -->|"orderId: number"| FE7
+    FE7 -->|"order: OrderView"| FE8
+    FE8 -.->|"paid(receipt), back()"| FE7
+    FE7 -->|"receipt: Receipt"| FE9
+    FE7 -->|"problem: Problem"| FE23
+    FE23 -.->|"retry()"| FE7
+    FE1 --> FE10
+    FE10 -->|"problem: Problem"| FE23
+    FE23 -.->|"retry()"| FE10
+    FE1 -->|"orderId: number"| FE11
+    FE11 -->|"total: number#59; parts: Part[]#59; balanced: boolean"| FE12
+    FE11 -->|"problem: Problem"| FE23
+    FE23 -.->|"retry()"| FE11
+    FE1 --> FE13
+    FE13 -->|"price: PracticePrice#59; draft: PriceDraft#59; problem?: Problem"| FE14
+    FE14 -.->|"change(draft), save(), cancel()"| FE13
+    FE13 -->|"problem: Problem"| FE23
+    FE23 -.->|"retry()"| FE13
+    FE1 --> FE15
+    FE15 -->|"value: string"| FE22
+    FE22 -.->|"change(month)"| FE15
+    FE15 -->|"problem: Problem"| FE23
+    FE23 -.->|"retry()"| FE15
+    FE1 --> FE16
+    FE16 -->|"problem: Problem"| FE23
+    FE23 -.->|"retry()"| FE16
+    FE1 --> FE17
+    FE17 -->|"value: string"| FE22
+    FE22 -.->|"change(month)"| FE17
+    FE17 -->|"funnel: Funnel"| FE24
+    FE17 -->|"problem: Problem"| FE23
+    FE23 -.->|"retry()"| FE17
+    FE1 --> FE18
+    FE18 -->|"value: string"| FE22
+    FE22 -.->|"change(month)"| FE18
+    FE18 -->|"total: number#59; parts: Part[]#59; balanced: boolean"| FE12
+    FE18 -->|"problem: Problem"| FE23
+    FE23 -.->|"retry()"| FE18
+    FE1 --> FE19
+    FE19 -->|"problem: Problem"| FE23
+    FE23 -.->|"retry()"| FE19
+    FE1 --> FE20
+    FE20 -->|"value: string"| FE22
+    FE22 -.->|"change(month)"| FE20
+    FE20 -->|"problem: Problem"| FE23
+    FE23 -.->|"retry()"| FE20
+    FE1 --> FE21
+    FE21 -->|"value: string"| FE22
+    FE22 -.->|"change(month)"| FE21
+    FE21 -->|"problem: Problem"| FE23
+    FE23 -.->|"retry()"| FE21
