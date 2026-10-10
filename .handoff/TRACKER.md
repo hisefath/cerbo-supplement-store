@@ -7,11 +7,11 @@ several harnesses read it and the repo is public.
 ## Resume
 
 <!-- Rewritten as the LAST edit of every supervisor move. Times come from `date`. -->
-- **As of:** 2026-10-10 15:25 CDT
-- **In flight:** none. M4 build complete: T001-T010 on milestone/m4-tracer-bullet@72ad7fa; reviews M4-pass1..6 dispositioned.
-- **Next:** human types /report-milestone (G5). Carry into the report: open items from passes 1-6 (filed and LLD/acceptance catch-ups), M5 spec gap (patient order list), ship-milestone TRUST_PROXY. After M4: design-lld catch-up (helper unitCostFromLowestAllowedPrice; D47 SM-1 guard; FM-3 new-key retry; failure_reason NULL meaning; acceptance Q-1 to Q-4); define-acceptance re-run (D47 test); FM-7 reconcile owner; milestone review items pass2 R6, R7, pass3 R3, R5.
-- **Waiting on:** human: /report-milestone.
-- **Verified:** 72ad7fa make check OK (lint, typecheck, 96 unit, 43 M4 acceptance, embeds)
+- **As of:** 2026-10-10 15:41 CDT
+- **In flight:** G5 for M4: docs/milestones/M4.md verified at 33f8509 (recommendation Revise).
+- **Next:** human answers G5. Recommended Revise: /check-security for M4; merge M1, M2, M3 first per D48; dispositions for pass6 R7, R12; human pushes and opens draft MRs. After M4: design-lld catch-up (helper unitCostFromLowestAllowedPrice; D47 SM-1 guard; FM-3 new-key retry; failure_reason NULL meaning; acceptance Q-1 to Q-4); define-acceptance re-run (D47 test); FM-7 reconcile owner; milestone review items pass2 R6, R7, pass3 R3, R5.
+- **Waiting on:** human: G5 answer.
+- **Verified:** 33f8509 make check exit 0 (96 unit + 43 M4 acceptance) by report-milestone; recipe 12 tallies stable
 
 ## Tasks
 
@@ -104,6 +104,7 @@ several harnesses read it and the repo is public.
 | 2026-10-10 14:54 CDT | T006 review pass5 dispositions, option a: relaunch T006 for R3 (parallel-safe limit), R4 (re-check EP-17 before redirect), R2 local half (TRUST_PROXY setting, no shared unknown-address count; ship-milestone sets and confirms the Railway header), R1 (or-vs-and test); R5, R6 to milestone review; supervisor checks the result without another verifier pass unless asked | specs/M4-tracer-bullet/tasks/T006.md@08a61ae | "a, one more T006 run" |
 | 2026-10-10 15:08 CDT | G4 re-approval (Revise, option a): T009 Done-when becomes make -n check / grep -q "tests/acceptance" && npx vitest run --dir tests/acceptance/M4 && make check; rerun T009 | specs/M4-tracer-bullet/tasks/T009.md@f6f3714 | "a, fix T009's check and rerun" |
 | 2026-10-10 15:19 CDT | G4 re-approval (Revise, option a): add M4-T010 milestone review fixes (pass6 R2 cancel only from sent/payment_failed, R3 sign-in link carries next=, R4 name every below-floor item, R1 test, R15 Makefile comment) and run it; patient order list = M5 spec gap; R5, R6, R8, R9, R11 to LLD/acceptance catch-up; R10, R13, R14 to M5 | specs/M4-tracer-bullet/tasks/T010.md@75c17f0 | "a, add T010 and run it" |
+| 2026-10-10 15:39 CDT | report-milestone DV-1: M4 stays stacked on milestone/m1-research; merge M1, M2, M3, M4 to main in order, one MR each (option a) | milestone/m4-tracer-bullet@ec96fdf | "a, stack and merge M1 to M4 in order" |
 
 ## Log
 
