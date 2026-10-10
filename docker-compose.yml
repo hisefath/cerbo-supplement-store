@@ -1,0 +1,13 @@
+# Throwaway PostgreSQL 16 for tests only (lld.md §9: the database engine is never faked).
+# Data lives in tmpfs, so stopping the container wipes it.
+services:
+  db-test:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: supplements_test
+      POSTGRES_USER: supplements_test
+      POSTGRES_PASSWORD: local-test-only
+    ports:
+      - "54329:5432"
+    tmpfs:
+      - /var/lib/postgresql/data

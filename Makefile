@@ -6,7 +6,7 @@
 # Commands table in AGENTS.md). Until then they fail on purpose, so an unconfigured repo can never look green.
 # Keep the target names: skills and hooks call `make check`, not the tools directly.
 
-.PHONY: check lint types test
+.PHONY: check lint types test setup db-test-up test-acceptance
 
 ## check: lint + types + tests — the gate
 check: lint types test
@@ -23,6 +23,18 @@ types:
 ## test: design docs' embedded diagrams must match their .mmd sources (once docs/architecture/*.md exist)
 test:
 	@set -- docs/architecture/*.md; if [ -e "$$1" ]; then bash scripts/embed-diagrams.sh --check "$$@"; fi
+
+## setup: install the pinned dependencies (package-lock.json)
+setup:
+	npm ci
+
+## db-test-up: start the throwaway PostgreSQL 16 test database (localhost:54329)
+db-test-up:
+	docker compose up -d db-test
+
+## test-acceptance: QA-owned acceptance tests (red until their milestone is built; not part of check until merge)
+test-acceptance:
+	npx vitest run tests/acceptance
 
 # --- Example: Laravel 13 / PHP 8.5 (Pint + Larastan/PHPStan + Pest or PHPUnit) -------------------------------
 # Replace the three recipes above with these (recipe lines must start with a TAB):

@@ -6,7 +6,9 @@ per merge request). Every harness (Claude Code, Codex, Cursor, Antigravity) read
 ## Commands
 | Purpose | Command |
 |---|---|
-| Setup / run / tests | not yet: the stack is decided at the M3 design gate; this table is filled then |
+| Setup | `make setup` (npm ci) · `make db-test-up` (PostgreSQL 16 test database on localhost:54329) |
+| Run | `npm run dev` (needs DATABASE_URL; see .env.example) |
+| Acceptance tests | `make test-acceptance` · one test: `npx vitest run tests/acceptance -t M4_AT_001` |
 | **All checks (the one green/red gate)** | `make check` (docs-only until the stack exists: script syntax + diagram embeds in sync) |
 | Deploy | see `docs/runbooks/deploy.md` (human-only) |
 
@@ -53,5 +55,6 @@ test output, questions). Templates: `specs/_templates/task.md`, `specs/_template
 
 ## Project specifics
 - History: `main@778e788` is an earlier one-shot AI build, kept only as history. It is not an input: don't read, cite or reuse it (D22). This branch restarts with a fully auditable, human-gated workflow.
-- Stack: undecided until M3 design, chosen from the research evidence.
+- Stack: TypeScript 5.9 on Node 22.22+, Nuxt 4 (D44) with Vue 3, PostgreSQL 16 through Kysely with plain SQL
+  migrations (D33, D39), Vitest. Acceptance tests run only against the throwaway `supplements_test` database.
 - Money, when it exists: integer cents only, never floats.
