@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   allocateFee,
   assertSplitBalances,
+  belowFloorProductIds,
   defaultPriceCents,
   lowestAllowedPriceCents,
   payoutCents,
@@ -86,4 +87,21 @@ describe('unitCostFromLowestAllowedPrice: inverts lowestAllowedPriceCents exactl
       if (unitCostFromLowestAllowedPrice(lowestAllowedPriceCents(cost)) !== cost) throw new Error(`cost ${cost}`)
     }
   })
+})
+
+describe('belowFloorProductIds: what refuses an order whose payout would be below $0.00 (FR-004)', () => {
+  const line = (id: number, unitPriceCents: number, unitCostCents: number, quantity = 1) => ({ id, unitPriceCents, unitCostCents, quantity })
+  it('AE-003: priced at its $12.00 cost -> named', () => expect(belowFloorProductIds([line(2, 1200, 1200)])).toEqual([2]))
+  it('$12.08 for a $12.00 cost is named, $12.09 (payout $0.00) is not', () => {
+    expect(belowFloorProductIds([line(2, 1208, 1200)])).toEqual([2])
+    expect(belowFloorProductIds([line(2, 1209, 1200)])).toEqual([])
+  })
+  it('names only the products below their floor', () =>
+    expect(belowFloorProductIds([line(1, 1800, 900, 2), line(2, 1200, 1200), line(3, 3000, 1500)])).toEqual([2]))
+  it('AE-001 order is fine', () => expect(belowFloorProductIds([line(1, 1800, 900, 2), line(2, 2400, 1200)])).toEqual([]))
+  it('every product at its floor but the one order fee rounds up below $0.00 -> names every product', () => {
+    // 66c at a 66c cost: fee(66) = 0, payout 0. Two units: fee(132) = 1, payout -1.
+    expect(belowFloorProductIds([line(7, 66, 66, 2)])).toEqual([7])
+  })
+  it('no lines -> nothing named', () => expect(belowFloorProductIds([])).toEqual([]))
 })

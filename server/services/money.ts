@@ -60,6 +60,17 @@ export function lowestAllowedPriceCents(unitCostCents: number): number {
   return p
 }
 
+/** The products that make an order's payout after its fee fall below $0.00 (FR-004): each one priced below its
+ *  floor. When every product is at or above its floor but the one order fee still rounds the payout below $0.00
+ *  (e.g. 2 x 66c at a 66c cost: fee 1c), every product is named, since no single one is at fault. */
+export function belowFloorProductIds<T>(lines: { id: T; unitPriceCents: number; unitCostCents: number; quantity: number }[]): T[] {
+  const below = lines.filter((l) => l.unitPriceCents < lowestAllowedPriceCents(l.unitCostCents)).map((l) => l.id)
+  if (below.length > 0) return below
+  const total = lines.reduce((s, l) => s + l.unitPriceCents * l.quantity, 0)
+  const cost = lines.reduce((s, l) => s + l.unitCostCents * l.quantity, 0)
+  return payoutCents(total, cost, platformFeeCents(total)) < 0 ? lines.map((l) => l.id) : []
+}
+
 /** The unit cost behind a lowest allowed price: the payout at the floor is exactly $0.00, because the payout grows
  *  by at most one cent per cent of price. Lets the order builder show the payout live from the Catalog (SEQ-1 step 5),
  *  which carries the floor but not the cost. */

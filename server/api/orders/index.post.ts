@@ -10,7 +10,7 @@ import { defineApiHandler, parseBody } from '../../utils/problem'
 
 const SendOrderRequest = z.strictObject({
   patient_id: z.int().positive(),
-  lines: z.array(z.strictObject({ product_id: z.int().positive(), quantity: z.int().min(1) })).min(1),
+  lines: z.array(z.strictObject({ product_id: z.int().positive(), quantity: z.int().min(1) })), // an empty order is refused once, in BE-9.sendOrder (FR-003)
 })
 
 export default defineApiHandler(async (event) => {

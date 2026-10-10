@@ -6,7 +6,7 @@ import { ProblemError } from '../utils/problem'
 import { assertCanActOnPatient, assertIsOrderPatient } from './access-policy'
 import { currentPrices, loadPatient } from './catalog'
 import { sendOrderNotice } from './messaging'
-import { payoutCents, platformFeeCents } from './money'
+import { belowFloorProductIds, lowestAllowedPriceCents, payoutCents, platformFeeCents } from './money'
 import type { Viewer } from './session'
 
 export interface SendOrderInput {
@@ -40,7 +40,7 @@ export async function sendOrder(viewer: Viewer, input: SendOrderInput): Promise<
   // One line per product, quantities added (LINV-4).
   const quantities = new Map<bigint, number>()
   for (const l of input.lines) quantities.set(l.productId, (quantities.get(l.productId) ?? 0) + l.quantity)
-  if (quantities.size === 0) throw new ProblemError('validation', { errors: [{ pointer: '#/lines', detail: 'Add at least one supplement.' }] })
+  if (quantities.size === 0) throw new ProblemError('validation', { errors: [{ pointer: '#/lines', detail: 'This order has no items. Add at least one supplement.' }] })
   const productIds = [...quantities.keys()]
 
   const db = useDb()
@@ -71,6 +71,14 @@ export async function sendOrder(viewer: Viewer, input: SendOrderInput): Promise<
     const unit = prices.get(id)!
     return { id, name: p.name, quantity, unit, total: unit * quantity, cost: p.unit_cost_cents * quantity }
   })
+  // FR-004: no order whose payout after the fee would be below $0.00; no transaction is opened (SEQ-1).
+  const belowFloor = belowFloorProductIds(lines.map((l) => ({ id: l.id, unitPriceCents: l.unit, unitCostCents: byId.get(l.id)!.unit_cost_cents, quantity: l.quantity })))
+  if (belowFloor.length > 0) {
+    throw new ProblemError('below-price-floor', {
+      productIds: belowFloor.map(Number),
+      lowestAllowedPriceCents: lowestAllowedPriceCents(byId.get(belowFloor[0]!)!.unit_cost_cents),
+    })
+  }
   const total = lines.reduce((s, l) => s + l.total, 0)
   const cost = lines.reduce((s, l) => s + l.cost, 0)
   const fee = platformFeeCents(total)
