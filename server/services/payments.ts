@@ -1,6 +1,6 @@
 // BE-10 PaymentService (lld.md §2, SEQ-2, SM-1, SM-2): take one test payment for a held order and record its split
 // and ledger. Two short transactions around the gateway call, so a slow answer never holds a lock (D42). Stock is
-// reserved and released only in M5 (D42).
+// reserved in transaction 1 and given back when the payment fails (BE-13, FR-026, FR-027).
 import { sql } from 'kysely'
 import { useDb } from '../utils/db'
 import { errorFacts, ProblemError } from '../utils/problem'
@@ -10,6 +10,7 @@ import { allocateFee, assertSplitBalances, payoutCents, platformFeeCents, SplitM
 import type { OrderLine } from './orders'
 import { charge } from './payment-gateway'
 import type { Viewer } from './session'
+import { releaseForOrder, reserveForOrder } from './stock'
 
 export interface Receipt {
   order_id: number
@@ -88,7 +89,7 @@ export async function countPayAttempt(userId: bigint, ip: string): Promise<void>
 export async function pay(viewer: Viewer, orderId: bigint, idempotencyKey: string): Promise<Receipt> {
   const db = useDb()
 
-  // Transaction 1: lock the order, check the hold and the split, record the attempt as processing.
+  // Transaction 1: lock the order, check the hold and the split, record the attempt as processing, reserve the stock.
   const prepared = await db.transaction().execute(async (trx) => {
     const o = await trx
       .selectFrom('orders')
@@ -128,7 +129,8 @@ export async function pay(viewer: Viewer, orderId: bigint, idempotencyKey: strin
       await trx.updateTable('orders').set({ status: 'needs_review' }).where('id', '=', o.id).execute()
       return null
     }
-    // LINV-6: a second payment while one is processing loses on uq_payment_attempts_one_processing.
+    // LINV-6: a second payment while one is processing loses on uq_payment_attempts_one_processing, before it reserves
+    // anything, so it answers 409 even when the first one took the last units (R3).
     const attempt = await trx
       .insertInto('payment_attempts')
       .values({ order_id: o.id, idempotency_key: idempotencyKey, amount_cents: split.amountPaidCents })
@@ -137,6 +139,9 @@ export async function pay(viewer: Viewer, orderId: bigint, idempotencyKey: strin
       .catch((e: unknown) => {
         throw (e as { code?: string }).code === '23505' ? new ProblemError('invalid-transition') : e
       })
+    // FR-026, AE-024: products locked in id order, after the order; short stock refuses here, so the rollback leaves no
+    // attempt, no charge.
+    await reserveForOrder(trx, orderId)
     return { order: o, lines, split, feeSharesCents, attemptId: attempt.id }
   })
   if (!prepared) throw new ProblemError('order-under-review')
@@ -156,7 +161,7 @@ export async function pay(viewer: Viewer, orderId: bigint, idempotencyKey: strin
     }
     paidAt = await recordPayment(order, lines, split, feeSharesCents, attemptId)
   } catch (e) {
-    await closeAttempt(attemptId).catch((err) => console.error('could not close payment attempt', attemptId, errorFacts(err)))
+    await closeAttempt(attemptId, order.id).catch((err) => console.error('could not close payment attempt', attemptId, errorFacts(err)))
     throw e
   }
 
@@ -175,30 +180,38 @@ export async function pay(viewer: Viewer, orderId: bigint, idempotencyKey: strin
   }
 }
 
-/** SM-2 processing -> failed, SM-1 in_checkout -> payment_failed: no money recorded (FR-035). */
+/** SM-2 processing -> failed, SM-1 in_checkout -> payment_failed: no money recorded, stock returned (FR-035, FM-1). */
 async function failAttempt(attemptId: string, orderId: string, reason: 'declined' | 'no_answer'): Promise<void> {
   await useDb()
     .transaction()
     .execute(async (trx) => {
       await trx.selectFrom('orders').select('id').where('id', '=', orderId).forUpdate().execute()
-      await trx
+      const closed = await trx
         .updateTable('payment_attempts')
         .set({ status: 'failed', failure_reason: reason, finished_at: sql`now()` })
         .where('id', '=', attemptId)
         .where('status', '=', 'processing')
-        .execute()
+        .executeTakeFirst()
+      if (closed.numUpdatedRows === 1n) await releaseForOrder(trx, BigInt(orderId))
       await trx.updateTable('orders').set({ status: 'payment_failed' }).where('id', '=', orderId).where('status', '=', 'in_checkout').execute()
     })
 }
 
-/** SM-2 processing -> failed with no failure_reason: not the gateway's answer, so the order is left alone (FM-3). */
-async function closeAttempt(attemptId: string): Promise<void> {
+/** SM-2 processing -> failed with no failure_reason: not the gateway's answer, so the order is left alone (FM-3), but
+ *  the stock transaction 1 reserved is given back, or the next Pay would reserve it a second time. */
+export async function closeAttempt(attemptId: string, orderId: string): Promise<void> {
   await useDb()
-    .updateTable('payment_attempts')
-    .set({ status: 'failed', finished_at: sql`now()` })
-    .where('id', '=', attemptId)
-    .where('status', '=', 'processing')
-    .execute()
+    .transaction()
+    .execute(async (trx) => {
+      await trx.selectFrom('orders').select('id').where('id', '=', orderId).forUpdate().execute()
+      const closed = await trx
+        .updateTable('payment_attempts')
+        .set({ status: 'failed', finished_at: sql`now()` })
+        .where('id', '=', attemptId)
+        .where('status', '=', 'processing')
+        .executeTakeFirst()
+      if (closed.numUpdatedRows === 1n) await releaseForOrder(trx, BigInt(orderId))
+    })
 }
 
 /** Transaction 2: the split, the paid lines, four ledger entries, attempt succeeded, order paid. The order row is

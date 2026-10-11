@@ -122,6 +122,22 @@ export interface LedgerEntriesTable {
   occurred_at: Timestamp
 }
 
+/** Append-only (INV-4): the app may only insert and select. */
+export interface StockMovementsTable {
+  id: Id
+  product_id: Int8
+  /** negative for sales and write-offs */
+  change: number
+  kind: 'sale' | 'sale_release' | 'adjustment'
+  reason: string
+  /** present exactly for sales and releases */
+  order_id: Int8 | null
+  /** present exactly for adjustments */
+  actor_id: Int8 | null
+  units_after: number
+  created_at: DefaultTimestamp
+}
+
 export interface IdempotencyKeysTable {
   user_id: Int8
   key: string
@@ -162,6 +178,7 @@ export interface Database {
   notices: NoticesTable
   payment_attempts: PaymentAttemptsTable
   ledger_entries: LedgerEntriesTable
+  stock_movements: StockMovementsTable
   idempotency_keys: IdempotencyKeysTable
   sign_in_attempts: SignInAttemptsTable
   pay_rate_attempts: PayRateAttemptsTable
