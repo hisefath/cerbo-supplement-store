@@ -1,0 +1,2063 @@
+diff --git a/MILESTONES.md b/MILESTONES.md
+index b095ee4..cd93fae 100644
+--- a/MILESTONES.md
++++ b/MILESTONES.md
+@@ -17,4 +17,5 @@ LLD); `slice-tasks` adds each implementation milestone's row at G4; the supervis
+ | M2 | Product: PRD + clarifications (docs only) | — | D25-D31 | !2 | done | G1@998ed94 | 371224a | c6a9438 | — |
+ | M3 | Design: HLD, LLD, DB design, API contract, diagrams (docs only) | — | D32-D44 | !3 | done | G2@fea2e18 G3@5a984b8 | 8377ce0 | c6a9438 | — |
+ | M4 | Each person signs in; provider sends an order, patient pays once, the split is recorded and shown to the cent | 11 tasks: T001–T011 (+ T901–T903 deploy gaps) | D45-D56 (close-out D57-D69) | !4 (close-out !5) | done | G1@998ed94 G2@fea2e18 G3@5a984b8 G5@2604a27 | 10a020e (close-out c6a9438) | c6a9438 | — |
+-| M5 | Price-change form with history, price notices, checkout lock, stock limits, practice dashboard | 11 tasks: T001–T011 (T007–T011 close-out) | D33, D36, D39, D40, D41, D42, D44, D47, D72 | — | planned | G1@998ed94 G2@fea2e18 G3@9708841 | — | — | — |
++| M5 | Price-change form with history, price notices, checkout lock, stock limits, practice dashboard | 11 tasks: T001–T011 (T007–T011 close-out) | D33, D36, D39, D40, D41, D42, D44, D47, D72 (review D76-D79) | !9 | done | G1@998ed94 G2@fea2e18 G3@9708841 G4@c807534 G5@5213974 | 220a971 | 220a971 | — |
++| M5.1 | Visual refresh: every screen in the VL-2 look, no behaviour change | 4 tasks: T001–T004 | D75, D80, D81 | — | planned | G1@92d4a5f G3@a7cb486 | — | — | — |
+diff --git a/Makefile b/Makefile
+index 0ec2d2e..85307ba 100644
+--- a/Makefile
++++ b/Makefile
+@@ -6,10 +6,10 @@
+ # Commands table in AGENTS.md). Until then they fail on purpose, so an unconfigured repo can never look green.
+ # Keep the target names: skills and hooks call `make check`, not the tools directly.
+ 
+-.PHONY: check lint types test setup db-test-up test-acceptance test-acceptance-m4 test-acceptance-m5 decisions
++.PHONY: check lint types test setup db-test-up test-acceptance test-acceptance-m4 test-acceptance-m5 test-acceptance-m5.1 decisions
+ 
+-## check: lint + types + tests + M4 and M5 acceptance suites + decision review in sync — the gate
+-check: lint types test test-acceptance-m4 test-acceptance-m5 decisions
++## check: lint + types + tests + M4, M5 and M5.1 acceptance suites + decision review in sync — the gate
++check: lint types test test-acceptance-m4 test-acceptance-m5 test-acceptance-m5.1 decisions
+ 	@echo "make check: OK"
+ 
+ ## lint: workflow scripts must parse (docs-only phase: no product code yet; stack tools are added at M3 design)
+@@ -37,7 +37,7 @@ setup:
+ db-test-up:
+ 	docker compose up -d db-test
+ 
+-## test-acceptance: every milestone's QA-owned acceptance tests (check runs the M4 and M5 parts via test-acceptance-m4 and -m5; needs `make db-test-up`)
++## test-acceptance: every milestone's QA-owned acceptance tests (check runs the M4, M5 and M5.1 parts via test-acceptance-m4, -m5 and -m5.1; needs `make db-test-up`)
+ test-acceptance:
+ 	npx vitest run --dir tests/acceptance
+ 
+@@ -49,6 +49,10 @@ test-acceptance-m4:
+ test-acceptance-m5:
+ 	npx vitest run --dir tests/acceptance/M5
+ 
++## test-acceptance-m5.1: the M5.1 acceptance suite, part of check (needs `make db-test-up`)
++test-acceptance-m5.1:
++	npx vitest run --dir tests/acceptance/M5.1
++
+ # --- Example: Laravel 13 / PHP 8.5 (Pint + Larastan/PHPStan + Pest or PHPUnit) -------------------------------
+ # Replace the three recipes above with these (recipe lines must start with a TAB):
+ #
+diff --git a/app/assets/css/theme.css b/app/assets/css/theme.css
+new file mode 100644
+index 0000000..8efc807
+--- /dev/null
++++ b/app/assets/css/theme.css
+@@ -0,0 +1,159 @@
++/* Theme (lld.md §3 Theme, D81): the screens.md VL-2 visual language in one place. Every colour value in the app lives
++   here as a --color-* custom property; components read them with var() and keep their scoped styles for layout only.
++   Fonts are self-hosted from npm packages, so Vite bundles them under /_nuxt/ and the CSP stays 'self' (NFR-016). */
++@import '@fontsource-variable/geist/index.css';
++@import '@fontsource/eb-garamond/500.css';
++
++:root {
++  /* Colours (names fixed by lld.md Theme; each pair checked for WCAG 2.2 AA by M5.1_AT_001, NFR-015) */
++  --color-page: #F5F9FF;
++  --color-card: #FFFFFF;
++  --color-border: #E3EAF6;
++  --color-ink: #0F172A;
++  --color-ink-muted: #475569;
++  --color-primary: #1D4ED8;
++  --color-on-primary: #FFFFFF;
++  --color-danger: #B91C1C;
++  --color-band-from: #1D4ED8;
++  --color-band-to: #2563EB;
++  --color-band-glow: #8EC5F5;
++  --color-on-band: #FFFFFF;
++  --color-focus: #3B82F6;
++  /* Status pill tints (screens.md VL-2): dark text on a pale tint, each pair 4.5:1 or better */
++  --color-pill-green: #DCFCE7;
++  --color-on-pill-green: #166534;
++  --color-pill-blue: #DBEAFE;
++  --color-on-pill-blue: #1E40AF;
++  --color-pill-amber: #FEF3C7;
++  --color-on-pill-amber: #92400E;
++  --color-pill-grey: #F1F5F9;
++  --color-on-pill-grey: #334155;
++
++  /* Radii, shadows, spacing, type */
++  --radius-card: 16px;
++  --radius-button: 12px;
++  --radius-dialog: 20px;
++  --radius-pill: 999px;
++  --shadow-card: 0 12px 40px -12px color-mix(in srgb, var(--color-primary) 18%, transparent);
++  --shadow-glow: 0 6px 18px -4px color-mix(in srgb, var(--color-primary) 45%, transparent);
++  --shadow-glow-hover: 0 8px 26px -4px color-mix(in srgb, var(--color-primary) 65%, transparent);
++  --shadow-glow-pressed: 0 2px 6px -2px color-mix(in srgb, var(--color-primary) 45%, transparent);
++  --highlight-top: inset 0 1px 0 color-mix(in srgb, var(--color-on-primary) 25%, transparent);
++  --space-card: 24px;
++  --space-section: 32px;
++  --font-sans: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
++  --font-serif: 'EB Garamond', Georgia, 'Times New Roman', serif;
++  --text-body: 16px;
++  --text-detail: 14px;
++  --text-title: 32px;
++  --motion: 180ms ease-out;
++}
++
++body {
++  margin: 0;
++  background: var(--color-page);
++  color: var(--color-ink);
++  font-family: var(--font-sans);
++  font-size: var(--text-body);
++  line-height: 1.5;
++}
++
++table { font-variant-numeric: tabular-nums; }
++td, th { font-size: var(--text-detail); }
++a { color: var(--color-primary); }
++
++/* Header band: a page's title (and subtitle) on the sky gradient; the glow stays in the far corner, clear of text */
++.page-band {
++  margin-bottom: var(--space-section);
++  padding: var(--space-card) 96px var(--space-card) var(--space-card);
++  border-radius: var(--radius-card);
++  color: var(--color-on-band);
++  background:
++    radial-gradient(circle at 100% 0, var(--color-band-glow) 0, transparent 80px),
++    linear-gradient(135deg, var(--color-band-from), var(--color-band-to));
++}
++.page-band h1 {
++  margin: 0;
++  font-family: var(--font-serif);
++  font-weight: 500;
++  font-size: var(--text-title);
++  line-height: 1.2;
++}
++.page-band p { margin: 4px 0 0; color: var(--color-on-band); }
++@media (max-width: 600px) {
++  .page-band h1 { font-size: 26px; }
++}
++
++.card {
++  background: var(--color-card);
++  border: 1px solid var(--color-border);
++  border-radius: var(--radius-card);
++  box-shadow: var(--shadow-card);
++  padding: var(--space-card);
++}
++
++.btn-primary,
++.btn-secondary,
++.btn-danger {
++  min-height: 44px;
++  min-width: 44px;
++  padding: 0 20px;
++  border-radius: var(--radius-button);
++  font: 500 var(--text-body) var(--font-sans);
++  cursor: pointer;
++  transition: box-shadow var(--motion), transform var(--motion);
++}
++.btn-primary {
++  border: 0;
++  background: var(--color-primary);
++  color: var(--color-on-primary);
++  box-shadow: var(--shadow-glow), var(--highlight-top);
++}
++.btn-primary:hover { box-shadow: var(--shadow-glow-hover), var(--highlight-top); }
++.btn-primary:active { box-shadow: var(--shadow-glow-pressed), var(--highlight-top); transform: translateY(1px); }
++.btn-secondary {
++  border: 1px solid var(--color-primary);
++  background: var(--color-card);
++  color: var(--color-primary);
++}
++.btn-danger {
++  border: 1px solid var(--color-danger);
++  background: var(--color-card);
++  color: var(--color-danger);
++}
++.btn-primary:disabled,
++.btn-secondary:disabled,
++.btn-danger:disabled { cursor: not-allowed; opacity: 0.7; }
++
++/* Status words keep their text; the pill is a second signal, never the only one. One modifier per order status. */
++.status-pill {
++  display: inline-block;
++  padding: 2px 10px;
++  border-radius: var(--radius-pill);
++  font-size: var(--text-detail);
++  font-weight: 500;
++  background: var(--color-pill-grey);
++  color: var(--color-on-pill-grey);
++}
++.status-pill--paid { background: var(--color-pill-green); color: var(--color-on-pill-green); }
++.status-pill--sent,
++.status-pill--in_checkout { background: var(--color-pill-blue); color: var(--color-on-pill-blue); }
++.status-pill--payment_failed,
++.status-pill--needs_review { background: var(--color-pill-amber); color: var(--color-on-pill-amber); }
++.status-pill--cancelled { background: var(--color-pill-grey); color: var(--color-on-pill-grey); }
++
++/* Focus: a 3 px blue ring with a white gap, visible on white and on the band */
++:focus-visible {
++  outline: 3px solid var(--color-focus);
++  outline-offset: 2px;
++  box-shadow: 0 0 0 2px var(--color-card);
++}
++
++@media (prefers-reduced-motion: reduce) {
++  *, *::before, *::after {
++    transition-duration: 0.01ms !important;
++    animation-duration: 0.01ms !important;
++    animation-iteration-count: 1 !important;
++  }
++  .btn-primary:active { transform: none; }
++}
+diff --git a/app/components/AppShell.vue b/app/components/AppShell.vue
+index c87dcc8..5c233bd 100644
+--- a/app/components/AppShell.vue
++++ b/app/components/AppShell.vue
+@@ -29,7 +29,10 @@ const menu = computed(() => {
+ </template>
+ 
+ <style scoped>
+-.shell { max-width: 1280px; margin: 0 auto; padding: 16px; font-family: system-ui, sans-serif; color: #1a1a1a; }
+-.menu { display: flex; gap: 16px; margin-bottom: 16px; }
+-.help { margin-top: 32px; color: #444; font-size: 14px; }
++/* VL-2 page frame (lld.md FE-1, D81): pale page and type come from theme.css; layout only here. */
++.shell { max-width: 1280px; margin: 0 auto; padding: 16px; }
++.menu { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 16px; }
++.menu a { font-weight: 500; text-decoration: none; }
++.menu a.router-link-active { text-decoration: underline; text-underline-offset: 4px; }
++.help { margin-top: var(--space-section); padding-top: 16px; border-top: 1px solid var(--color-border); color: var(--color-ink-muted); font-size: var(--text-detail); }
+ </style>
+diff --git a/app/components/ProblemMessage.vue b/app/components/ProblemMessage.vue
+index 2411eda..f899b65 100644
+--- a/app/components/ProblemMessage.vue
++++ b/app/components/ProblemMessage.vue
+@@ -49,10 +49,11 @@ const retryable = computed(() => slug.value === 'internal' || slug.value === 'of
+   <div v-if="problem" role="alert" class="problem">
+     <p>{{ text }}</p>
+     <NuxtLink v-if="slug === 'unauthenticated'" :to="{ path: '/sign-in', query: { next: route.fullPath } }">Sign in</NuxtLink>
+-    <button v-if="retryable" type="button" @click="emit('retry')">Try again</button>
++    <button v-if="retryable" type="button" class="btn-secondary" @click="emit('retry')">Try again</button>
+   </div>
+ </template>
+ 
+ <style scoped>
+-.problem { border: 2px solid #b00020; padding: 8px 12px; margin: 8px 0; }
++.problem { border: 2px solid var(--color-danger); border-radius: var(--radius-button); background: var(--color-card); color: var(--color-ink); padding: 8px 12px; margin: 8px 0; }
++.problem p { margin: 0 0 4px; }
+ </style>
+diff --git a/app/components/checkout/CheckoutStep.vue b/app/components/checkout/CheckoutStep.vue
+index 383a20e..c45ea67 100644
+--- a/app/components/checkout/CheckoutStep.vue
++++ b/app/components/checkout/CheckoutStep.vue
+@@ -79,10 +79,10 @@ async function payNow() {
+ </script>
+ 
+ <template>
+-  <section aria-labelledby="checkout-heading" class="checkout">
++  <section aria-labelledby="checkout-heading" class="checkout card">
+     <template v-if="!checkout">
+       <ProblemMessage :problem="problem" :copy="{ offline: 'You\'re offline. No money was taken. Try again when you\'re back online.' }" @retry="start" />
+-      <button type="button" class="primary" :disabled="busy" @click="start">Continue to payment</button>
++      <button type="button" class="btn-primary" :disabled="busy" @click="start">Continue to payment</button>
+     </template>
+     <template v-else>
+       <h2 id="checkout-heading">Checkout</h2>
+@@ -104,17 +104,18 @@ async function payNow() {
+         }"
+         @retry="payNow"
+       />
+-      <button type="button" class="primary" :disabled="busy" @click="payNow">Pay {{ dollars(total) }}</button>
+-      <button type="button" class="secondary" @click="emit('back')">Back to order</button>
++      <button type="button" class="btn-primary" :disabled="busy" @click="payNow">Pay {{ dollars(total) }}</button>
++      <button type="button" class="btn-secondary" @click="emit('back')">Back to order</button>
+     </template>
+   </section>
+ </template>
+ 
+ <style scoped>
++/* S2 step 2 on the VL-2 theme (theme.css): a white card with the glowing primary button; layout only here. */
+ .checkout { max-width: 560px; margin: 0 auto; }
+-dl { display: grid; grid-template-columns: 1fr auto; }
+-dd { margin: 0; text-align: right; }
+-.test { color: #333; }
+-.primary, .secondary { display: block; width: 100%; min-height: 44px; margin: 8px 0; }
+-.primary { font-weight: 600; }
++dl { display: grid; grid-template-columns: 1fr auto; font-variant-numeric: tabular-nums; }
++dd { margin: 0; text-align: right; font-weight: 600; }
++.test { color: var(--color-ink-muted); }
++.btn-primary, .btn-secondary { display: block; width: 100%; margin: 8px 0; }
++.btn-primary { font-weight: 600; }
+ </style>
+diff --git a/app/components/checkout/ReceiptView.vue b/app/components/checkout/ReceiptView.vue
+index b7aea2b..9f6ae6a 100644
+--- a/app/components/checkout/ReceiptView.vue
++++ b/app/components/checkout/ReceiptView.vue
+@@ -26,7 +26,7 @@ const paidOn = computed(() => {
+ </script>
+ 
+ <template>
+-  <section aria-labelledby="receipt-heading" class="receipt">
++  <section aria-labelledby="receipt-heading" class="receipt card">
+     <h2 id="receipt-heading">Receipt</h2>
+     <p role="status">{{ paidOn }}</p>
+     <p>Thank you. Your practice has your order.</p>
+@@ -42,9 +42,11 @@ const paidOn = computed(() => {
+ </template>
+ 
+ <style scoped>
+-.receipt { max-width: 560px; margin: 0 auto; }
++/* S2 success on the VL-2 theme (theme.css): the receipt on a white card; layout only here. */
++.receipt { max-width: 560px; margin: 0 auto var(--space-section); }
++.receipt h2 { margin-top: 0; font-family: var(--font-serif); font-weight: 500; }
+ .lines { list-style: none; padding: 0; }
+-.lines li { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; padding: 4px 0; }
++.lines li { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--color-border); font-variant-numeric: tabular-nums; }
+ .name { overflow-wrap: anywhere; }
+-.test { color: #333; }
++.test { color: var(--color-ink-muted); }
+ </style>
+diff --git a/app/components/ops-stock/ChangeForm.vue b/app/components/ops-stock/ChangeForm.vue
+index e758e9e..f64a3a6 100644
+--- a/app/components/ops-stock/ChangeForm.vue
++++ b/app/components/ops-stock/ChangeForm.vue
+@@ -49,23 +49,22 @@ onMounted(() => root.value?.querySelector<HTMLInputElement>('input')?.focus())
+       <p v-if="errors.form" class="error" role="alert">{{ errors.form }}</p>
+       <p v-if="saving" role="status">{{ slow ? "Still saving. Don't close this window." : 'Saving…' }}</p>
+       <div class="actions">
+-        <button type="submit" :disabled="saving">Save stock change</button>
+-        <button type="button" @click="emit('cancel')">Cancel</button>
++        <button type="submit" class="btn-primary" :disabled="saving">Save stock change</button>
++        <button type="button" class="btn-secondary" @click="emit('cancel')">Cancel</button>
+       </div>
+     </form>
+   </section>
+ </template>
+ 
+ <style scoped>
+-.change { border-top: 1px solid #ddd; border-bottom: 1px solid #ddd; padding: 8px 0; margin: 12px 0; }
++.change { border-top: 1px solid var(--color-border); border-bottom: 1px solid var(--color-border); padding: var(--space-card) 0; margin: 12px 0; }
+ label { display: block; margin-top: 8px; }
+-input { display: block; width: 100%; max-width: 360px; min-height: 24px; }
+-.helper { margin: 2px 0; color: #444; font-size: 14px; }
+-.error { color: #b00020; }
++input { display: block; width: 100%; max-width: 360px; min-height: 44px; box-sizing: border-box; padding: 0 12px; border: 1px solid var(--color-border); border-radius: var(--radius-button); background: var(--color-card); color: var(--color-ink); font: inherit; }
++.helper { margin: 2px 0; color: var(--color-ink-muted); font-size: var(--text-detail); }
++.error { color: var(--color-danger); }
+ .actions { display: flex; gap: 8px; margin-top: 12px; }
+-.actions button { min-height: 32px; }
+ /* S7 Responsive: at phone width the form opens as a full-screen sheet. */
+ @media (max-width: 600px) {
+-  .change { position: fixed; inset: 0; z-index: 10; margin: 0; padding: 16px; background: #fff; overflow-y: auto; }
++  .change { position: fixed; inset: 0; z-index: 10; margin: 0; padding: var(--space-card); background: var(--color-card); overflow-y: auto; }
+ }
+ </style>
+diff --git a/app/components/ops/MoneyEquation.vue b/app/components/ops/MoneyEquation.vue
+index 4807be9..046579b 100644
+--- a/app/components/ops/MoneyEquation.vue
++++ b/app/components/ops/MoneyEquation.vue
+@@ -28,7 +28,7 @@ const gap = computed(() => props.total - props.parts.reduce((s, p) => s + p.cent
+ </template>
+ 
+ <style scoped>
+-.equation { font-size: 18px; margin: 16px 0; }
++.equation { font-size: 18px; margin: 0 0 var(--space-card); padding-bottom: var(--space-card); border-bottom: 1px solid var(--color-border); font-variant-numeric: tabular-nums; }
+ .term { white-space: nowrap; }
+ @media (max-width: 600px) {
+   .equation .term { display: block; }
+diff --git a/app/components/order-builder/OrderPanel.vue b/app/components/order-builder/OrderPanel.vue
+index 85768dc..419a2d3 100644
+--- a/app/components/order-builder/OrderPanel.vue
++++ b/app/components/order-builder/OrderPanel.vue
+@@ -29,7 +29,7 @@ const dollars = (c: number) => `${c < 0 ? '-' : ''}$${(Math.abs(c) / 100).toFixe
+ </script>
+ 
+ <template>
+-  <section aria-labelledby="order-heading" class="panel">
++  <section aria-labelledby="order-heading" class="panel card">
+     <h2 id="order-heading">Your order</h2>
+     <p v-if="sentMessage" role="status">{{ sentMessage }}</p>
+     <p v-else-if="lines.length === 0">
+@@ -38,7 +38,7 @@ const dollars = (c: number) => `${c < 0 ? '-' : ''}$${(Math.abs(c) / 100).toFixe
+     <ul v-else class="lines">
+       <li v-for="l in lines" :key="l.productId">
+         <span class="name">{{ l.name }}</span> x{{ l.quantity }} <span>{{ dollars(l.lineTotalCents) }}</span>
+-        <button type="button" :aria-label="`Remove ${l.name}`" @click="emit('remove', l.productId)">Remove</button>
++        <button type="button" :aria-label="`Remove ${l.name}`" class="btn-secondary" @click="emit('remove', l.productId)">Remove</button>
+       </li>
+     </ul>
+     <dl aria-live="polite">
+@@ -52,18 +52,18 @@ const dollars = (c: number) => `${c < 0 ? '-' : ''}$${(Math.abs(c) / 100).toFixe
+       :copy="{ internal: 'We couldn\'t send the order. Nothing was sent. Try again.', offline: 'You\'re offline. Your order is kept; send it when you\'re back online.', validation: 'Add at least one supplement before sending.' }"
+       @retry="emit('send')"
+     />
+-    <button type="button" class="send" :disabled="lines.length === 0 || sending" @click="emit('send')">
++    <button type="button" class="btn-primary send" :disabled="lines.length === 0 || sending" @click="emit('send')">
+       {{ sending ? 'Sending…' : `Send to ${patientName}` }}
+     </button>
+   </section>
+ </template>
+ 
+ <style scoped>
+-.panel { border: 1px solid #ccc; padding: 12px; align-self: start; position: sticky; top: 16px; }
++.panel { align-self: start; position: sticky; top: 16px; }
+ .lines { list-style: none; padding: 0; }
+-.lines li { padding: 4px 0; }
++.lines li { padding: 4px 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+ .name { overflow-wrap: anywhere; }
+ dl { display: grid; grid-template-columns: 1fr auto; gap: 4px; }
+ dd { margin: 0; text-align: right; }
+-.send { width: 100%; min-height: 44px; font-weight: 600; }
++.send { width: 100%; margin-top: 8px; }
+ </style>
+diff --git a/app/components/order-builder/ProductPicker.vue b/app/components/order-builder/ProductPicker.vue
+index 5233f17..92effd2 100644
+--- a/app/components/order-builder/ProductPicker.vue
++++ b/app/components/order-builder/ProductPicker.vue
+@@ -25,7 +25,7 @@ function add(item: CatalogItem) {
+ </script>
+ 
+ <template>
+-  <section aria-labelledby="products-heading">
++  <section aria-labelledby="products-heading" class="card">
+     <h2 id="products-heading">Products</h2>
+     <ul class="products">
+       <li v-for="item in items" :key="item.product_id">
+@@ -48,7 +48,7 @@ function add(item: CatalogItem) {
+               aria-describedby="qty-help"
+             />
+           </label>
+-          <button type="submit">Add</button>
++          <button type="submit" class="btn-secondary">Add</button>
+         </form>
+       </li>
+     </ul>
+@@ -58,9 +58,8 @@ function add(item: CatalogItem) {
+ 
+ <style scoped>
+ .products { list-style: none; padding: 0; }
+-.products li { padding: 8px 0; border-bottom: 1px solid #ddd; }
++.products li { padding: 8px 0; border-bottom: 1px solid var(--color-border); }
+ .name { font-weight: 600; overflow-wrap: anywhere; }
+ input { width: 4em; margin: 0 8px; }
+-button { min-width: 24px; min-height: 24px; }
+-.help { color: #444; font-size: 14px; }
++.help { color: var(--color-ink-muted); font-size: var(--text-detail); }
+ </style>
+diff --git a/app/components/practice-prices/PriceChangeDialog.vue b/app/components/practice-prices/PriceChangeDialog.vue
+index 23a9de6..fb1c93e 100644
+--- a/app/components/practice-prices/PriceChangeDialog.vue
++++ b/app/components/practice-prices/PriceChangeDialog.vue
+@@ -147,8 +147,8 @@ const onTab = (e: KeyboardEvent) => dialog.value && trapTab(e, dialog.value, doc
+         <p v-if="errors.form" class="error" role="alert">{{ errors.form }}</p>
+         <p v-if="saving" role="status">{{ slow ? "Still saving. Don't close this window." : 'Saving…' }}</p>
+         <div class="actions">
+-          <button type="submit" :disabled="saving">Save new price</button>
+-          <button type="button" @click="emit('cancel')">Cancel</button>
++          <button type="submit" class="btn-primary" :disabled="saving">Save new price</button>
++          <button type="button" class="btn-secondary" @click="emit('cancel')">Cancel</button>
+         </div>
+       </form>
+     </section>
+@@ -156,18 +156,17 @@ const onTab = (e: KeyboardEvent) => dialog.value && trapTab(e, dialog.value, doc
+ </template>
+ 
+ <style scoped>
+-.backdrop { position: fixed; inset: 0; background: rgb(0 0 0 / 40%); display: flex; align-items: center; justify-content: center; }
+-.dialog { background: #fff; padding: 16px 20px; max-width: 480px; width: 100%; }
++.backdrop { position: fixed; inset: 0; background: color-mix(in srgb, var(--color-ink) 40%, transparent); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; }
++.dialog { background: var(--color-card); border-radius: var(--radius-dialog); box-shadow: var(--shadow-card); padding: var(--space-card); max-width: 480px; width: 100%; }
+ fieldset { border: 0; padding: 0; margin: 0; }
+ .choice { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 4px 0; }
+ .choice input[type='radio'] { width: 24px; height: 24px; }
+-.helper { flex-basis: 100%; margin: 0; color: #444; font-size: 14px; }
+-.floor { color: #1a1a1a; }
+-.error { color: #b00020; }
++.helper { flex-basis: 100%; margin: 0; color: var(--color-ink-muted); font-size: var(--text-detail); }
++.floor { color: var(--color-ink); }
++.error { color: var(--color-danger); }
+ #reason { display: block; width: 100%; }
+ .actions { display: flex; gap: 8px; margin-top: 12px; }
+-.actions button { min-height: 32px; }
+ @media (max-width: 600px) {
+-  .dialog { max-width: none; height: 100%; overflow: auto; }
++  .dialog { max-width: none; height: 100%; overflow: auto; border-radius: 0; }
+ }
+ </style>
+diff --git a/app/pages/index.vue b/app/pages/index.vue
+new file mode 100644
+index 0000000..44007a6
+--- /dev/null
++++ b/app/pages/index.vue
+@@ -0,0 +1,10 @@
++<!-- Site root: sends the signed-in person to their role's home (flows.md F7 step 2). The page guard (BE-2) has already
++     sent a stranger to sign-in. -->
++<script setup lang="ts">
++const me = await useRequestFetch()<{ role: string }>('/api/session')
++await navigateTo(ROLE_HOME[me.role] ?? '/sign-in', { replace: true, redirectCode: 302 })
++</script>
++
++<template>
++  <div />
++</template>
+diff --git a/app/pages/notices/[token].vue b/app/pages/notices/[token].vue
+index ecace0f..f807c29 100644
+--- a/app/pages/notices/[token].vue
++++ b/app/pages/notices/[token].vue
+@@ -12,9 +12,11 @@ useHead({ title: () => (notice.value ? `Message from ${notice.value.practice_nam
+ <template>
+   <AppShell>
+     <article v-if="notice" class="card">
+-      <h1>Message from {{ notice.practice_name }}</h1>
++      <div class="page-band">
++        <h1>Message from {{ notice.practice_name }}</h1>
++      </div>
+       <p>{{ notice.practice_name }} sent you a supplement order. Sign in to view and pay.</p>
+-      <NuxtLink :to="notice.sign_in_path" class="button">Sign in to view</NuxtLink>
++      <NuxtLink :to="notice.sign_in_path" class="button btn-primary">Sign in to view</NuxtLink>
+       <p class="note">Stand-in message: in a real launch this arrives by email or text.</p>
+     </article>
+     <ProblemMessage
+@@ -26,7 +28,9 @@ useHead({ title: () => (notice.value ? `Message from ${notice.value.practice_nam
+ </template>
+ 
+ <style scoped>
++/* S3 on the VL-2 theme (theme.css): the title sits in the sky band at the top of the card; layout only here. */
+ .card { max-width: 480px; margin: 0 auto; overflow-wrap: anywhere; }
+-.button { display: block; text-align: center; min-height: 44px; line-height: 44px; background: #1a4d8f; color: #fff; text-decoration: none; }
+-.note { color: #444; font-size: 14px; }
++.card .page-band { margin: calc(-1 * var(--space-card)) calc(-1 * var(--space-card)) 16px; border-radius: var(--radius-card) var(--radius-card) 0 0; }
++.button { display: block; box-sizing: border-box; text-align: center; line-height: 44px; text-decoration: none; }
++.note { color: var(--color-ink-muted); font-size: var(--text-detail); }
+ </style>
+diff --git a/app/pages/ops/orders/[orderId].vue b/app/pages/ops/orders/[orderId].vue
+index e86b183..9239d3b 100644
+--- a/app/pages/ops/orders/[orderId].vue
++++ b/app/pages/ops/orders/[orderId].vue
+@@ -61,7 +61,7 @@ const feeNote = computed(() => {
+ <template>
+   <AppShell>
+     <section class="breakdown" aria-labelledby="breakdown-heading">
+-      <h1 id="breakdown-heading">Order {{ orderId }}</h1>
++      <div class="page-band"><h1 id="breakdown-heading">Order {{ orderId }}</h1></div>
+       <template v-if="status === 'pending'">
+         <p role="status">Loading order {{ orderId }}…</p>
+       </template>
+@@ -75,7 +75,7 @@ const feeNote = computed(() => {
+         }"
+         @retry="refresh"
+       />
+-      <template v-else-if="b">
++      <div v-else-if="b" class="card">
+         <p>{{ b.practice_name }} · {{ b.provider_display_name }} · paid {{ paidAt }}</p>
+         <OpsMoneyEquation :total="b.amount_paid_cents" :parts="parts" :balanced="b.adds_up" />
+         <table class="lines">
+@@ -93,7 +93,7 @@ const feeNote = computed(() => {
+           </tbody>
+         </table>
+         <p class="fee">{{ feeNote }}</p>
+-      </template>
++      </div>
+       <NuxtLink to="/ops/orders" class="back">Back to paid orders</NuxtLink>
+     </section>
+   </AppShell>
+@@ -101,13 +101,14 @@ const feeNote = computed(() => {
+ 
+ <style scoped>
+ .lines { width: 100%; border-collapse: collapse; }
+-.lines th, .lines td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #ddd; overflow-wrap: anywhere; }
++.lines th, .lines td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--color-border); overflow-wrap: anywhere; }
+ .lines td:not(:first-child), .lines th:not(:first-child) { text-align: right; }
+-.fee { color: #444; }
++.fee { color: var(--color-ink-muted); }
++.card { overflow-x: auto; }
+ .back { display: inline-block; min-height: 24px; margin-top: 8px; }
+ @media (max-width: 600px) {
+   .lines thead { display: none; }
+-  .lines tr { display: block; border: 1px solid #ddd; margin-bottom: 8px; padding: 4px; }
++  .lines tr { display: block; border: 1px solid var(--color-border); border-radius: var(--radius-button); margin-bottom: 8px; padding: 4px; }
+   .lines td { display: block; border: 0; padding: 2px 4px; text-align: left !important; }
+ }
+ </style>
+diff --git a/app/pages/ops/orders/index.vue b/app/pages/ops/orders/index.vue
+index 190c0ab..2f80c1d 100644
+--- a/app/pages/ops/orders/index.vue
++++ b/app/pages/ops/orders/index.vue
+@@ -52,7 +52,7 @@ const emptyText = computed(() => {
+ <template>
+   <AppShell>
+     <section class="ops-orders" aria-labelledby="ops-orders-heading">
+-      <h1 id="ops-orders-heading">Paid orders</h1>
++      <div class="page-band"><h1 id="ops-orders-heading">Paid orders</h1></div>
+       <nav class="tabs" aria-label="Order lists">
+         <NuxtLink :to="tab('paid')" :aria-current="query.status === 'paid' ? 'page' : undefined">Paid</NuxtLink>
+         <NuxtLink :to="tab('needs_review')" :aria-current="query.status === 'needs_review' ? 'page' : undefined">
+@@ -62,7 +62,7 @@ const emptyText = computed(() => {
+       <form class="find" @submit.prevent="find">
+         <label for="order-number">Find an order by number</label>
+         <input id="order-number" v-model="search" inputmode="numeric" aria-describedby="order-number-help order-number-error" />
+-        <button type="submit">Find</button>
++        <button type="submit" class="btn-primary">Find</button>
+         <p id="order-number-help" class="helper">Digits only, like 1042.</p>
+         <p v-if="searchError" id="order-number-error" role="alert">{{ searchError }}</p>
+       </form>
+@@ -74,7 +74,7 @@ const emptyText = computed(() => {
+         :copy="{ forbidden: 'Only platform reviewers can see paid orders.', internal: 'We couldn\'t load orders. Try again.' }"
+         @retry="refresh"
+       />
+-      <template v-else-if="page">
++      <div v-else-if="page" class="card">
+         <p v-if="page.data.length === 0">{{ emptyText }}</p>
+         <template v-else>
+           <p role="status">Showing {{ page.data.length }} {{ query.status === 'paid' ? 'paid orders' : 'orders that need review' }}.</p>
+@@ -98,7 +98,7 @@ const emptyText = computed(() => {
+           </table>
+           <NuxtLink v-if="page.next_cursor" :to="{ query: { status: query.status, cursor: page.next_cursor } }">Show 25 more</NuxtLink>
+         </template>
+-      </template>
++      </div>
+     </section>
+   </AppShell>
+ </template>
+@@ -107,15 +107,16 @@ const emptyText = computed(() => {
+ .tabs { display: flex; gap: 16px; margin: 8px 0; }
+ .tabs a { min-height: 24px; padding: 4px 0; }
+ .tabs a[aria-current='page'] { font-weight: 600; text-decoration: underline; }
++.find input { min-height: 44px; box-sizing: border-box; padding: 0 12px; border: 1px solid var(--color-border); border-radius: var(--radius-button); background: var(--color-card); color: var(--color-ink); font: inherit; }
+ .find { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0 16px; }
+ .find label { flex-basis: 100%; }
+-.helper { flex-basis: 100%; margin: 0; color: #444; font-size: 14px; }
++.helper { flex-basis: 100%; margin: 0; color: var(--color-ink-muted); font-size: var(--text-detail); }
+ .list { width: 100%; border-collapse: collapse; }
+-.list th, .list td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #ddd; overflow-wrap: anywhere; }
++.list th, .list td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--color-border); overflow-wrap: anywhere; }
+ .list a { display: inline-block; min-height: 24px; }
+ @media (max-width: 600px) {
+   .list thead { display: none; }
+-  .list tr { display: block; border: 1px solid #ddd; margin-bottom: 8px; padding: 4px; }
++  .list tr { display: block; border: 1px solid var(--color-border); border-radius: var(--radius-button); margin-bottom: 8px; padding: 4px; }
+   .list td { display: block; border: 0; padding: 2px 4px; }
+ }
+ </style>
+diff --git a/app/pages/ops/stock.vue b/app/pages/ops/stock.vue
+index 1295a46..5305466 100644
+--- a/app/pages/ops/stock.vue
++++ b/app/pages/ops/stock.vue
+@@ -171,7 +171,7 @@ const pageProblem = computed<Problem | null>(() => (error.value ? (error.value.d
+ <template>
+   <AppShell>
+     <section class="stock" aria-labelledby="stock-heading">
+-      <h1 id="stock-heading">Stock adjustments</h1>
++      <div class="page-band"><h1 id="stock-heading">Stock adjustments</h1></div>
+       <p v-if="status === 'pending' && !list" role="status">Loading stock…</p>
+       <ProblemMessage
+         v-else-if="pageProblem"
+@@ -179,7 +179,7 @@ const pageProblem = computed<Problem | null>(() => (error.value ? (error.value.d
+         :copy="{ forbidden: 'Only platform staff can change stock.' }"
+         @retry="reload()"
+       />
+-      <template v-else-if="list">
++      <div v-else-if="list" class="card">
+         <p class="success" role="status">{{ success }}</p>
+         <table class="list">
+           <thead>
+@@ -193,7 +193,7 @@ const pageProblem = computed<Problem | null>(() => (error.value ? (error.value.d
+                 <td>{{ p.name }}</td>
+                 <td>{{ p.units_in_stock }}</td>
+                 <td>
+-                  <button :id="`record-${p.product_id}`" type="button" :aria-label="`Record a change for ${p.name}`" @click="open(p)">
++                  <button :id="`record-${p.product_id}`" type="button" class="btn-primary" :aria-label="`Record a change for ${p.name}`" @click="open(p)">
+                     Record a change
+                   </button>
+                 </td>
+@@ -233,24 +233,23 @@ const pageProblem = computed<Problem | null>(() => (error.value ? (error.value.d
+           :copy="{ forbidden: 'Only platform staff can change stock.' }"
+           @retry="showMore()"
+         />
+-        <button v-if="nextCursor" type="button" :disabled="loadingMore" @click="showMore()">Show 25 more</button>
+-      </template>
++        <button v-if="nextCursor" type="button" class="btn-secondary" :disabled="loadingMore" @click="showMore()">Show 25 more</button>
++      </div>
+     </section>
+   </AppShell>
+ </template>
+ 
+ <style scoped>
+ .list { width: 100%; border-collapse: collapse; }
+-.list th, .list td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #ddd; overflow-wrap: anywhere; }
+-.list button { min-height: 24px; min-width: 24px; }
++.list th, .list td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--color-border); overflow-wrap: anywhere; }
+ .history { list-style: none; padding: 0; }
+-.history li { padding: 6px 0; border-bottom: 1px solid #eee; display: flex; flex-wrap: wrap; gap: 8px; }
++.history li { padding: 6px 0; border-bottom: 1px solid var(--color-border); display: flex; flex-wrap: wrap; gap: 8px; }
+ .form-row td { padding: 0; }
+-.helper { margin: 2px 0; color: #444; font-size: 14px; }
++.helper { margin: 2px 0; color: var(--color-ink-muted); font-size: var(--text-detail); }
+ .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+ @media (max-width: 600px) {
+   .list thead { display: none; }
+-  .list tr { display: block; border: 1px solid #ddd; margin-bottom: 8px; padding: 4px; }
++  .list tr { display: block; border: 1px solid var(--color-border); border-radius: var(--radius-button); margin-bottom: 8px; padding: 4px; }
+   .list td { display: block; border: 0; padding: 2px 4px; }
+ }
+ </style>
+diff --git a/app/pages/orders/[orderId].vue b/app/pages/orders/[orderId].vue
+index 5799400..4fe3ad7 100644
+--- a/app/pages/orders/[orderId].vue
++++ b/app/pages/orders/[orderId].vue
+@@ -54,27 +54,31 @@ async function back() {
+       <ReceiptView v-else-if="shownReceipt" :receipt="shownReceipt" />
+       <template v-else-if="order">
+         <section aria-labelledby="order-heading">
+-          <h1 id="order-heading">Your supplement order</h1>
+-          <p>From {{ order.provider_display_name }}, {{ order.practice_name }}</p>
+-          <p v-if="order.status === 'cancelled'" role="status">This order was cancelled by your practice.</p>
+-          <p v-if="order.status === 'needs_review'" role="status">We couldn't complete this payment. No money was taken. Your practice will contact you.</p>
+-          <p v-if="order.hold_ended" role="status">Your 30-minute price hold ended. These are the current prices.</p>
+-          <ul class="notices">
+-            <li v-for="c in order.price_changes" :key="c.product_id">
+-              <span aria-hidden="true">(i)</span> {{ c.name }} price changed: {{ dollars(c.old_price_cents) }} to {{ dollars(c.new_price_cents) }}.
+-            </li>
+-          </ul>
+-          <ul class="lines">
+-            <li v-for="l in order.lines" :key="l.product_id">
+-              <span class="name">{{ l.name }}</span>
+-              <span>{{ l.quantity }} x {{ dollars(l.unit_price_cents) }}</span>
+-              <span>{{ dollars(l.line_total_cents) }}</span>
+-            </li>
+-          </ul>
+-          <dl class="total">
+-            <dt>Total due</dt>
+-            <dd>{{ dollars(order.total_cents) }}</dd>
++          <div class="page-band">
++            <h1 id="order-heading">Your supplement order</h1>
++            <p>From {{ order.provider_display_name }}, {{ order.practice_name }}</p>
++          </div>
++          <div class="card">
++            <p v-if="order.status === 'cancelled'" role="status">This order was cancelled by your practice.</p>
++            <p v-if="order.status === 'needs_review'" role="status">We couldn't complete this payment. No money was taken. Your practice will contact you.</p>
++            <p v-if="order.hold_ended" role="status">Your 30-minute price hold ended. These are the current prices.</p>
++            <ul class="notices">
++              <li v-for="c in order.price_changes" :key="c.product_id">
++                <span aria-hidden="true">(i)</span> {{ c.name }} price changed: {{ dollars(c.old_price_cents) }} to {{ dollars(c.new_price_cents) }}.
++              </li>
++            </ul>
++            <ul class="lines">
++              <li v-for="l in order.lines" :key="l.product_id">
++                <span class="name">{{ l.name }}</span>
++                <span>{{ l.quantity }} x {{ dollars(l.unit_price_cents) }}</span>
++                <span>{{ dollars(l.line_total_cents) }}</span>
++              </li>
++            </ul>
++            <dl class="total">
++              <dt>Total due</dt>
++              <dd>{{ dollars(order.total_cents) }}</dd>
+           </dl>
++          </div>
+         </section>
+         <CheckoutStep v-if="canPay" :key="checkoutKey" :order="order" @back="back" @paid="(r: Receipt) => (receipt = r)" />
+       </template>
+@@ -84,11 +88,14 @@ async function back() {
+ </template>
+ 
+ <style scoped>
++/* S2 on the VL-2 theme (theme.css): title in the sky band, the order on a white card; layout only here. */
+ .order { max-width: 560px; margin: 0 auto; }
++.order .card { margin-bottom: var(--space-section); }
+ .notices, .lines { list-style: none; padding: 0; }
+-.lines li { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; padding: 4px 0; }
++.notices { color: var(--color-ink-muted); }
++.lines li { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--color-border); font-variant-numeric: tabular-nums; }
+ .name { overflow-wrap: anywhere; }
+-.total { display: grid; grid-template-columns: 1fr auto; border-top: 1px solid #333; padding-top: 4px; }
++.total { display: grid; grid-template-columns: 1fr auto; margin: 0; padding-top: 8px; font-variant-numeric: tabular-nums; }
+ .total dd { margin: 0; font-weight: 600; }
+-.help { color: #444; }
++.help { color: var(--color-ink-muted); }
+ </style>
+diff --git a/app/pages/patients/[patientId]/supplements.vue b/app/pages/patients/[patientId]/supplements.vue
+index 9a88553..49121fc 100644
+--- a/app/pages/patients/[patientId]/supplements.vue
++++ b/app/pages/patients/[patientId]/supplements.vue
+@@ -81,7 +81,7 @@ const pageProblem = computed<Problem | null>(() => (error.value ? (error.value.d
+ <template>
+   <AppShell>
+     <header class="chart">{{ catalog?.patient_display_name ?? 'Patient' }} · chart <span>Supplements (selected)</span></header>
+-    <h1>Supplement order for {{ patientName }}</h1>
++    <div class="page-band"><h1>Supplement order for {{ patientName }}</h1></div>
+     <ProblemMessage
+       v-if="pageProblem"
+       :problem="pageProblem"
+@@ -109,8 +109,8 @@ const pageProblem = computed<Problem | null>(() => (error.value ? (error.value.d
+ </template>
+ 
+ <style scoped>
+-.chart { display: flex; justify-content: space-between; border-bottom: 1px solid #ccc; padding-bottom: 8px; }
+-.builder { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
++.chart { display: flex; justify-content: space-between; border-bottom: 1px solid var(--color-border); padding-bottom: 8px; margin-bottom: var(--space-card); color: var(--color-ink-muted); }
++.builder { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-card); }
+ @media (max-width: 767px) {
+   .builder { grid-template-columns: 1fr; }
+ }
+diff --git a/app/pages/practice/dashboard.vue b/app/pages/practice/dashboard.vue
+index 4d03789..bcf1cf3 100644
+--- a/app/pages/practice/dashboard.vue
++++ b/app/pages/practice/dashboard.vue
+@@ -145,19 +145,19 @@ function holdFocus(e: FocusEvent) {
+ <template>
+   <AppShell>
+     <section class="dashboard" aria-labelledby="dashboard-heading">
+-      <h1 id="dashboard-heading">{{ practiceName ? `Practice dashboard · ${practiceName}` : 'Practice dashboard' }}</h1>
++      <div class="page-band"><h1 id="dashboard-heading">{{ practiceName ? `Practice dashboard · ${practiceName}` : 'Practice dashboard' }}</h1></div>
+       <label class="month">Month <input v-model="month" type="month" required></label>
+       <p role="status">{{ pending ? (slow ? 'Still loading. Stock counts appear first.' : `Loading ${monthName}…`) : `Showing ${monthName}.` }} Times in UTC.</p>
+       <p class="success" role="status">{{ success }}</p>
+ 
+       <h2>Needs attention</h2>
+       <ProblemMessage v-if="dash.error.value" :problem="problemOf(dash.error.value)" :copy="forbiddenCopy" @retry="dash.refresh()" />
+-      <template v-else-if="dash.data.value">
++      <div v-else-if="dash.data.value" class="card">
+         <p v-if="dash.data.value.attention.length === 0">Nothing needs attention.</p>
+         <ul v-else class="attention">
+           <li v-for="(a, i) in dash.data.value.attention" :key="i"><span aria-hidden="true">! </span>{{ attentionText(a) }}</li>
+         </ul>
+-      </template>
++      </div>
+ 
+       <h2>Orders</h2>
+       <ProblemMessage
+@@ -166,7 +166,7 @@ function holdFocus(e: FocusEvent) {
+         :copy="{ ...forbiddenCopy, internal: 'We couldn\'t load your orders. Try again.' }"
+         @retry="list.refresh()"
+       />
+-      <template v-else-if="list.data.value">
++      <div v-else-if="list.data.value" class="card">
+         <p v-if="orders.length === 0">{{ shownMonth === thisMonth ? "No orders yet. Send one from a patient's chart." : `No orders were sent in ${monthName}.` }}</p>
+         <table v-else class="list">
+           <thead>
+@@ -176,22 +176,23 @@ function holdFocus(e: FocusEvent) {
+             <tr v-for="o in orders" :key="o.order_id">
+               <td>{{ o.patient_display_name }}</td>
+               <td>{{ dollars(o.total_cents) }}</td>
+-              <td>{{ STATUS[o.status] ?? o.status }}</td>
++              <td><span :class="`status-pill status-pill--${o.status}`">{{ STATUS[o.status] ?? o.status }}</span></td>
+               <td>{{ when(o.sent_at) }}</td>
+               <td>{{ when(o.paid_at) }}</td>
+               <td>
+-                <button v-if="o.status === 'sent' || o.status === 'payment_failed'" type="button" @click="cancelling = o">Cancel order</button>
++                <button v-if="o.status === 'sent' || o.status === 'payment_failed'" type="button" class="btn-danger" @click="cancelling = o">Cancel order</button>
+                 <ProblemMessage v-if="rowProblem?.id === o.order_id" :problem="rowProblem.problem" :copy="cancelCopy" @retry="cancelling = o" />
+               </td>
+             </tr>
+           </tbody>
+         </table>
+-        <button v-if="nextCursor" type="button" @click="showMore">Show 25 more</button>
++        <button v-if="nextCursor" type="button" class="btn-secondary" @click="showMore">Show 25 more</button>
+         <ProblemMessage v-if="moreProblem" :problem="moreProblem" :copy="{ internal: 'We couldn\'t load your orders. Try again.' }" @retry="showMore" />
+-      </template>
++      </div>
+ 
+       <h2>Sales and stock</h2>
+-      <table v-if="dash.data.value" class="list">
++      <div v-if="dash.data.value" class="card">
++      <table class="list">
+         <thead>
+           <tr><th scope="col">Product</th><th scope="col">Sold</th><th scope="col">Patients paid</th><th scope="col">Your payout</th><th scope="col">Stock</th></tr>
+         </thead>
+@@ -205,6 +206,7 @@ function holdFocus(e: FocusEvent) {
+           </tr>
+         </tbody>
+       </table>
++      </div>
+       <p>Questions? Contact platform support</p>
+ 
+       <div v-if="cancelling" ref="dialog" role="dialog" aria-modal="true" aria-labelledby="cancel-heading" class="dialog" @keydown="trapTab" @focusout="holdFocus">
+@@ -212,8 +214,8 @@ function holdFocus(e: FocusEvent) {
+           Cancel {{ cancelling.patient_display_name }}'s {{ dollars(cancelling.total_cents) }} order?
+           {{ cancelling.patient_display_name.split(' ')[0] }} will see that your practice cancelled it. This can't be undone.
+         </p>
+-        <button type="button" :disabled="busy" @click="confirmCancel">{{ busy ? 'Cancelling…' : 'Cancel order' }}</button>
+-        <button type="button" class="keep" @click="cancelling = null">Keep order</button>
++        <button type="button" class="btn-danger" :disabled="busy" @click="confirmCancel">{{ busy ? 'Cancelling…' : 'Cancel order' }}</button>
++        <button type="button" class="btn-secondary keep" @click="cancelling = null">Keep order</button>
+       </div>
+     </section>
+   </AppShell>
+@@ -221,15 +223,16 @@ function holdFocus(e: FocusEvent) {
+ 
+ <style scoped>
+ .list { width: 100%; border-collapse: collapse; }
+-.list th, .list td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #ddd; overflow-wrap: anywhere; }
+-button { min-height: 24px; min-width: 24px; }
+-.attention { list-style: none; padding: 0; }
++.list th, .list td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--color-border); overflow-wrap: anywhere; }
++.attention { list-style: none; padding: 0; margin: 0; }
++.card { margin-bottom: var(--space-section); overflow-x: auto; }
+ .attention li { padding: 4px 0; }
+-.dialog { border: 1px solid #999; padding: 12px; background: #fff; }
++.dialog { border: 1px solid var(--color-border); border-radius: var(--radius-dialog); box-shadow: var(--shadow-card); padding: var(--space-card); background: var(--color-card); }
++.dialog button { margin-right: 8px; }
+ .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+ @media (max-width: 600px) {
+   .list thead { display: none; }
+-  .list tr { display: block; border: 1px solid #ddd; margin-bottom: 8px; padding: 4px; }
++  .list tr { display: block; border: 1px solid var(--color-border); border-radius: var(--radius-button); margin-bottom: 8px; padding: 4px; }
+   .list td { display: block; border: 0; padding: 2px 4px; }
+ }
+ </style>
+diff --git a/app/pages/practice/prices.vue b/app/pages/practice/prices.vue
+index 5321cc3..7649f3c 100644
+--- a/app/pages/practice/prices.vue
++++ b/app/pages/practice/prices.vue
+@@ -117,7 +117,7 @@ const pageProblem = computed<Problem | null>(() => (error.value ? (error.value.d
+ <template>
+   <AppShell>
+     <section class="prices" aria-labelledby="prices-heading">
+-      <h1 id="prices-heading">{{ title }}</h1>
++      <div class="page-band"><h1 id="prices-heading">{{ title }}</h1></div>
+       <p v-if="status === 'pending' && !list" role="status">Loading prices…</p>
+       <ProblemMessage
+         v-else-if="pageProblem"
+@@ -125,7 +125,7 @@ const pageProblem = computed<Problem | null>(() => (error.value ? (error.value.d
+         :copy="{ forbidden: 'Only providers at this practice can change its prices.' }"
+         @retry="refresh()"
+       />
+-      <template v-else-if="list">
++      <div v-else-if="list" class="card">
+         <p class="success" role="status">{{ success }}</p>
+         <table class="list">
+           <thead>
+@@ -142,7 +142,7 @@ const pageProblem = computed<Problem | null>(() => (error.value ? (error.value.d
+               <td>{{ percent(p.margin_basis_points) }}</td>
+               <td>{{ p.is_default ? 'Default' : p.set_by_display_name }}</td>
+               <td>
+-                <button :id="`change-${p.product_id}`" type="button" :aria-label="`Change price for ${p.name}`" @click="open(p)">
++                <button :id="`change-${p.product_id}`" type="button" class="btn-primary" :aria-label="`Change price for ${p.name}`" @click="open(p)">
+                   Change price
+                 </button>
+               </td>
+@@ -160,7 +160,7 @@ const pageProblem = computed<Problem | null>(() => (error.value ? (error.value.d
+           </li>
+         </ul>
+         <NuxtLink v-if="list.history_next_cursor" :to="{ query: { history_cursor: list.history_next_cursor } }">Show 25 more</NuxtLink>
+-      </template>
++      </div>
+ 
+       <PracticePricesPriceChangeDialog
+         v-if="editing"
+@@ -179,15 +179,14 @@ const pageProblem = computed<Problem | null>(() => (error.value ? (error.value.d
+ 
+ <style scoped>
+ .list { width: 100%; border-collapse: collapse; }
+-.list th, .list td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #ddd; overflow-wrap: anywhere; }
+-.list button { min-height: 24px; min-width: 24px; }
++.list th, .list td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--color-border); overflow-wrap: anywhere; }
+ .history { list-style: none; padding: 0; }
+-.history li { padding: 6px 0; border-bottom: 1px solid #eee; display: flex; flex-wrap: wrap; gap: 8px; }
++.history li { padding: 6px 0; border-bottom: 1px solid var(--color-border); display: flex; flex-wrap: wrap; gap: 8px; }
+ .history q { flex-basis: 100%; }
+ .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+ @media (max-width: 600px) {
+   .list thead { display: none; }
+-  .list tr { display: block; border: 1px solid #ddd; margin-bottom: 8px; padding: 4px; }
++  .list tr { display: block; border: 1px solid var(--color-border); border-radius: var(--radius-button); margin-bottom: 8px; padding: 4px; }
+   .list td { display: block; border: 0; padding: 2px 4px; }
+ }
+ </style>
+diff --git a/app/pages/sign-in.vue b/app/pages/sign-in.vue
+index 2be2ba6..c07f502 100644
+--- a/app/pages/sign-in.vue
++++ b/app/pages/sign-in.vue
+@@ -6,16 +6,6 @@ import { safeNext } from '~/middleware/auth.global'
+ interface Me { role: string }
+ 
+ const route = useRoute()
+-// Each role's home (flows.md F7 step 2): a patient her orders, a provider the practice dashboard, a reviewer Paid
+-// orders. Finance, SRE and analyst roles open the one operations page their role is for.
+-const HOME: Record<string, string> = {
+-  patient: '/orders',
+-  provider: '/practice/dashboard',
+-  operations_specialist: '/ops/orders',
+-  finance_lead: '/ops/orders',
+-  sre: '/ops/system',
+-  data_analyst: '/ops/health',
+-}
+ const next = computed(() => safeNext(route.query.next))
+ const idle = computed(() =>
+   route.query.idle
+@@ -63,7 +53,7 @@ async function submit() {
+   // next page opens, so a second press can't sign in twice.
+   clearNuxtData('viewer') // ST-1 is fetched again for the signed-in person
+   try {
+-    await navigateTo(next.value ?? HOME[me.role] ?? '/', { replace: true })
++    await navigateTo(next.value ?? ROLE_HOME[me.role] ?? '/', { replace: true })
+   } finally {
+     pending.value = false
+   }
+@@ -72,8 +62,10 @@ async function submit() {
+ 
+ <template>
+   <AppShell>
+-    <form class="sign-in" @submit.prevent="submit">
+-      <h1>Sign in</h1>
++    <form class="sign-in card" @submit.prevent="submit">
++      <div class="page-band">
++        <h1>Sign in</h1>
++      </div>
+       <p class="helper">Test accounts only: no real identity check.</p>
+       <p v-if="error" role="alert" class="error">{{ error }}</p>
+       <p v-else-if="idle" role="status" class="notice">{{ idle }}</p>
+@@ -83,22 +75,23 @@ async function submit() {
+       <label for="password">Password</label>
+       <div class="row">
+         <input id="password" v-model="password" :type="show ? 'text' : 'password'" autocomplete="current-password" />
+-        <button type="button" aria-label="Show password" :aria-pressed="show" @click="show = !show">Show</button>
++        <button type="button" class="btn-secondary" aria-label="Show password" :aria-pressed="show" @click="show = !show">Show</button>
+       </div>
+-      <button type="submit" class="primary" :disabled="pending">{{ pending ? 'Signing you in…' : 'Sign in' }}</button>
++      <button type="submit" class="btn-primary" :disabled="pending">{{ pending ? 'Signing you in…' : 'Sign in' }}</button>
+       <p v-if="slow" role="status">Still signing you in. Try again if nothing happens.</p>
+     </form>
+   </AppShell>
+ </template>
+ 
+ <style scoped>
++/* S8 on the VL-2 theme (theme.css): the title sits in the sky band at the top of the card; layout only here. */
+ .sign-in { max-width: 400px; margin: 0 auto; display: flex; flex-direction: column; gap: 8px; }
+-.helper { color: #444; }
+-.error { border: 2px solid #b00020; padding: 8px 12px; }
+-.notice { border: 2px solid #1a4d8f; padding: 8px 12px; }
+-input { min-height: 44px; font-size: 16px; padding: 0 8px; min-width: 0; flex: 1; }
++.sign-in .page-band { margin: calc(-1 * var(--space-card)) calc(-1 * var(--space-card)) 8px; border-radius: var(--radius-card) var(--radius-card) 0 0; }
++.helper { color: var(--color-ink-muted); }
++.error { border: 2px solid var(--color-danger); border-radius: var(--radius-button); color: var(--color-danger); padding: 8px 12px; }
++.notice { border: 2px solid var(--color-primary); border-radius: var(--radius-button); padding: 8px 12px; }
++label { font-weight: 500; }
++input { min-height: 44px; font: inherit; padding: 0 12px; min-width: 0; flex: 1; color: var(--color-ink); background: var(--color-card); border: 1px solid var(--color-ink-muted); border-radius: var(--radius-button); }
+ .row { display: flex; gap: 8px; }
+-button { min-height: 44px; min-width: 44px; }
+-.primary { width: 100%; background: #1a4d8f; color: #fff; border: 0; font-size: 16px; }
+-input:focus-visible, button:focus-visible { outline: 3px solid #1a4d8f; outline-offset: 2px; }
++.btn-primary { width: 100%; margin-top: 8px; }
+ </style>
+diff --git a/app/utils/role-home.ts b/app/utils/role-home.ts
+new file mode 100644
+index 0000000..1f2723b
+--- /dev/null
++++ b/app/utils/role-home.ts
+@@ -0,0 +1,11 @@
++// Each role's home (flows.md F7 step 2): a patient her orders, a provider the practice dashboard, a reviewer Paid
++// orders. Finance, SRE and analyst roles open the one operations page their role is for. Used by the sign-in page
++// (FE-2) and the site root.
++export const ROLE_HOME: Record<string, string> = {
++  patient: '/orders',
++  provider: '/practice/dashboard',
++  operations_specialist: '/ops/orders',
++  finance_lead: '/ops/orders',
++  sre: '/ops/system',
++  data_analyst: '/ops/health',
++}
+diff --git a/db/seed/demo.ts b/db/seed/demo.ts
+index b96e9d7..8380f84 100644
+--- a/db/seed/demo.ts
++++ b/db/seed/demo.ts
+@@ -33,9 +33,11 @@ export const WORLD = {
+ }
+ 
+ // Every M4 table (db/migrations). TRUNCATE skips the row triggers that freeze paid orders and succeeded attempts.
+-const M4_TABLES = [
++// Every application table: a table left out that references one listed here makes Postgres refuse the TRUNCATE
++// (tests/unit/seed-demo.test.ts checks this list against db/migrations).
++export const RESET_TABLES = [
+   'ledger_entries', 'payment_attempts', 'idempotency_keys', 'notices', 'order_lines', 'orders', 'practice_prices',
+-  'sessions', 'sign_in_attempts', 'pay_rate_attempts', 'products', 'users', 'practices',
++  'price_changes', 'stock_movements', 'sessions', 'sign_in_attempts', 'pay_rate_attempts', 'products', 'users', 'practices',
+ ]
+ 
+ /** scrypt$N$8$1$<salt b64>$<hash b64>, the format BE-3 verifyPassword reads (Q-1, SEAM-6). */
+@@ -57,7 +59,7 @@ interface Db {
+ type Env = Record<string, string | undefined>
+ 
+ export async function seedDemo(env: Env, connect: (url: string) => Db = (url) => new pg.Client({ connectionString: url })) {
+-  if (env.DEMO_RESET !== 'yes') throw new Error('refusing to run: this empties every M4 table; set DEMO_RESET=yes')
++  if (env.DEMO_RESET !== 'yes') throw new Error('refusing to run: this empties every application table; set DEMO_RESET=yes')
+   if (!env.DEMO_PASSWORD) throw new Error('refusing to run: set DEMO_PASSWORD in the environment')
+   if (!env.DATABASE_URL) throw new Error('refusing to run: set DATABASE_URL (the owner role)')
+   const N = Number(env.SCRYPT_COST) || 16384
+@@ -67,7 +69,7 @@ export async function seedDemo(env: Env, connect: (url: string) => Db = (url) =>
+   await db.connect()
+   try {
+     await db.query('begin')
+-    await db.query(`truncate ${M4_TABLES.join(', ')} restart identity`)
++    await db.query(`truncate ${RESET_TABLES.join(', ')} restart identity`)
+     const practiceIds = new Map<string, string>()
+     for (const name of WORLD.practices) {
+       const { rows } = await db.query('insert into practices (name) values ($1) returning id', [name])
+diff --git a/docs/architecture/lld.md b/docs/architecture/lld.md
+index 99b4869..0e9fd50 100644
+--- a/docs/architecture/lld.md
++++ b/docs/architecture/lld.md
+@@ -1335,7 +1335,7 @@ FE-12, FE-22 and FE-23 are shared, stateless components; each appears under ever
+ 
+ | Id | Component | Screen | Props in | Events out | Owns state | Screen states rendered |
+ |---|---|---|---|---|---|---|
+-| **FE-1** | AppShell | all | none | signedOut | ST-1 (fetches), ST-2 | permission denied (signed out after 15 idle minutes), help footer |
++| **FE-1** | AppShell | all | none | signedOut | ST-1 (fetches), ST-2 | permission denied (signed out after 15 idle minutes), help footer; (changed M5.1) the VL-2 page frame: pale page, centred content, help footer styled by the theme (D81) |
+ | **FE-2** | SignInPage | S8 | next?: string | signedIn(next) | none (stateless; form fields are local inputs) | empty, loading, error, success, permission denied, edge data |
+ | **FE-3** | NoticePage | S9 | token: string | none | ST-8 (fetches EP-24) | success, edge data; others n/a per screens.md |
+ | **FE-4** | OrderBuilderPage | S1 | patientId: number | orderSent(orderId) | ST-3, ST-9, ST-8 (fetches EP-18) | empty, loading, error, success, permission denied, edge data |
+@@ -1360,6 +1360,22 @@ FE-12, FE-22 and FE-23 are shared, stateless components; each appears under ever
+ | **FE-23** | ProblemMessage | all | problem: Problem | retry() | none (stateless) | error (maps each problem type to the screen's exact copy) |
+ | **FE-24** | OrderFunnel | S10 | funnel: Funnel | none | none (stateless) | edge data (few orders: "read the counts, not the bars") |
+ 
++**Theme (new, M5.1, D81).** One global stylesheet, `app/assets/css/theme.css`, registered in `nuxt.config.ts` `css`, holds
++the screens.md VL-2 visual language as CSS custom properties (colours, radii, shadows, spacing, type sizes; the colour
++names are fixed: `--color-page` #F5F9FF, `--color-card` #FFFFFF, `--color-border` #E3EAF6, `--color-ink` #0F172A,
++`--color-ink-muted` #475569, `--color-primary` #1D4ED8, `--color-on-primary` #FFFFFF, `--color-danger` #B91C1C,
++`--color-band-from` #1D4ED8, `--color-band-to` #2563EB, `--color-band-glow` #8EC5F5, `--color-on-band` #FFFFFF,
++`--color-focus` #3B82F6, each declared once on `:root` as a 6-digit hex) plus a
++small set of shared classes every screen uses: `page-band` (the sky header band around a page's title and
++subtitle), `card`, `btn-primary`, `btn-secondary`, `btn-danger`, `status-pill` (one modifier per order status),
++`focus ring` styling on `:focus-visible`, and the reduced-motion rule. Fonts are self-hosted from the npm packages
++`@fontsource-variable/geist` 5.3.0 and `@fontsource/eb-garamond` 5.3.0 (OFL-1.1; checked with `npm view` on
++2026-10-11), imported by theme.css so Vite bundles the font files under `/_nuxt/`: same origin, so the CSP stays
++`default-src 'self'` / `style-src 'self'` unchanged (NFR-016). Components keep their scoped styles for layout only
++and read colours, radii and type from the custom properties; no colour value is written outside theme.css. NFR-015
++is proven by an acceptance check that reads the colour custom properties from theme.css and computes each listed
++text/background pair's WCAG contrast ratio.
++
+ ### State ownership
+ 
+ | Id | State | Kind | Owner | Consumers | How passed | Persisted? | Why this owner |
+@@ -2723,6 +2739,27 @@ stateDiagram-v2
+ - **Interview line:** "Tokens are random and only compared by hash, so I dropped the planned test seam instead of building code no test needed."
+ - **Default if you don't answer:** stays proposed; nothing downstream may build on it.
+ 
++### D81 How the M5.1 visual language reaches every screen  [status: proposed]
++
++- **Question:** where do the VL-2 colours, fonts and shared styles live, and how are the fonts served?
++- **Forces:** 18 files each carry their own scoped styles with hard-coded colours; the CSP allows styles and fonts from the app's own origin only; NFR-016 forbids third-party requests inside the EHR; adding packages is Ask-first (AGENTS.md).
++- **Reversibility:** Type 2 two-way · **Confidence:** high
++
++| Option | Pros | Cons | Cost (build + run) | Basis |
++|---|---|---|---|---|
++| Do nothing / simplest: restyle each file's scoped styles with system fonts | no new package | colours copied into 18 files drift apart; no serif or Geist | about 3 hours, ongoing drift | current code |
++| One theme.css of custom properties and shared classes; fonts self-hosted from two fontsource packages (first proposal) | one place to change the look; fonts same-origin, CSP unchanged | two small font packages added | about 3-4 agent runs | NFR-016; screens.md VL-2 |
++| Google Fonts stylesheet link | no package | a third-party request from inside the EHR; CSP must open `fonts.googleapis.com` | 1 hour | rejected by NFR-016 |
++| A utility CSS framework (Tailwind) | fast styling | a large new toolchain dependency for a restyle | about 1 day | — |
++
++- **Recommendation:** one theme.css with self-hosted fontsource fonts
++- **Why (Y-statement):** In the context of a restyle across 18 files under a same-origin CSP, facing drift and third-party font requests, we choose one theme stylesheet with self-hosted fonts over per-file styles, Google Fonts or a utility framework, to change the look in one place without opening the CSP, accepting two small font packages.
++- **In plain words:** all the colours and fonts live in one file, and the font files ship with the app, so nothing is fetched from anyone else.
++- **First proposal (instead of):** none recorded.
++- **Revisit if:** a design system package is adopted, or the EHR host supplies its own fonts.
++- **Interview line:** "I put the whole look in one theme file and shipped the fonts with the app, so the restyle never calls a third party from inside the clinician's chart."
++- **Default if you don't answer:** stays proposed; nothing downstream may build on it.
++
+ ## Open questions
+ 
+ | Id | ⚠ Question | Blocks | Recommended answer | Who answers |
+@@ -2748,3 +2785,4 @@ stateDiagram-v2
+ | 2026-10-10 20:10 CDT | Revise (M5-R01 catch-up, F20; Approvals 2026-10-10 18:31 CDT "Approve, accept all as listed" and 20:01 CDT "go ahead with check-security then M5-R01"): match the shipped M4 code and the routed review rows — users.email and password_hash (Q-1), sessions absolute limit (SEC-6), payment_attempts.failure_reason meaning (FM-3), new sign_in_attempts and pay_rate_attempts tables, database roles and migrations (Q-2 to Q-4), BE-3 clientAddress, BE-6 belowFloorProductIds and unitCostFromLowestAllowedPrice, BE-10 countPayAttempt, D47 guard and FM-3 close, new BE-21 PruneAttempts, EP-23 429, EP-25 order, EP-40 /healthz, new EP-41 /version, rate-limited row, SM-1 guard, FM-3, SEAM-2 (D72), Q-8 | users, sessions, payment_attempts, sign_in_attempts, pay_rate_attempts, INV-4, BE-3, BE-6, BE-10, BE-21, EP-23, EP-25, EP-40, EP-41, SM-1, FM-3, SEAM-2, D72, Q-8 | pending G3 |
+ | 2026-10-10 23:10 CDT | Revise (M5 close-out; M5-pass2 R4, M5-pass4 R4; Approvals 2026-10-10 23:10 CDT STANDING): OrderView gains `hold_ended` (EP-21, BE-9.getOrderForViewer); FM-7 reconcile also runs at the start of pay and checkout start | BE-9, EP-21, FM-7, openapi OrderView | G3 by STANDING approval 2026-10-10 23:10 CDT |
+ | 2026-10-10 23:57 CDT | Revise (M5 review pass 7 R4, pass 6 R9 a/b, pass 1 R3; Approvals STANDING 2026-10-10 23:09 CDT): EP-17 `Me` gains `practice_name` (string or null), read with the session's user; S5 and S6 titles use it | EP-17, BE-3, openapi Me | G3 by STANDING approval 2026-10-10 23:57 CDT |
++| 2026-10-11 07:24 CDT | Delta (M5.1, D75, D80): FE-1 page frame (changed); Theme paragraph (theme.css custom properties, shared classes, self-hosted fonts); D81 proposed | FE-1, D81 | G3 by STANDING approval 2026-10-11 07:24 CDT |
+diff --git a/docs/decisions/DECISION_JOURNAL.md b/docs/decisions/DECISION_JOURNAL.md
+index b05550d..c460137 100644
+--- a/docs/decisions/DECISION_JOURNAL.md
++++ b/docs/decisions/DECISION_JOURNAL.md
+@@ -913,3 +913,29 @@ Copy this block for each new entry (D-ids increase by one, starting at D1):
+ - Cost accepted: the 10-task cap now has two exceptions; route-failure should decide whether review-fix tasks count toward it. · Reversibility: Type 2 two-way · Confidence: high
+ - Revisit if: a third milestone needs more than 10 tasks (then the cap rule changes via route-failure). · Evidence: .handoff/reviews/M5-pass7.md R2-R4; Approvals G3+G4 T011 row 2026-10-10 23:57 CDT; D54 · Interview line: "Review found three user-facing bugs after the plan finished, so we added one fix task instead of reopening the PRD; twice now means the cap rule needs revisiting."
+ - Review: Topic Process · Weight ●○○ · One-liner: M5 adds an 11th task for review fixes, like M4.
++
++### D80 Light pages with a sky header band (VL-2)  [status: accepted]
++- Date 2026-10-11 07:22 CDT · phase 4 map-ux-flows (G-ux) · milestone M5.1 · Decided by: human, G-ux 2026-10-11 07:22 CDT: STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" · Proposed by: map-ux-flows (Claude Code, claude-opus-5-5) · artifact: docs/design/screens.md@73063b6
++- Context and forces: the human asked for a cluely.com-like look (Geist sans, EB Garamond serif titles, sky-blue gradients, rounded glassy cards, glowing buttons). These are dense work screens of prices and counts shown inside a light EHR; white small text on light sky blue fails WCAG AA.
++- Options:
++  - Do nothing / simplest (keep the current plain style) — cost: none — rejected: the human asked for a modern look (D75)
++  - VL-1 sky gradient on every page with glass cards — cost: small text fails contrast; tables hard to read — rejected: readability inside the EHR
++  - VL-2 light page, sky header band, white cards, serif titles, glowing deep-blue buttons (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: the sky look is confined to the band and buttons — chosen
++  - VL-3 night mode — cost: clashes with the light host chart — rejected
++- Choice: VL-2 · Why: In the context of dense work screens inside a light EHR, facing a sky-blue style that hurts small-text contrast, we chose a light page with a sky header band over full-sky or dark pages, accepting a quieter version of the inspiration.
++- Cost accepted: the look is less dramatic than the inspiration site. · Reversibility: Type 2 two-way · Confidence: high
++- Revisit if: the app leaves the EHR frame for a standalone site, or contrast checks fail on the band. · Evidence: docs/design/screens.md Visual language (M5.1); D75 · Interview line: "We kept the new look in the header band and buttons so every price and count stays readable inside the clinician's chart."
++- Review: Topic Product · Weight ●○○ · One-liner: M5.1 restyle uses light pages with a sky header band.
++
++### D81 One theme stylesheet with self-hosted fonts  [status: accepted]
++- Date 2026-10-11 07:24 CDT · phase 6 design-lld (G3) · milestone M5.1 · Decided by: human, G3 2026-10-11 07:24 CDT: STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" · Proposed by: design-lld (Claude Code, claude-opus-5-5) · artifact: docs/architecture/lld.md@4c4479e D81
++- Context and forces: 18 files carry their own scoped styles with hard-coded colours; the CSP allows only same-origin styles and fonts; NFR-016 forbids third-party requests inside the EHR.
++- Options:
++  - Do nothing / simplest: restyle each file with system fonts — cost: colours drift across 18 files; no serif or Geist — rejected: drift
++  - one theme.css of custom properties and shared classes, fonts self-hosted from @fontsource-variable/geist and @fontsource/eb-garamond (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: two small font packages — chosen
++  - Google Fonts stylesheet — cost: a third-party request from inside the EHR — rejected: NFR-016
++  - a utility CSS framework — cost: a large new toolchain dependency — rejected: too big for a restyle
++- Choice: theme.css + self-hosted fonts · Why: In the context of a restyle across 18 files under a same-origin CSP, facing drift and third-party font requests, we chose one theme stylesheet with self-hosted fonts, accepting two small font packages.
++- Cost accepted: two OFL font packages in package.json. · Reversibility: Type 2 two-way · Confidence: high
++- Revisit if: a design-system package is adopted, or the EHR host supplies its own fonts. · Evidence: lld.md Theme paragraph, D81; NFR-016 · Interview line: "The whole look lives in one theme file and the fonts ship with the app, so the restyle never calls a third party from inside the chart."
++- Review: Topic Infrastructure · Weight ●○○ · One-liner: One theme stylesheet; fonts ship with the app.
+diff --git a/docs/design/screens.md b/docs/design/screens.md
+index bb8f98a..79e021f 100644
+--- a/docs/design/screens.md
++++ b/docs/design/screens.md
+@@ -1,8 +1,8 @@
+ # Screens — In-EHR supplement orders
+ 
+ status: complete
+-Milestones: M4, M5, M6 · Flows: docs/design/flows.md · PRD: docs/product/prd.md@998ed94
+-Updated: 2026-10-10 11:05 CDT
++Milestones: M4, M5, M5.1 (visual language), M6 · Flows: docs/design/flows.md · PRD: docs/product/prd.md@998ed94
++Updated: 2026-10-11 07:22 CDT (M5.1 visual language added under Global conventions)
+ 
+ ## Global conventions
+ 
+@@ -14,6 +14,63 @@ Updated: 2026-10-10 11:05 CDT
+ - Privacy: platform staff screens show an order number, never a patient's name or contact detail (FR-050); patient notices name only the practice (FR-044)
+ - Sample data: obviously fake names and values only (Dr. Maya Chen, Ana Ruiz, Willow Creek Wellness)
+ 
++### Visual language (M5.1)
++
++Revised for M5.1 (decision D75): every screen keeps its layout, states, copy and focus order; only how it looks
++changes. Inspired by the airy, sky-blue style of cluely.com. No Cluely name, logo, image or copy is used.
++
++#### Directions considered
++
++```text
++VL-1 Sky everywhere                 VL-2 Light page, sky header band     VL-3 Night mode
+++--------------------------------+  +--------------------------------+  +--------------------------------+
++|~~~~~~ sky gradient page ~~~~~~~|  |~~ sky band: title in serif ~~~~|  |#### deep navy page ############|
++|  Practice prices (serif, white)|  |  Practice prices · Willow Cr.  |  |  Practice prices (serif, white)|
++|  +--------------------------+  |  +--------------------------------+  |  +--------------------------+  |
++|  | glass card, white text   |  |  |  white card, soft blue shadow  |  |  | dark glass card          |  |
++|  | rows on frosted glass    |  |  |  rows on white, ink text       |  |  | rows light on dark       |  |
++|  +--------------------------+  |  |  [ Change price ] glowing blue |  |  +--------------------------+  |
++|  [ Change price ] glowing      |  +--------------------------------+  |  [ Change price ] glowing      |
+++--------------------------------+  | pale blue-white page below     |  +--------------------------------+
++                                    +--------------------------------+
++```
++
++| Direction | Idea | Best when | Costs | Fails for |
++|---|---|---|---|---|
++| VL-1 Sky everywhere | the whole page is the sky gradient; cards are frosted glass | a marketing page with little text | white text on light blue fails contrast for small text; dense tables of prices and stock are hard to read | providers scanning numbers inside a busy chart |
++| VL-2 Light page, sky header band | a sky gradient band carries the page title; content sits on white cards over a pale blue-white page | daily work screens with tables and forms | the sky look appears only in the header band and the primary buttons | nobody named; it is the safest for reading |
++| VL-3 Night mode | deep navy page, dark glass cards, glowing accents | evening use, a dramatic demo | inside a light EHR it looks like a different product; more contrast checks | a light host chart around it |
++
++**Recommendation:** VL-2, because these are work screens full of prices and counts that must stay readable inside a
++light EHR; the sky band, serif titles and glowing buttons carry the new look without hurting contrast.
++**Chosen:** VL-2 — STANDING approval 2026-10-10 23:09 CDT ("i approve all next recommendations until project completion"), recorded with the G-ux Revise row for M5.1.
++**Rejected:** VL-1 — small white text on light blue fails WCAG AA contrast · VL-3 — clashes with the light host chart.
++Why this layout: the new look lives in the header band and the buttons, so every number on the page stays as easy to read as before.
++
++#### The chosen language (VL-2)
++
++- Page: a pale blue-white background (#F5F9FF); content on white cards with 16 px rounded corners, a hairline
++  border (#E3EAF6) and a soft, wide blue shadow; generous space: 24 px inside cards, 32 px between sections
++- Header band: on every screen the title sits in a band filled with a blue gradient, deep blue (#1D4ED8) at the
++  top-left to bright blue (#2563EB) at the bottom-right, with a soft pale-sky glow (#8EC5F5) in the far right
++  corner that never sits behind text; the title and its subtitle are white, which passes 4.5:1 across the whole
++  gradient; the imitation chart header (provider screens) stays above the band, unchanged
++- Type: page titles in a classic serif (EB Garamond, medium weight, 32 px desktop / 26 px phone); everything else
++  in a clean geometric sans (Geist; 16 px body, 14 px for table detail, never smaller); numbers in tables use
++  even-width digits so columns line up
++- Ink: body text near-black navy (#0F172A); secondary text slate (#475569), which still passes 4.5:1 on white
++- Primary button: deep blue (#1D4ED8) with white text (passes 4.5:1), 12 px rounded corners, a soft blue glow
++  under it and a faint inner highlight along the top edge; hover brightens the glow; pressed sinks the glow
++- Secondary button: white with a blue hairline border and blue text; destructive actions ("Cancel order") use
++  dark red (#B91C1C) text on white, never red alone without the words
++- Status words keep their text and gain a soft pill behind them: Paid (green tint), Sent and In checkout (blue
++  tint), Payment failed and Needs review (amber tint), Cancelled (grey tint); color is never the only signal
++- Focus: a 3 px blue ring (#3B82F6, 3:1 or better on white) with a white gap around every focusable thing, always visible on white and on the band
++- Dialogs and sheets: white, 20 px rounded corners, the page behind dimmed with a light blur
++- Motion: 150-200 ms fades and lifts only; nothing moves when the person has asked their device to reduce motion
++- Fonts load with the page and fall back to the device's sans-serif and serif while loading, so the layout never jumps
++- Contrast (planned, not verified): every text and control pair above is chosen to meet WCAG 2.2 AA; the build checks them
++
+ ## S1 Supplement order (in the patient's chart)
+ 
+ Stories: US-1, US-4, US-5 · Flows: F1 steps 1-3 · Key screen: yes
+diff --git a/docs/product/prd.md b/docs/product/prd.md
+index 128326b..4878f4d 100644
+--- a/docs/product/prd.md
++++ b/docs/product/prd.md
+@@ -261,6 +261,8 @@ changes made by one person and reviewed by another, so that nobody holds more ac
+ - **NFR-012** [Privacy] Platform staff see 0 records containing a patient's name or contact details on any page or report. Source: (Q11).
+ - **NFR-013** [Auditability] 100 % of paid orders, their splits, and the price, stock and access histories are kept for at least 3 years. Source: R14 F7 (IRS record keeping), (Q12).
+ - **NFR-014** [Auditability] 100 % of privileged actions (role changes, stock adjustments, price changes, report exports) are logged with who acted and when, and reviewed by someone other than the actor. Source: R15 F2, F4, F5, (Q12).
++- **NFR-015** [Accessibility] 100 % of text and control colour pairs on every screen meet WCAG 2.2 AA contrast (4.5:1 for normal text, 3:1 for large text and focus rings). Source: CQ-4; screens.md Global conventions (planned, not verified).
++- **NFR-016** [Privacy] Pages shown inside the EHR load 0 scripts, styles or fonts from any origin but the app's own, so no outside party learns who opened a chart. Source: CQ-4; D80.
+ 
+ ## Success criteria
+ 
+@@ -423,6 +425,7 @@ Answered from sources: Problem → brief Problem, REQ-01, R02, R08, R10 · Users
+ | M3 Design | Approved HLD, LLD, data design, contract, diagrams | none (docs only) | G2-G3 approvals | A reviewer can read every design doc from docs/README.md. |
+ | M4 Tracer bullet | Each person signs in; provider sends an order, patient pays once, the split is recorded and shown to the cent | FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-007, FR-008, FR-009, FR-010, FR-011, FR-012, FR-013, FR-014, FR-015, FR-017, FR-031, FR-035, FR-036, FR-039, FR-040, FR-041, FR-042, FR-043, FR-044, FR-050, FR-066, FR-067, FR-068 | AE-001 to AE-015, AE-028, AE-031, AE-032, AE-037 to AE-041, AE-047, AE-063 to AE-065 | Dr. Chen sends Ana a $60.00 order, Ana pays it with the test payment, and a reviewer sees $30.00 + $29.55 + $0.45. |
+ | M5 Prices and stock | Price-change form with history, price notices, checkout lock, stock limits, practice dashboard | FR-018, FR-019, FR-020, FR-021, FR-022, FR-023, FR-024, FR-025, FR-026, FR-027, FR-028, FR-029, FR-030, FR-037, FR-038, FR-045, FR-046, FR-047, FR-069 | AE-016 to AE-027, AE-035, AE-036, AE-042 to AE-044, AE-066 | Dr. Chen changes a price, Ana sees the notice, pays, and the dashboard shows the sale and lower stock. |
++| M5.1 Visual refresh | Every screen restyled to the M5.1 visual language (screens.md, D75, D80) with no change in behaviour | FR-005, FR-018, FR-028, FR-030, FR-045, NFR-015, NFR-016 (restyle only: every existing acceptance test stays green) | NFR-015, NFR-016 | A reviewer opens the prices page and the dashboard and sees the sky header band, serif titles and glowing buttons, with every number still readable. |
+ | M6 Measurement and operations | Platform health dashboard, volume report, financial report, operations roles, access log and system health | FR-032, FR-048, FR-049, FR-051, FR-052, FR-053, FR-054, FR-055, FR-056, FR-057, FR-058, FR-059, FR-060, FR-061, FR-062, FR-063, FR-064, FR-065 | AE-029, AE-045, AE-046, AE-048 to AE-062, SC-001, SC-002, SC-003 | Fran runs October's report and sees $90.00 = $45.00 + $44.32 + $0.68, balanced; Sam grants Dana a role and Fran sees it in the access log. |
+ | Later | Not in this appetite: pricing campaigns and corrections; broader holistic-care products were considered for the future of the product and parked (NG-12, CQ-3) | FR-016, FR-033, FR-034 | — | — |
+ 
+@@ -468,6 +471,7 @@ Answered from sources: Problem → brief Problem, REQ-01, R02, R08, R10 · Users
+ | 2026-10-09 20:27 CDT | G1 Revise: HIPAA-ready, not HIPAA-compliant (Q8); added NFR-007 to NFR-011, NG-10, A-9 | NFR-007, NFR-008, NFR-009, NFR-010, NFR-011, NG-10, A-9 | G1 |
+ | 2026-10-09 21:45 CDT | G1 Revise (Q9-Q11): sign-in story US-8, notices without health details, order-status list and practice alerts in M5, platform health dashboard in M6, no patient identity for platform staff | US-5, US-6, US-8, FR-039 to FR-050, NFR-004, NFR-012, AE-037 to AE-047, EC-13, EC-14, NG-11, A-10 to A-12 | G1 |
+ | 2026-10-09 22:14 CDT | G1 Revise (Q12, R14, R15): financial report US-9, operations roles US-10, personas P-5 to P-8, retention and privileged-action logging | US-9, US-10, FR-051 to FR-065, NFR-013, NFR-014, AE-048 to AE-062, EC-15, EC-16, A-13, A-14 | G1 |
++| 2026-10-11 07:23 CDT | Clarify pass 2 (CQ-4): M5.1 visual refresh row; NFR-015 contrast, NFR-016 own-origin assets | M5.1, NFR-015, NFR-016 | G1 (STANDING) |
+ 
+ ## Clarifications
+ 
+@@ -503,3 +507,14 @@ Parked for a later phase: none
+ - Applied: new NG-12 naming the categories, why they wait (product types, a payee per line, work with no patient present, regulation) and "considered for the future of the product … revisit later"; the Later milestone row points at NG-12
+ - Decision candidate: yes — it sets product scope for the future (a non-goal that defers prescriptions, services and recurring billing), which changes what later milestones may take on
+ - Scope change: none
++
++### Pass 2 · 2026-10-11 07:23 CDT · clarify-spec (Claude Code, claude-opus-5-5) · base d2e7c81
++
++#### CQ-4 · [Scope] · Milestone cut › M5.1, NFR-015, NFR-016
++- Question: M5.1 (D75) restyles every screen but the PRD has no M5.1 row and no requirement that guards readability or keeps pages free of outside requests. Add the row and two NFRs?
++- Options: A add the M5.1 row (restyle only) with NFR-015 contrast and NFR-016 own-origin assets · B run M5.1 with no PRD row (later skills cannot trace it) · do nothing: leave it untraced · recommendation: A
++- Answer (verbatim): "go ahead with M5.1, /map-ux-flows" with the STANDING approval 2026-10-10 23:09 CDT "i approve all next recommendations until project completion"
++- Status: resolved
++- Applied: Milestone cut row M5.1; NFR-015 [Accessibility]; NFR-016 [Privacy]
++- Decision candidate: no — it records an approved milestone (D75, D80) in the PRD
++- Scope change: none (no new behaviour)
+diff --git a/docs/runbooks/deploy.md b/docs/runbooks/deploy.md
+index 844eeb8..67f9abe 100644
+--- a/docs/runbooks/deploy.md
++++ b/docs/runbooks/deploy.md
+@@ -6,7 +6,7 @@
+ | Services | v2 demo: a new web service `web-v2` and a new managed PostgreSQL `postgres-v2` in project `cerbo-supplement-store` (to be created, FS-2). The project's existing `app` service and `Postgres` database run the v1 Laravel build and stay untouched (D22) |
+ | Environments | production (Railway environment `production`): v2 demo at https://web-v2-production-6640.up.railway.app · v1 at https://supplement-store-slice.up.railway.app (not this release) |
+ | Method | clean `git archive` upload of the release SHA with `railway up --path-as-root` |
+-| Current release | M4 demo @ 1130822 — see §8 |
++| Current release | M5 @ 220a971 — see §8 |
+ | Last updated | 2026-10-10 16:52 CDT |
+ | Written by | ship-milestone (Claude Code, claude-opus-5-5) |
+ | Approvals | deploy and rollback yes-es live in `.handoff/TRACKER.md ## Approvals` (never in this file) |
+@@ -150,6 +150,7 @@ Never add `-y`, `--yes` or `--new` to `railway up`, and never deploy without `--
+ | 2026-10-10 16:52 CDT | production (web-v2) | M4 demo | 1130822 | pending deploy ask | — | — | GAP-1 to GAP-3 done (M4-T901 to T903); setup FS-2 to FS-8 done |
+ | 2026-10-10 16:56 CDT | production (web-v2) | M4 demo | 1130822 | 2026-10-10 16:54 CDT | 11308222f1ea5f74dbe4f2595cce23205b14988b | SMOKE GREEN: 7 passed, 0 failed against https://web-v2-production-6640.up.railway.app at 11308222f1ea5f74dbe4f2595cce23205b14988b (TLS verified) | live (deployment 59c086de SUCCESS) |
+ | 2026-10-10 19:55 CDT | production (web-v2) | M4 from main | 158fb11 | 2026-10-10 19:53 CDT | 158fb11f36a3d86d8374a2bb97c4d29a9437038b | SMOKE GREEN: 7 passed, 0 failed against https://web-v2-production-6640.up.railway.app at 158fb11f36a3d86d8374a2bb97c4d29a9437038b (TLS verified) | live (deployment 21e295fd SUCCESS); rollback target 1130822 |
++| 2026-10-11 06:59 CDT | production (web-v2) | M5 from main | 220a971 | 2026-10-11 ("yes, deploy 220a971 to production") | 220a971f8ea2847d9e680238a2dda0ae55df0f30 | SMOKE GREEN: 7 passed, 0 failed against https://web-v2-production-6640.up.railway.app at 220a971f8ea2847d9e680238a2dda0ae55df0f30 (TLS verified) | live; deployment 373e2d7d; migrations 1760000012000, 1760000013000 applied first by `scripts/railway-setup.sh --skip-seed` (human run); rollback target 21e295fd (158fb11) |
+ 
+ ## 9. Open questions
+ 
+diff --git a/nuxt.config.ts b/nuxt.config.ts
+index ea6fc0b..83f906f 100644
+--- a/nuxt.config.ts
++++ b/nuxt.config.ts
+@@ -32,6 +32,8 @@ export default defineNuxtConfig({
+   compatibilityDate: '2026-08-01',
+   devtools: { enabled: false },
+   buildId,
++  // Theme (lld.md §3, D81): one global stylesheet; its fonts are bundled under /_nuxt/, so style-src 'self' holds.
++  css: ['~/assets/css/theme.css'],
+   // No other inline script or style, so the CSP needs no 'unsafe-inline': CSS ships as files, no inline import map.
+   features: { inlineStyles: false },
+   experimental: { entryImportMap: false },
+diff --git a/package.json b/package.json
+index 90e1f8d..3531b11 100644
+--- a/package.json
++++ b/package.json
+@@ -13,6 +13,8 @@
+     "test:acceptance": "vitest run tests/acceptance"
+   },
+   "dependencies": {
++    "@fontsource-variable/geist": "5.3.0",
++    "@fontsource/eb-garamond": "5.3.0",
+     "kysely": "0.29.6",
+     "nuxt": "4.5.2",
+     "pg": "8.23.0",
+diff --git a/scripts/scope-guard.sh b/scripts/scope-guard.sh
+index e02aa83..d334477 100755
+--- a/scripts/scope-guard.sh
++++ b/scripts/scope-guard.sh
+@@ -62,6 +62,8 @@ while IFS= read -r f; do
+   [ -n "$f" ] || continue
+   n=$((n + 1)) ok=0
+   for p in $owns; do
++    # an exact path matches literally first: Nuxt routes like app/pages/orders/[orderId].vue hold glob brackets
++    [ "$f" = "$p" ] && { ok=1; break; }
+     # shellcheck disable=SC2254 # $p is deliberately a pattern
+     case $f in $p) ok=1; break ;; esac
+   done
+diff --git a/specs/M5.1-visual-refresh/acceptance.md b/specs/M5.1-visual-refresh/acceptance.md
+new file mode 100644
+index 0000000..3b65601
+--- /dev/null
++++ b/specs/M5.1-visual-refresh/acceptance.md
+@@ -0,0 +1,179 @@
++---
++milestone: M5.1
++slug: visual-refresh
++artifact: acceptance
++status: draft
++written_by: define-acceptance (software-factory-kit 0.1)
++written_at: 2026-10-11 07:27 CDT (UTC-0500)
++base_sha: 59ce06a
++inputs: "docs/product/prd.md@92d4a5f (G1), docs/architecture/lld.md@6faccb4 (G3), docs/architecture/hld.md@fea2e18 (G2), docs/design/screens.md@6faccb4 (G-ux)"
++tests: tests/acceptance/M5.1/
++gate: G4
++---
++
++# M5.1 acceptance: visual refresh
++
++## Scope
++
++| Id | Kind | Text (short) | Source |
++|---|---|---|---|
++| NFR-015 | NFR | every text and control colour pair meets WCAG 2.2 AA contrast | prd.md CQ-4 |
++| NFR-016 | NFR | pages inside the EHR load 0 scripts, styles or fonts from another origin | prd.md CQ-4 |
++| FR-005 | FR | the patient's order page (restyled, behaviour unchanged) | prd.md M5.1 row |
++| FR-018 | FR | the practice prices page (restyled) | prd.md M5.1 row |
++| FR-028 | FR | the practice dashboard (restyled) | prd.md M5.1 row |
++| FR-030 | FR | the stock page (restyled) | prd.md M5.1 row |
++| FR-045 | FR | the dashboard orders list (restyled) | prd.md M5.1 row |
++
++Counts: `grep -E '^\| M5\.1 ' docs/product/prd.md | grep -oE '(FR|NFR)-[0-9]{3}' | sort -u | wc -l` → 7. No AE, EC, INV or SC ids: a restyle adds no behaviour (CQ-4 "Scope change: none").
++Out of scope this milestone: every behaviour; the M4 and M5 suites in `make check` prove behaviour is unchanged.
++
++## How these tests run
++
++| Item | Value | Source |
++|---|---|---|
++| Framework | Vitest 5 with @nuxt/test-utils (the built app served for the file) | tests/acceptance/support/app.ts |
++| Run all | `npx vitest run tests/acceptance/M5.1` | AGENTS.md acceptance command |
++| Run one test (for a task's Done-when) | `npx vitest run tests/acceptance/M5.1 -t 'M5.1_AT_002 '` (exits 0 when no test matches: see Q-1) | proven in Red run |
++| Test database (safe to reset?) | yes: `supplements_test` on the throwaway docker container | tests/acceptance/support/db.ts:10-19 |
++| Suites | `make check` does not run tests/acceptance/M5.1 until the last M5.1 task adds it (Q-2) | Makefile test-acceptance-m5 |
++
++## Traceability
++
++| AT | Covers | Requirement (EARS, verbatim) | Given / When / Then (concrete values) | Technique | Level | Test (path::name) | Status |
++|---|---|---|---|---|---|---|---|
++| AT-001 | NFR-015 | NFR-015: 100 % of text and control colour pairs on every screen meet WCAG 2.2 AA contrast (4.5:1 for normal text, 3:1 for large text and focus rings). | **Given** the colour tokens in app/assets/css/theme.css (lld.md Theme names) **When** each text/background pair is measured **Then** ink, muted ink, white on primary, danger and white on both band ends are 4.5:1 or better; the focus ring 3:1 on white; the pale glow fails 3:1 (decoration only) | boundary | unit | `tests/acceptance/M5.1/visual-language.test.ts::M5.1_AT_001` | red @ 59ce06a |
++| AT-002 | NFR-015, FR-018, FR-028, FR-030 | lld.md Theme: "no colour value is written outside theme.css" | **Given** every page and component file under app/ **When** scanned **Then** no hex or rgb() colour remains | partition | unit | `tests/acceptance/M5.1/visual-language.test.ts::M5.1_AT_002` | red @ 59ce06a |
++| AT-003 | NFR-016 | NFR-016: Pages shown inside the EHR load 0 scripts, styles or fonts from any origin but the app's own. | **Given** Dr. Chen signed in **When** she opens the prices page **Then** every link and script is same-origin, every url() in its styles is same-origin, and at least one .woff2 font is served from the app (200) | error-guessing | integration | `tests/acceptance/M5.1/visual-language.test.ts::M5.1_AT_003` | red @ 59ce06a |
++| AT-004 | FR-005, FR-018, FR-028, FR-030, FR-045 | screens.md Visual language (VL-2): "on every screen the title sits in a band" | **Given** Dr. Chen, Omar and Ana signed in **When** they open prices, dashboard, stock and Ana's order, and a stranger opens sign-in **Then** each page's h1 sits inside the page-band element | example | integration | `tests/acceptance/M5.1/visual-language.test.ts::M5.1_AT_004` | red @ 59ce06a |
++| AT-005 | FR-039 | flows.md F7 step 2: "lands on the page she asked for, or her role's home" | **Given** a stranger, Dr. Chen and Omar **When** each opens the site root **Then** the stranger goes to sign-in; Dr. Chen to /practice/dashboard; Omar to an operations page; never a 404 | error-guessing | integration | `tests/acceptance/M5.1/visual-language.test.ts::M5.1_AT_005` | red @ c2ab86b (bug repro, specs/bugs/root-url-404-after-sign-in.md) |
++
++## Edge cases
++
++### Equivalence partitions
++
++| EDGE | FR | Case (concrete) | Expected (source) | Disposition |
++|---|---|---|---|---|
++| EDGE-001 | FR-018 | a colour written as #abc, #aabbcc or rgba(0,0,0,.5) inside a page | none allowed outside theme.css (lld.md Theme) | AT-002 |
++
++### Boundary values
++
++| EDGE | FR | Case (concrete) | Expected (source) | Disposition |
++|---|---|---|---|---|
++| EDGE-002 | NFR-015 | white on the band's bright end #2563EB (5.17:1) and the focus ring #3B82F6 on white (3.68:1) | at or above 4.5:1 and 3:1 (NFR-015) | AT-001 |
++| EDGE-003 | NFR-015 | white on the pale glow #8EC5F5 (1.8:1) | never behind text (screens.md band) | AT-001 |
++
++### State transitions
++
++| EDGE | FR | Case (concrete) | Expected (source) | Disposition |
++|---|---|---|---|---|
++| EDGE-004 | FR-005 | the order page in its states (sent, in checkout, paid, hold ended) | each keeps its M4/M5 behaviour; only the look changes (CQ-4) | not tested: behaviour is pinned by the M4 and M5 suites in make check |
++
++### Decision tables
++
++| EDGE | FR | Case (concrete) | Expected (source) | Disposition |
++|---|---|---|---|---|
++| EDGE-005 | FR-045 | status pill per status (Paid, Sent, In checkout, Payment failed, Needs review, Cancelled) | the status word stays; colour is never the only signal (screens.md) | not tested: the words are pinned by M5 AT-023; pill tints need a browser |
++
++### Error guessing
++
++| EDGE | FR | Case (concrete) | Expected (source) | Disposition |
++|---|---|---|---|---|
++| EDGE-006 | NFR-016 | a font or stylesheet fetched from fonts.googleapis.com or a CDN | refused: own origin only (NFR-016, D81) | AT-003 |
++| EDGE-011 | FR-039 | a signed-in person opens the site root, or signs in with next=/ | their role's home, never a missing page (flows.md F7 step 2) | AT-005 |
++
++### Concurrency, idempotency, double-submit
++
++| EDGE | FR | Case (concrete) | Expected (source) | Disposition |
++|---|---|---|---|---|
++| EDGE-007 | FR-018 | n/a | n/a | not tested: a restyle adds no write path |
++
++### Authorization and abuse
++
++| EDGE | FR | Case (concrete) | Expected (source) | Disposition |
++|---|---|---|---|---|
++| EDGE-008 | FR-030 | a provider opening the stock page after the restyle | still refused (M5 AT-018) | not tested: pinned by M5 AT-018 in make check |
++
++### Money, rounding, time zones
++
++| EDGE | FR | Case (concrete) | Expected (source) | Disposition |
++|---|---|---|---|---|
++| EDGE-009 | FR-028 | dollar amounts in the restyled dashboard | unchanged values (M5 AT-022) | not tested: pinned by M5 AT-022 in make check |
++
++### Empty, huge and unicode data
++
++| EDGE | FR | Case (concrete) | Expected (source) | Disposition |
++|---|---|---|---|---|
++| EDGE-010 | FR-018 | a 60-character product name in the restyled table | wraps, nothing scrolls sideways (screens.md S5 Responsive) | not tested: needs a browser; demo smoke step 3 |
++
++## Edge-case coverage matrix
++
++Every in-scope FR against every group: EDGE ids, or `n/a: <why>`. No blank cell.
++
++| FR | partition | boundary | state | decision-table | error-guess | concurrency | authz | money-time | data-shape |
++|---|---|---|---|---|---|---|---|---|---|
++| FR-005 | n/a: restyle only | n/a: restyle only | EDGE-004 | n/a: restyle only | n/a: restyle only | n/a: no write path | n/a: pinned by M4 suite | n/a: pinned by M5 suite | n/a: restyle only |
++| FR-018 | EDGE-001 | n/a: covered by NFR-015 rows | n/a: restyle only | n/a: restyle only | n/a: restyle only | EDGE-007 | n/a: pinned by M5 AT-009 | n/a: pinned by M5 suite | EDGE-010 |
++| FR-028 | n/a: covered by EDGE-001 | n/a: covered by NFR-015 rows | n/a: restyle only | n/a: restyle only | n/a: restyle only | n/a: no write path | n/a: pinned by M5 AT-026 | EDGE-009 | n/a: restyle only |
++| FR-030 | n/a: covered by EDGE-001 | n/a: covered by NFR-015 rows | n/a: restyle only | n/a: restyle only | n/a: restyle only | n/a: no write path | EDGE-008 | n/a: units, not money | n/a: restyle only |
++| FR-045 | n/a: covered by EDGE-001 | n/a: covered by NFR-015 rows | n/a: restyle only | EDGE-005 | n/a: restyle only | n/a: no write path | n/a: pinned by M5 AT-026 | n/a: pinned by M5 suite | n/a: restyle only |
++
++## Silent-success guards
++
++Ways a test could pass while the feature is wrong (`references/silent-success.md`), and how these tests stop it.
++
++| SS | How a test could pass while the feature is wrong | Tests at risk | Guard used in those tests |
++|---|---|---|---|
++| SS-01 | the theme file exists but holds no tokens, so every pair is "missing" and nothing is checked | AT-001 | a missing token fails the pair; the glow pair is triangulated to fail 3:1 |
++| SS-02 | the scan finds no files, so no colours are found | AT-002 | the scan must see more than 10 .vue files |
++| SS-03 | the page has no stylesheet or font at all, so "no third-party url" passes | AT-003 | at least one .woff2 must be found and served 200 |
++| SS-04 | a page that 404s or redirects has no band and no third-party link | AT-003, AT-004 | each page must answer 200 with an h1 first (live twin) |
++
++## NFR and SC checks
++
++| Id | Threshold (verbatim) | How measured | When |
++|---|---|---|---|
++| NFR-015 | 4.5:1 for normal text, 3:1 for large text and focus rings | AT-001 over the theme tokens; status-pill tints by eye in the demo | make check (after the last M5.1 task) |
++| NFR-016 | 0 scripts, styles or fonts from any origin but the app's own | AT-003; CSP header by smoke SM-6/SM-7 on the deployed app | make check; ship-milestone |
++
++## Demo smoke
++
++| Step | What the person does | What they see | Re-checks |
++|---|---|---|---|
++| 1 | Dr. Chen signs in | the sign-in title in the sky band, serif title | AT-004 |
++| 2 | opens Practice prices | white cards on a pale page, glowing blue "Change price" button | AT-001, AT-004 |
++| 3 | changes a price with a 60-character reason | it saves; long text wraps, nothing scrolls sideways | M5 AT-001 |
++| 4 | opens Practice dashboard | status pills with their words; numbers line up | AT-004 |
++| 5 | Omar opens Stock and tabs through | a blue focus ring on every control | AT-001 |
++| 6 | Ana opens her order and pays | the band title, the receipt as before | AT-004, M4 suite |
++| 7 | Dr. Chen opens Stock (unhappy path) | refused with the same words as before | M5 AT-018 |
++
++## Red run
++
++- Command: `out=/var/folders/hy/jdyfzw1d74j_zxvpgy4bysm80000gp/T/M5.1-acceptance-red.txt; npx vitest run tests/acceptance/M5.1 --reporter=verbose >"$out" 2>&1; echo "exit=$? out=$out"`
++- Run at: 2026-10-11 07:27 CDT (UTC-0500) on 59ce06a (plus the uncommitted M5.1 test file) · exit code: 1
++- Output file: `/var/folders/hy/jdyfzw1d74j_zxvpgy4bysm80000gp/T/M5.1-acceptance-red.txt`
++- Runner summary: Tests 4 failed (4)
++- Single-test proof: `npx vitest run tests/acceptance/M5.1 -t 'M5.1_AT_002 '` → Tests 1 failed / 3 skipped (4) · `-t 'M5.1_AT_999 '` → Tests 4 skipped, exit 0: ⚠ Q-1
++
++| AT | Test | Why it fails (assertion, or missing: <name from an approved artifact>) | First failing line |
++|---|---|---|---|
++| AT-001 | `M5.1_AT_001 every colour pair in the theme …` | missing: app/assets/css/theme.css (lld.md Theme) | app/assets/css/theme.css exists (lld.md Theme): expected false to be true |
++| AT-002 | `M5.1_AT_002 no colour value is written outside …` | assertion: 43 hard-coded colours in pages and components | expected [ …(43) ] to deeply equal [] |
++| AT-003 | `M5.1_AT_003 the prices page loads its styles and fonts …` | assertion: no self-hosted font yet | at least one self-hosted .woff2 font: expected 0 to be greater than 0 |
++| AT-004 | `M5.1_AT_004 each work screen puts its title …` | missing: the page-band element (lld.md Theme) | /practice/prices title inside .page-band: expected false to be true |
++| AT-005 | `M5.1_AT_005 opening the site root lands each person …` | assertion: the root answers 404 (no page at /) | expected [ 302, 303, 307 ] to include 404 |
++
++## Spec gaps and questions
++
++| Q | Question | Recommended (and why) | Answer (verbatim) | Blocks | Status |
++|---|---|---|---|---|---|
++| Q-1 | The single-test command exits 0 when no test matches; how do Done-when lines guard a mistyped id? | count the passing ids, as M5 Q-5 | STANDING approval 2026-10-10 23:09 CDT | every Done-when | answered |
++| Q-2 | Does make check run tests/acceptance/M5.1 while M5.1 is built? | no: the last M5.1 task adds a test-acceptance-m5.1 target to check (the M5 Q-2 pattern) | STANDING approval 2026-10-10 23:09 CDT | every AT | answered |
++
++## Change log
++
++| Date | Change | Ids | Why (approved artifact, or the human's exact words) |
++|---|---|---|---|
++| 2026-10-11 07:27 CDT (UTC-0500) | First draft | all | G1 prd.md@92d4a5f (CQ-4), G3 lld.md@6faccb4, G-ux screens.md@6faccb4; STANDING approval 2026-10-10 23:09 CDT |
++| 2026-10-11 08:04 CDT | Bug repro found in the M5.1 browser check: the site root 404s after sign-in | AT-005, EDGE-011 | STANDING approval 2026-10-10 23:09 CDT |
+diff --git a/specs/M5.1-visual-refresh/tasks/T001.md b/specs/M5.1-visual-refresh/tasks/T001.md
+new file mode 100644
+index 0000000..40fab1e
+--- /dev/null
++++ b/specs/M5.1-visual-refresh/tasks/T001.md
+@@ -0,0 +1,69 @@
++---
++id: M5.1-T001
++milestone: M5.1
++skill: implement-task
++covers: [NFR-015, NFR-016]
++after: []
++harness: claude
++mode: workspace-write
++hitl: false
++parallel: false
++budget: 1 run, 90 min
++---
++Owns: app/assets/css/theme.css,nuxt.config.ts,app/app.vue,app/components/AppShell.vue,app/components/IdleCountdown.vue,app/components/ProblemMessage.vue,app/pages/sign-in.vue
++
++## Ask
++
++Theme, fonts and sign-in band
++
++The tracer bullet: the VL-2 theme file with its colour tokens, self-hosted fonts and shared classes, the restyled page frame and the sign-in page in its sky header band.
++
++- Slice: theme.css (lld.md Theme: the named `--color-*` custom properties on `:root`, radii, shadows, spacing, type sizes; shared classes `page-band`, `card`, `btn-primary`, `btn-secondary`, `btn-danger`, `status-pill` with one modifier per order status; `:focus-visible` ring; reduced-motion rule) → registered in nuxt.config.ts `css` → fonts imported from `@fontsource-variable/geist` and `@fontsource/eb-garamond` inside theme.css (already in package.json) → FE-1 AppShell page frame, IdleCountdown and ProblemMessage restyled → S8 sign-in page title inside `page-band`
++- NFR-015: "100 % of text and control colour pairs on every screen meet WCAG 2.2 AA contrast (4.5:1 for normal text, 3:1 for large text and focus rings)."
++- NFR-016: "Pages shown inside the EHR load 0 scripts, styles or fonts from any origin but the app's own, so no outside party learns who opened a chart."
++- Keep the CSP in nuxt.config.ts exactly as it is (style-src 'self'): fonts and CSS are bundled by the build into /_nuxt/.
++- HITL: none
++- Why claude: tracer bullet; every later task copies its classes.
++
++## Done-when
++
++```sh
++[ "$(npx vitest run tests/acceptance/M5.1 -t 'M5.1_AT_(001|003) ' --reporter=verbose 2>&1 | grep -cE '✓ .*M5.1_AT_(001|003) ')" = 2 ] && grep -q 'page-band' app/pages/sign-in.vue && ! grep -nE '#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?\b|rgba?\(' app/components/AppShell.vue app/components/IdleCountdown.vue app/components/ProblemMessage.vue app/pages/sign-in.vue app/app.vue && make check
++```
++
++- Turns green: AT-001, AT-003 (tests/acceptance/M5.1/visual-language.test.ts)
++- Still red afterwards, expected: AT-002, AT-004 until M5.1-T004
++- Needs before dispatch: the test database is up (`make db-test-up`) and `node_modules` exists in the worktree (implementers never install).
++- Why this form: AT lines count passing tests (acceptance.md Q-1); the restyle of each owned file is checked by the no-colour grep and the band grep.
++
++## Must not change
++
++- `tests/acceptance/**` — read-only. Never edit, skip, delete or weaken a test to get green; if one looks wrong,
++  stop and write it under Questions in result.md.
++- `specs/**`, `docs/**`, `.handoff/**` (except your own result.md), `AGENTS.md`, `CLAUDE.md`, and every dependency
++  manifest or lockfile: a new or upgraded package is an Ask-first question; write it under Questions and stop.
++- Behaviour, copy, focus order and markup roles stay exactly as built: this is a restyle (prd.md CQ-4, D75). Every M4 and M5 acceptance test stays green.
++- Colours live only in app/assets/css/theme.css as the lld.md Theme custom properties; components read them with var(); never write a hex or rgb() colour in a .vue file.
++- Database roles and migrations (lld.md §1 Database roles and migrations): plain SQL files in `db/migrations/`, applied by `npx node-pg-migrate up -m db/migrations` as `supplements_owner`; the app connects as `supplements_app`, which gets SELECT and INSERT only on history tables (`price_changes`, `stock_movements`, `ledger_entries`, `access_log`) and never DELETE on `orders` or `order_lines`. A migration that already ran is never edited.
++- Money is integer cents only, never floats (AGENTS.md); fee = 0.75 % of the order amount rounded half-up once per order (BE-6 Money, lld.md §2).
++- Accepted decisions: D33 PostgreSQL · D36 API-first, one Nuxt deployable · D39 Kysely with plain SQL migrations · D40 bigint ids, order number = id · D41 idempotency keys in a table · D42 synchronous payment with short transactions · D44 Nuxt 4 · D47 a negative payout goes to review before charging · D72 no test seam for random tokens.
++- n/a — greenfield (no change plan)
++
++## Consumes / Produces
++
++- Consumes: the two font packages (package.json)
++- Produces: theme.css classes and tokens — for M5.1-T002, T003, T004
++
++## Context manifest
++
++- give: this file; `AGENTS.md`; docs/design/screens.md#global-conventions (Visual language (M5.1), VL-2); docs/architecture/lld.md#3-frontend-components (Theme paragraph, FE-1); specs/M5.1-visual-refresh/acceptance.md; tests/acceptance/M5.1/visual-language.test.ts (read-only)
++- never give: other tasks' `runs/`, any worker's self-report or result.md, `.handoff/TRACKER.md`, verifier reviews,
++  `.env` or any secret, PHI or real personal data
++
++## Return
++
++- Commit on the branch your worktree was started on (the dispatcher created it from this task's id and the title
++  line under ## Ask); never create a second branch. Every commit carries the trailer `Task: M5.1-T001`.
++- write `$HANDOFF_DIR/runs/M5.1-T001/result.md` in the WORKFLOW.md §7 result contract (status
++  done | human_review | relaunch, base/head sha, changed paths, the Done-when command with its pasted output,
++  questions). Missing evidence means `human_review`, never `done`.
+diff --git a/specs/M5.1-visual-refresh/tasks/T002.md b/specs/M5.1-visual-refresh/tasks/T002.md
+new file mode 100644
+index 0000000..01fadb0
+--- /dev/null
++++ b/specs/M5.1-visual-refresh/tasks/T002.md
+@@ -0,0 +1,69 @@
++---
++id: M5.1-T002
++milestone: M5.1
++skill: implement-task
++covers: [FR-018, FR-028, FR-045]
++after: [M5.1-T001]
++harness: claude
++mode: workspace-write
++hitl: false
++parallel: true
++budget: 1 run, 90 min
++---
++Owns: app/pages/practice/prices.vue,app/components/practice-prices/PriceChangeDialog.vue,app/pages/practice/dashboard.vue,app/pages/patients/[patientId]/supplements.vue,app/components/order-builder/OrderPanel.vue,app/components/order-builder/ProductPicker.vue
++
++## Ask
++
++Provider screens in VL-2
++
++Dr. Chen's screens (order builder S1, prices S5, dashboard S6) wear the new look: title in the sky band, white cards, glowing primary buttons, status pills, theme colours only.
++
++- Slice: S1, S5, S6 pages and their components restyled with theme.css classes and var() colours; titles inside `page-band`; layout-only scoped styles stay
++- FR-018: "When a provider submits the price-change form with either a new price or a margin percentage, the system shall set the practice's price for that product to the resulting price in whole cents, reading margin as a share of the patient price."
++- FR-028: "When a provider opens the practice dashboard for a chosen period, the system shall show per product the units sold, the amount patients paid and the provider payout after that product's share of the platform fee (FR-069)."
++- FR-045: "When a provider opens the practice dashboard, the system shall list the practice's orders with patient, total, status, time sent and time paid."
++- HITL: none
++- Why claude: UI restyle, disjoint from T003.
++
++## Done-when
++
++```sh
++! grep -nE '#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?\b|rgba?\(' 'app/pages/practice/prices.vue' 'app/components/practice-prices/PriceChangeDialog.vue' 'app/pages/practice/dashboard.vue' 'app/pages/patients/[patientId]/supplements.vue' 'app/components/order-builder/OrderPanel.vue' 'app/components/order-builder/ProductPicker.vue' && grep -q 'page-band' 'app/pages/practice/prices.vue' && grep -q 'page-band' 'app/pages/practice/dashboard.vue' && grep -q 'page-band' 'app/pages/patients/[patientId]/supplements.vue' && make check
++```
++
++- Turns green: nothing new in M5.1 alone (AT-002 and AT-004 turn green when M5.1-T004 lands); every M4 and M5 test stays green
++- Still red afterwards, expected: AT-002, AT-004 until M5.1-T004
++- Needs before dispatch: the test database is up (`make db-test-up`) and `node_modules` exists in the worktree (implementers never install).
++- Why this form: AT lines count passing tests (acceptance.md Q-1); the restyle of each owned file is checked by the no-colour grep and the band grep.
++
++## Must not change
++
++- `tests/acceptance/**` — read-only. Never edit, skip, delete or weaken a test to get green; if one looks wrong,
++  stop and write it under Questions in result.md.
++- `specs/**`, `docs/**`, `.handoff/**` (except your own result.md), `AGENTS.md`, `CLAUDE.md`, and every dependency
++  manifest or lockfile: a new or upgraded package is an Ask-first question; write it under Questions and stop.
++- Behaviour, copy, focus order and markup roles stay exactly as built: this is a restyle (prd.md CQ-4, D75). Every M4 and M5 acceptance test stays green.
++- Colours live only in app/assets/css/theme.css as the lld.md Theme custom properties; components read them with var(); never write a hex or rgb() colour in a .vue file.
++- Database roles and migrations (lld.md §1 Database roles and migrations): plain SQL files in `db/migrations/`, applied by `npx node-pg-migrate up -m db/migrations` as `supplements_owner`; the app connects as `supplements_app`, which gets SELECT and INSERT only on history tables (`price_changes`, `stock_movements`, `ledger_entries`, `access_log`) and never DELETE on `orders` or `order_lines`. A migration that already ran is never edited.
++- Money is integer cents only, never floats (AGENTS.md); fee = 0.75 % of the order amount rounded half-up once per order (BE-6 Money, lld.md §2).
++- Accepted decisions: D33 PostgreSQL · D36 API-first, one Nuxt deployable · D39 Kysely with plain SQL migrations · D40 bigint ids, order number = id · D41 idempotency keys in a table · D42 synchronous payment with short transactions · D44 Nuxt 4 · D47 a negative payout goes to review before charging · D72 no test seam for random tokens.
++- n/a — greenfield (no change plan)
++
++## Consumes / Produces
++
++- Consumes: theme.css — from M5.1-T001
++- Produces: restyled S1, S5, S6
++
++## Context manifest
++
++- give: this file; `AGENTS.md`; docs/design/screens.md#global-conventions (Visual language (M5.1), VL-2); docs/architecture/lld.md#3-frontend-components (Theme paragraph, FE-1); specs/M5.1-visual-refresh/acceptance.md; tests/acceptance/M5.1/visual-language.test.ts (read-only)
++- never give: other tasks' `runs/`, any worker's self-report or result.md, `.handoff/TRACKER.md`, verifier reviews,
++  `.env` or any secret, PHI or real personal data
++
++## Return
++
++- Commit on the branch your worktree was started on (the dispatcher created it from this task's id and the title
++  line under ## Ask); never create a second branch. Every commit carries the trailer `Task: M5.1-T002`.
++- write `$HANDOFF_DIR/runs/M5.1-T002/result.md` in the WORKFLOW.md §7 result contract (status
++  done | human_review | relaunch, base/head sha, changed paths, the Done-when command with its pasted output,
++  questions). Missing evidence means `human_review`, never `done`.
+diff --git a/specs/M5.1-visual-refresh/tasks/T003.md b/specs/M5.1-visual-refresh/tasks/T003.md
+new file mode 100644
+index 0000000..c17fe50
+--- /dev/null
++++ b/specs/M5.1-visual-refresh/tasks/T003.md
+@@ -0,0 +1,67 @@
++---
++id: M5.1-T003
++milestone: M5.1
++skill: implement-task
++covers: [FR-005]
++after: [M5.1-T001]
++harness: claude
++mode: workspace-write
++hitl: false
++parallel: true
++budget: 1 run, 60 min
++---
++Owns: app/pages/orders/[orderId].vue,app/components/checkout/CheckoutStep.vue,app/components/checkout/ReceiptView.vue,app/pages/notices/[token].vue
++
++## Ask
++
++Patient screens in VL-2
++
++Ana's screens (notice S3, order and checkout S2, receipt) wear the new look with the title in the sky band.
++
++- Slice: S2, S3 pages and the checkout and receipt components restyled with theme.css classes and var() colours; titles inside `page-band`
++- FR-005: "When a patient opens an order sent to them, the system shall show each item, its quantity, its price and the total."
++- HITL: none
++- Why claude: UI restyle, disjoint from T002.
++
++## Done-when
++
++```sh
++! grep -nE '#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?\b|rgba?\(' 'app/pages/orders/[orderId].vue' 'app/components/checkout/CheckoutStep.vue' 'app/components/checkout/ReceiptView.vue' 'app/pages/notices/[token].vue' && grep -q 'page-band' 'app/pages/orders/[orderId].vue' && grep -q 'page-band' 'app/pages/notices/[token].vue' && make check
++```
++
++- Turns green: nothing new in M5.1 alone; every M4 and M5 test stays green
++- Still red afterwards, expected: AT-002, AT-004 until M5.1-T004
++- Needs before dispatch: the test database is up (`make db-test-up`) and `node_modules` exists in the worktree (implementers never install).
++- Why this form: AT lines count passing tests (acceptance.md Q-1); the restyle of each owned file is checked by the no-colour grep and the band grep.
++
++## Must not change
++
++- `tests/acceptance/**` — read-only. Never edit, skip, delete or weaken a test to get green; if one looks wrong,
++  stop and write it under Questions in result.md.
++- `specs/**`, `docs/**`, `.handoff/**` (except your own result.md), `AGENTS.md`, `CLAUDE.md`, and every dependency
++  manifest or lockfile: a new or upgraded package is an Ask-first question; write it under Questions and stop.
++- Behaviour, copy, focus order and markup roles stay exactly as built: this is a restyle (prd.md CQ-4, D75). Every M4 and M5 acceptance test stays green.
++- Colours live only in app/assets/css/theme.css as the lld.md Theme custom properties; components read them with var(); never write a hex or rgb() colour in a .vue file.
++- Database roles and migrations (lld.md §1 Database roles and migrations): plain SQL files in `db/migrations/`, applied by `npx node-pg-migrate up -m db/migrations` as `supplements_owner`; the app connects as `supplements_app`, which gets SELECT and INSERT only on history tables (`price_changes`, `stock_movements`, `ledger_entries`, `access_log`) and never DELETE on `orders` or `order_lines`. A migration that already ran is never edited.
++- Money is integer cents only, never floats (AGENTS.md); fee = 0.75 % of the order amount rounded half-up once per order (BE-6 Money, lld.md §2).
++- Accepted decisions: D33 PostgreSQL · D36 API-first, one Nuxt deployable · D39 Kysely with plain SQL migrations · D40 bigint ids, order number = id · D41 idempotency keys in a table · D42 synchronous payment with short transactions · D44 Nuxt 4 · D47 a negative payout goes to review before charging · D72 no test seam for random tokens.
++- n/a — greenfield (no change plan)
++
++## Consumes / Produces
++
++- Consumes: theme.css — from M5.1-T001
++- Produces: restyled S2, S3
++
++## Context manifest
++
++- give: this file; `AGENTS.md`; docs/design/screens.md#global-conventions (Visual language (M5.1), VL-2); docs/architecture/lld.md#3-frontend-components (Theme paragraph, FE-1); specs/M5.1-visual-refresh/acceptance.md; tests/acceptance/M5.1/visual-language.test.ts (read-only)
++- never give: other tasks' `runs/`, any worker's self-report or result.md, `.handoff/TRACKER.md`, verifier reviews,
++  `.env` or any secret, PHI or real personal data
++
++## Return
++
++- Commit on the branch your worktree was started on (the dispatcher created it from this task's id and the title
++  line under ## Ask); never create a second branch. Every commit carries the trailer `Task: M5.1-T003`.
++- write `$HANDOFF_DIR/runs/M5.1-T003/result.md` in the WORKFLOW.md §7 result contract (status
++  done | human_review | relaunch, base/head sha, changed paths, the Done-when command with its pasted output,
++  questions). Missing evidence means `human_review`, never `done`.
+diff --git a/specs/M5.1-visual-refresh/tasks/T004.md b/specs/M5.1-visual-refresh/tasks/T004.md
+new file mode 100644
+index 0000000..5faa3e5
+--- /dev/null
++++ b/specs/M5.1-visual-refresh/tasks/T004.md
+@@ -0,0 +1,67 @@
++---
++id: M5.1-T004
++milestone: M5.1
++skill: implement-task
++covers: [FR-030, NFR-015, NFR-016]
++after: [M5.1-T001, M5.1-T002, M5.1-T003]
++harness: claude
++mode: workspace-write
++hitl: false
++parallel: false
++budget: 1 run, 90 min
++---
++Owns: app/pages/ops/stock.vue,app/components/ops-stock/ChangeForm.vue,app/pages/ops/orders/index.vue,app/pages/ops/orders/[orderId].vue,app/components/ops/MoneyEquation.vue,Makefile
++
++## Ask
++
++Staff screens and suite join
++
++Platform staff screens (stock S7, reviewer orders) wear the new look, and make check starts running the M5.1 acceptance suite.
++
++- Slice: S7 stock page, the reviewer order list and order breakdown restyled with theme.css; titles inside `page-band`; then the Makefile gains `test-acceptance-m5.1` (`npx vitest run --dir tests/acceptance/M5.1`) and `check` runs it (acceptance.md Q-2)
++- FR-030: "When a platform staff member records a stock adjustment with a quantity and a reason, the system shall add a stock history entry showing who made it, when, the change and the reason."
++- HITL: none
++- Why claude: last task; joins the suite.
++
++## Done-when
++
++```sh
++make -n check | grep -q 'tests/acceptance/M5.1' && [ "$(npx vitest run tests/acceptance/M5.1 -t 'M5.1_AT_(001|002|003|004) ' --reporter=verbose 2>&1 | grep -cE '✓ .*M5.1_AT_(001|002|003|004) ')" = 4 ] && make check
++```
++
++- Turns green: AT-002, AT-004 (and AT-001, AT-003 stay green)
++- Still red afterwards, expected: none
++- Needs before dispatch: the test database is up (`make db-test-up`) and `node_modules` exists in the worktree (implementers never install).
++- Why this form: AT lines count passing tests (acceptance.md Q-1); the restyle of each owned file is checked by the no-colour grep and the band grep.
++
++## Must not change
++
++- `tests/acceptance/**` — read-only. Never edit, skip, delete or weaken a test to get green; if one looks wrong,
++  stop and write it under Questions in result.md.
++- `specs/**`, `docs/**`, `.handoff/**` (except your own result.md), `AGENTS.md`, `CLAUDE.md`, and every dependency
++  manifest or lockfile: a new or upgraded package is an Ask-first question; write it under Questions and stop.
++- Behaviour, copy, focus order and markup roles stay exactly as built: this is a restyle (prd.md CQ-4, D75). Every M4 and M5 acceptance test stays green.
++- Colours live only in app/assets/css/theme.css as the lld.md Theme custom properties; components read them with var(); never write a hex or rgb() colour in a .vue file.
++- Database roles and migrations (lld.md §1 Database roles and migrations): plain SQL files in `db/migrations/`, applied by `npx node-pg-migrate up -m db/migrations` as `supplements_owner`; the app connects as `supplements_app`, which gets SELECT and INSERT only on history tables (`price_changes`, `stock_movements`, `ledger_entries`, `access_log`) and never DELETE on `orders` or `order_lines`. A migration that already ran is never edited.
++- Money is integer cents only, never floats (AGENTS.md); fee = 0.75 % of the order amount rounded half-up once per order (BE-6 Money, lld.md §2).
++- Accepted decisions: D33 PostgreSQL · D36 API-first, one Nuxt deployable · D39 Kysely with plain SQL migrations · D40 bigint ids, order number = id · D41 idempotency keys in a table · D42 synchronous payment with short transactions · D44 Nuxt 4 · D47 a negative payout goes to review before charging · D72 no test seam for random tokens.
++- n/a — greenfield (no change plan)
++
++## Consumes / Produces
++
++- Consumes: theme.css — from M5.1-T001; restyled S1-S6 — from T002, T003
++- Produces: the M5.1 suite inside make check
++
++## Context manifest
++
++- give: this file; `AGENTS.md`; docs/design/screens.md#global-conventions (Visual language (M5.1), VL-2); docs/architecture/lld.md#3-frontend-components (Theme paragraph, FE-1); specs/M5.1-visual-refresh/acceptance.md; tests/acceptance/M5.1/visual-language.test.ts (read-only)
++- never give: other tasks' `runs/`, any worker's self-report or result.md, `.handoff/TRACKER.md`, verifier reviews,
++  `.env` or any secret, PHI or real personal data
++
++## Return
++
++- Commit on the branch your worktree was started on (the dispatcher created it from this task's id and the title
++  line under ## Ask); never create a second branch. Every commit carries the trailer `Task: M5.1-T004`.
++- write `$HANDOFF_DIR/runs/M5.1-T004/result.md` in the WORKFLOW.md §7 result contract (status
++  done | human_review | relaunch, base/head sha, changed paths, the Done-when command with its pasted output,
++  questions). Missing evidence means `human_review`, never `done`.
+diff --git a/specs/bugs/demo-reset-misses-m5-tables.md b/specs/bugs/demo-reset-misses-m5-tables.md
+new file mode 100644
+index 0000000..dd61d6c
+--- /dev/null
++++ b/specs/bugs/demo-reset-misses-m5-tables.md
+@@ -0,0 +1,9 @@
++# Bug: the demo reset fails once the M5 tables exist
++
++- Found: 2026-10-11, during the M5 deploy (supervisor read db/seed/demo.ts before the migration step).
++- Cause: db/seed/demo.ts truncates a fixed list of M4 tables. M5 added price_changes and stock_movements, which reference orders, products and users; Postgres refuses a TRUNCATE of a table referenced by a table outside the list, so `scripts/railway-setup.sh` without `--skip-seed` stops at step 5.
++- Workaround used: the M5 deploy ran `scripts/railway-setup.sh --skip-seed` (human run).
++- Repro: tests/unit/seed-demo.test.ts "names every table the migrations create" failed (no exported list; 2 tables missing).
++- Fix: the list is now RESET_TABLES, exported, and names every table; the unit test compares it with every `create table` in db/migrations, so a future table cannot be forgotten.
++- Verified: tests/unit/seed-demo.test.ts 78 passed.
++- Approval: STANDING row 2026-10-10 23:09 CDT (2026-10-11 07:55 CDT).
+diff --git a/specs/bugs/root-url-404-after-sign-in.md b/specs/bugs/root-url-404-after-sign-in.md
+new file mode 100644
+index 0000000..98348fe
+--- /dev/null
++++ b/specs/bugs/root-url-404-after-sign-in.md
+@@ -0,0 +1,10 @@
++# Bug: the site root shows a 404 after sign-in
++
++- Found: 2026-10-11 08:04 CDT, by the supervisor during the M5.1 browser check (local dev server).
++- Symptom: opening the site root (the production link sent at the M5 deploy) while signed out goes to /sign-in?next=/; after signing in the person lands on / and sees "404 - Page not found".
++- Cause: there is no page at /, and the sign-in page honours next=/ as "the page asked for" (flows.md F7 step 2 says: the page asked for, or the role's home).
++- Repro: tests/acceptance/M5.1/visual-language.test.ts::M5.1_AT_005 (Dr. Chen opening / gets 404). Written and committed red before the fix.
++- Fix: a site-root page sends the signed-in person to their role's home; the role-home table moves to one shared place used by the sign-in page and the root page.
++- Not fixed here: a patient's role home (/orders, the order list) does not exist yet: M5-R03 (clarify-spec, patient order list). A patient arriving at the root still meets that gap.
++- Verified: M5.1_AT_005 green; make check exit 0.
++- Approval: STANDING row 2026-10-10 23:09 CDT.
+diff --git a/tests/acceptance/M5.1/visual-language.test.ts b/tests/acceptance/M5.1/visual-language.test.ts
+new file mode 100644
+index 0000000..e0fdefb
+--- /dev/null
++++ b/tests/acceptance/M5.1/visual-language.test.ts
+@@ -0,0 +1,133 @@
++// QA-owned by define-acceptance (specs/M5.1-visual-refresh/acceptance.md). Do not edit; report a wrong test in result.md ## Questions.
++//
++// M5.1 visual refresh (D75, D80, D81): the look changes, behaviour does not. These checks guard what the restyle
++// must keep true: readable contrast (NFR-015), nothing loaded from another origin (NFR-016), one theme file
++// (lld.md Theme paragraph) and the sky header band on every work screen (screens.md Visual language, VL-2).
++import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
++import { join } from 'node:path'
++import { fetch } from '@nuxt/test-utils/e2e'
++import { describe, expect, it } from 'vitest'
++import { useApp } from '../support/app'
++import { call, newKey, signIn } from '../support/http'
++import { EMAIL } from '../support/people'
++
++const app = useApp({ paymentStubMode: 'succeed' })
++const THEME = 'app/assets/css/theme.css'
++
++// WCAG 2.2 relative luminance and contrast ratio
++function luminance(hex: string): number {
++  const c = [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((x) => (x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4))
++  return 0.2126 * c[0]! + 0.7152 * c[1]! + 0.0722 * c[2]!
++}
++const ratio = (a: string, b: string) => {
++  const [x, y] = [luminance(a), luminance(b)].sort((m, n) => n - m)
++  return (x! + 0.05) / (y! + 0.05)
++}
++function tokens(): Record<string, string> {
++  const css = readFileSync(THEME, 'utf8')
++  const out: Record<string, string> = {}
++  for (const m of css.matchAll(/(--color-[a-z-]+)\s*:\s*#([0-9a-fA-F]{6})\s*;/g)) {
++    expect(out[m[1]!], `${m[1]} is declared once`).toBeUndefined()
++    out[m[1]!] = m[2]!.toUpperCase()
++  }
++  return out
++}
++function vueFiles(dir: string): string[] {
++  return readdirSync(dir).flatMap((f) => {
++    const p = join(dir, f)
++    return statSync(p).isDirectory() ? vueFiles(p) : p.endsWith('.vue') ? [p] : []
++  })
++}
++async function page(path: string, email: string) {
++  const r = await call(path, { cookie: await signIn(email), redirect: 'manual' })
++  expect(r.status, `${path} as ${email}`).toBe(200)
++  return r
++}
++
++describe('M5.1 visual language', () => {
++  it('M5.1_AT_001 every colour pair in the theme meets WCAG 2.2 AA: text 4.5:1 on page, card, primary and band; focus ring 3:1 on white (NFR-015)', () => {
++    expect(existsSync(THEME), `${THEME} exists (lld.md Theme)`).toBe(true)
++    const t = tokens()
++    const need: [string, string, number][] = [
++      ['--color-ink', '--color-card', 4.5],
++      ['--color-ink', '--color-page', 4.5],
++      ['--color-ink-muted', '--color-card', 4.5],
++      ['--color-ink-muted', '--color-page', 4.5],
++      ['--color-on-primary', '--color-primary', 4.5],
++      ['--color-danger', '--color-card', 4.5],
++      ['--color-on-band', '--color-band-from', 4.5],
++      ['--color-on-band', '--color-band-to', 4.5],
++      ['--color-focus', '--color-card', 3],
++      ['--color-primary', '--color-card', 4.5],
++    ]
++    const failing = need
++      .map(([fg, bg, min]) => ({ pair: `${fg} on ${bg}`, fg: t[fg], bg: t[bg], min }))
++      .filter((p) => !p.fg || !p.bg || ratio(p.fg, p.bg) < p.min)
++      .map((p) => `${p.pair}: ${p.fg && p.bg ? ratio(p.fg, p.bg).toFixed(2) : 'missing'} < ${p.min}`)
++    expect(failing).toEqual([])
++    // triangulation: the pale glow is decoration only and would fail as a text background
++    expect(ratio(t['--color-on-band']!, t['--color-band-glow']!)).toBeLessThan(3)
++  })
++
++  it('M5.1_AT_002 no colour value is written outside the theme file: no hex or rgb() colour in any page or component (lld.md Theme)', () => {
++    const offenders = vueFiles('app').flatMap((f) =>
++      readFileSync(f, 'utf8')
++        .split('\n')
++        .map((line, i) => ({ f, i: i + 1, line }))
++        .filter(({ line }) => /#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3})?\b(?![-\w])|rgba?\(/.test(line) && !/^\s*(\/\/|<!--|\*)/.test(line))
++        .map(({ f, i }) => `${f}:${i}`),
++    )
++    expect(vueFiles('app').length).toBeGreaterThan(10)
++    expect(offenders).toEqual([])
++  })
++
++  it('M5.1_AT_003 the prices page loads its styles and fonts only from its own origin, including a self-hosted font file (NFR-016, D81)', async () => {
++    const r = await page('/practice/prices', EMAIL.drChen)
++    // The CSP header is set only on production builds (nuxt.config.ts $production); the deploy smoke SM-6 and SM-7
++    // check it on the running app. Here: every asset the page asks for is same-origin.
++    const refs = [...r.text.matchAll(/<(?:link|script)[^>]+(?:href|src)="([^"]+)"/g)].map((m) => m[1]!)
++    expect(refs.length).toBeGreaterThan(0)
++    expect(refs.filter((u) => /^(https?:)?\/\//.test(u))).toEqual([])
++    const sheets = refs.filter((u) => u.endsWith('.css'))
++    let css = [...r.text.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]).join('\n')
++    for (const u of sheets) css += '\n' + (await (await fetch(u)).text())
++    const urls = [...css.matchAll(/url\(\s*["']?([^"')]+)["']?\s*\)/g)].map((m) => m[1]!)
++    expect(urls.filter((u) => /^(https?:)?\/\//.test(u))).toEqual([])
++    const fonts = urls.filter((u) => /\.woff2(\?|$)/.test(u))
++    expect(fonts.length, 'at least one self-hosted .woff2 font').toBeGreaterThan(0)
++    expect((await fetch(fonts[0]!)).status).toBe(200)
++  })
++
++  it('M5.1_AT_004 each work screen puts its title in the sky header band: prices and dashboard (Dr. Chen), stock (Omar), Ana order page, and the sign-in page (FR-005, FR-018, FR-028, FR-030, FR-045; screens.md VL-2 header band; lld.md page-band)', async () => {
++    const w = app.world()
++    const banded = (html: string) => /class="[^"]*\bpage-band\b[^"]*"[^>]*>[\s\S]*?<h1\b/.test(html)
++    // live twin: the pages answer 200 with their h1 before the band is required
++    for (const [path, email] of [['/practice/prices', EMAIL.drChen], ['/practice/dashboard', EMAIL.drChen], ['/ops/stock', EMAIL.omar]] as const) {
++      const r = await page(path, email)
++      expect(r.text).toMatch(/<h1\b/)
++      expect(banded(r.text), `${path} title inside .page-band`).toBe(true)
++    }
++    const chen = await signIn(EMAIL.drChen)
++    const o = await call('/api/orders', { method: 'POST', cookie: chen, key: newKey(), body: { patient_id: w.ana, lines: [{ product_id: w.vitaminD3, quantity: 1 }] } })
++    expect(o.status).toBe(201)
++    const ana = await page(`/orders/${o.body.order_id}`, EMAIL.ana)
++    expect(banded(ana.text), 'the patient order page title inside .page-band').toBe(true)
++    const s = await call('/sign-in')
++    expect(s.status).toBe(200)
++    expect(banded(s.text), '/sign-in title inside .page-band').toBe(true)
++  })
++
++  it('M5.1_AT_005 opening the site root lands each person on their role home, never a missing page: Dr. Chen the practice dashboard, Omar an operations page, a stranger sign-in (flows.md F7 step 2; bug specs/bugs/root-url-404-after-sign-in.md)', async () => {
++    const home = async (email: string | null) => {
++      const r = await call('/', { cookie: email ? await signIn(email) : undefined, redirect: 'manual' })
++      return { status: r.status, location: r.headers.get('location') }
++    }
++    const stranger = await home(null)
++    expect(stranger.status).toBe(303)
++    expect(stranger.location).toMatch(/^\/sign-in\?next=/)
++    const chen = await home(EMAIL.drChen)
++    expect([302, 303, 307]).toContain(chen.status)
++    expect(chen.location).toBe('/practice/dashboard')
++    expect((await home(EMAIL.omar)).location).toMatch(/^\/ops\//)
++  })
++})
+diff --git a/tests/unit/seed-demo.test.ts b/tests/unit/seed-demo.test.ts
+index cafdd0a..ba62d43 100644
+--- a/tests/unit/seed-demo.test.ts
++++ b/tests/unit/seed-demo.test.ts
+@@ -1,6 +1,7 @@
+ // M4-T903 demo data loader (runbook FS-8): its guards and its password hash format (acceptance Q-1).
++import { readdirSync, readFileSync } from 'node:fs'
+ import { afterEach, describe, expect, it, vi } from 'vitest'
+-import { hashPassword, seedDemo, WORLD } from '../../db/seed/demo'
++import { hashPassword, RESET_TABLES, seedDemo, WORLD } from '../../db/seed/demo'
+ import { verifyPassword } from '../../server/services/session'
+ 
+ // Synthetic test value, built at run time so no literal password sits in the code.
+@@ -80,3 +81,15 @@ describe('the demo world', () => {
+     }
+   })
+ })
++
++// Bug (specs/bugs/demo-reset-misses-m5-tables.md): the demo reset truncates a fixed table list; a table
++// left out that references a truncated one makes Postgres refuse the whole TRUNCATE.
++describe('demo reset table list', () => {
++  it('names every table the migrations create', () => {
++    const created = readdirSync('db/migrations')
++      .filter((f) => f.endsWith('.sql'))
++      .flatMap((f) => [...readFileSync(`db/migrations/${f}`, 'utf8').split('-- Down Migration')[0]!.matchAll(/create table (\w+)/gi)].map((m) => m[1]!))
++    expect(created.length).toBeGreaterThan(10)
++    expect(created.filter((t) => !RESET_TABLES.includes(t)).sort()).toEqual([])
++  })
++})

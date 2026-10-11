@@ -463,3 +463,4 @@ several harnesses read it and the repo is public.
 2026-10-11 07:54 CDT DISPATCH M5.1-T004 harness=claude-subagent why=last task: staff screens + M5.1 suite join
 2026-10-11 07:55 CDT FIX demo reset list misses M5 tables: RESET_TABLES names every table; unit guard compares it with db/migrations (specs/bugs/demo-reset-misses-m5-tables.md)
 2026-10-11 08:06 CDT FIX site root 404 after sign-in: app/pages/index.vue sends to the role home (shared ROLE_HOME); AT-005 red at 771b802 then green; make check exit 0
+2026-10-11 08:07 CDT REVIEW M5.1 milestone: verifier pass 1 and check-security dispatched; browser check done locally (sign-in, prices, dashboard, 375 px, stock; found and fixed the root 404)
