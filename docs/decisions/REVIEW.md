@@ -38,7 +38,7 @@ Weight: ●●● critical (hard to undo, or touches money, personal data or sig
 - ●○○ D86 — Pay stock refusals are counted hourly beside request stats.
 - ●○○ ~~D11~~ — v1: one stock path through a single method. (replaced by D22)
 
-### Security (12)
+### Security (14)
 
 - ●●● D26 — Sign-in, notices without health details, no patient identity for platform staff.
 - ●●○ D37 — Seeded test accounts with server-side sessions.
@@ -52,6 +52,8 @@ Weight: ●●● critical (hard to undo, or touches money, personal data or sig
 - ●○○ D78 — GET of an order may end a due hold; accepted, access-checked.
 - ●○○ D82 — S15 home may linger in a shared browser's history; accepted as low.
 - ●○○ D83 — Price and stock input get upper bounds and clear errors.
+- ●○○ D88 — Refused role-change rows from any caller are accepted as low.
+- ●○○ D89 — One database write per counted request is accepted as low.
 
 ### Money (8)
 
@@ -139,6 +141,8 @@ Decisions that adopted a software-factory-kit change (H) and the finding (F) beh
 
 ### 2026-10-11
 
+- D89 · Security · ●○○ — One database write per counted request is accepted as low.
+- D88 · Security · ●○○ — Refused role-change rows from any caller are accepted as low.
 - D87 · Infrastructure · ●○○ — Availability counts five-minute slots, matching the probe.
 - D86 · Data · ●○○ — Pay stock refusals are counted hourly beside request stats.
 - D85 · Product · ●○○ — Refused transitions say from which state and on what event.

@@ -1011,3 +1011,27 @@ Copy this block for each new entry (D-ids increase by one, starting at D1):
 - Cost accepted: the chosen option's cost above. · Reversibility: Type 2 two-way · Confidence: med
 - Revisit if: the probe interval changes · Evidence: proposed as docs/architecture/lld.md D87; approval G3 2026-10-11 09:49 CDT · Interview line: "Availability is checked slots over elapsed slots, and the slot is the probe interval."
 - Review: Topic Infrastructure · Weight ●○○ · One-liner: Availability counts five-minute slots, matching the probe.
+
+### D88 Accept refused role-change rows from any caller  [status: accepted]
+- Date 2026-10-11 12:55 CDT · phase 12 check-security (G5) · milestone M6 · Decided by: human, G5 SEC-16 2026-10-11 12:55 CDT: STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" · Proposed by: check-security (Claude Code, claude-opus-5-5) · artifact: docs/security/CHECKLIST.md@a794224
+- Context and forces: A patient or provider can hand-craft a role-change request; the refusal is logged with their own name and text in the append-only access log the finance lead reads (staff-access.ts:86), without a limit, and 403 vs 404 reveals which ids are staff. Only the caller's own identity is exposed; no order or health data.
+- Options:
+  - Do nothing / simplest (shown as "default: pending G5"): leave it undecided — cost: the milestone cannot merge — rejected: blocks G5
+  - fix: refuse non-staff callers unlogged before BE-18, or log them nameless, plus a per-actor limit — cost: a BE-18 change and an FR-055 note — rejected: low under the triage rule
+  - accept (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: a gap in INV-7's letter and unbounded refused rows, owned by name — chosen
+- Choice: accept · Why: In the context of a low finding inside Cerbo's EHR, we chose to accept it with a revisit trigger over fixing it now, accepting a gap in INV-7's letter and unbounded refused rows, owned by name.
+- Cost accepted: a gap in INV-7's letter and unbounded refused rows, owned by name. · Reversibility: Type 2 two-way · Confidence: high
+- Revisit if: patients or providers are identified by Cerbo's EHR launch, a real patient name appears in the access log, or flooding is seen. · Evidence: docs/security/CHECKLIST.md SEC-16; approval G5 SEC-16 2026-10-11 12:55 CDT · Interview line: "Logging every refused attempt is right for audit; the flood risk exposes only the caller's own name, so it is accepted with a trigger to add a per-actor limit."
+- Review: Topic Security · Weight ●○○ · One-liner: Refused role-change rows from any caller are accepted as low.
+
+### D89 Accept one database write per counted request  [status: accepted]
+- Date 2026-10-11 12:55 CDT · phase 12 check-security (G5) · milestone M6 · Decided by: human, G5 SEC-17 2026-10-11 12:55 CDT: STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" · Proposed by: check-security (Claude Code, claude-opus-5-5) · artifact: docs/security/CHECKLIST.md@a794224
+- Context and forces: The request-metrics plugin upserts the hour's row on every counted request, including signed-out page loads (request-metrics.ts:19); under a flood these writes compete for database connections. A failed write never fails a request; no data is exposed.
+- Options:
+  - Do nothing / simplest (shown as "default: pending G5"): leave it undecided — cost: the milestone cannot merge — rejected: blocks G5
+  - fix: count in memory and flush once a minute, or count signed-in requests only — cost: a BE-19 redesign and D86/D87 changes — rejected: low under the triage rule
+  - accept (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: slower answers under a flood — chosen
+- Choice: accept · Why: In the context of a low finding inside Cerbo's EHR, we chose to accept it with a revisit trigger over fixing it now, accepting slower answers under a flood.
+- Cost accepted: slower answers under a flood. · Reversibility: Type 2 two-way · Confidence: high
+- Revisit if: traffic approaches the database pool limit or a request flood is seen. · Evidence: docs/security/CHECKLIST.md SEC-17; approval G5 SEC-17 2026-10-11 12:55 CDT · Interview line: "Counting each request in the database is simple and safe for this load; batching waits until traffic says it is needed."
+- Review: Topic Security · Weight ●○○ · One-liner: One database write per counted request is accepted as low.
