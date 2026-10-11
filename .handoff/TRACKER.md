@@ -28,7 +28,7 @@ several harnesses read it and the repo is public.
 | M5-T001 | Provider changes a practice price (specs/M5-prices-and-stock/tasks/T001.md) | Standard / implement-task | claude-subagent | done | 2026-10-10 21:09 CDT | see task file | 135b9ca |
 | M5-T002 | Payment reserves and releases stock (specs/M5-prices-and-stock/tasks/T002.md) | Standard / implement-task | claude-subagent | done | 2026-10-10 21:09 CDT | see task file | f5bb975 |
 | M5-T003 | Patients see price change notices (specs/M5-prices-and-stock/tasks/T003.md) | Standard / implement-task | claude-subagent | done | 2026-10-10 21:09 CDT | see task file | f386d76 |
-| M5-T004 | Platform staff adjust stock (specs/M5-prices-and-stock/tasks/T004.md) | Standard / implement-task | claude-subagent | working | 2026-10-10 21:09 CDT | see task file | — |
+| M5-T004 | Platform staff adjust stock (specs/M5-prices-and-stock/tasks/T004.md) | Standard / implement-task | claude-subagent | done | 2026-10-10 21:09 CDT | see task file | 061cd49 |
 | M5-T005 | Provider opens the practice dashboard (specs/M5-prices-and-stock/tasks/T005.md) | Standard / implement-task | claude-subagent | working | 2026-10-10 21:09 CDT | see task file | — |
 | M5-T006 | M5 joins checks and menu (specs/M5-prices-and-stock/tasks/T006.md) | Standard / implement-task | claude-subagent | todo | 2026-10-10 21:09 CDT | see task file | — |
 
@@ -173,6 +173,7 @@ several harnesses read it and the repo is public.
 | 2026-10-10 21:51 CDT | M5-T002 review dispositions (pass 3), option a: relaunch T002 to fix R2 (test the FM-3 stock release), R3 (one-in-flight check before reserving stock); R1 to define-acceptance; R5, R6 to design catch-up; keep R7, R8; R4 (FM-7 reconcile) moves into the M5-T003 relaunch | .handoff/reviews/M5-pass3.md; m5/t002-payment-reserves-and-releases-stock@db27aeb | "a, relaunch T002 with R2, R3" |
 | 2026-10-10 22:00 CDT | M5-T003 review dispositions (pass 2), option a: bring T003 up to date with T002 (squashed), relaunch to fix R3 (P0: never end a hold while a payment is processing), R5 (access check before the hold write), R1 (held price differs from sent in the test) and FM-7 (reconcile an abandoned processing attempt, from pass 3 R4); R4 to design catch-up and a close-out task; R2, R7 filed; keep R6 | .handoff/reviews/M5-pass2.md; m5/t003-patients-see-price-change-notices@c63753c | "a, relaunch T003 with R3, R5, R1 and FM-7" |
 | 2026-10-10 22:19 CDT | M5-T003 review dispositions (pass 4), option a: squash T003; R1, R2, R3 to a define-acceptance re-run (real-database tests: in-flight payment keeps the hold; abandoned attempt reconciled); R4 (pay-path reconcile) to an M5 close-out task; keep R5 | .handoff/reviews/M5-pass4.md; m5/t003-patients-see-price-change-notices@0f67851 | "a, squash T003 and add the acceptance tests" |
+| 2026-10-10 22:24 CDT | M5-T004 review dispositions (pass 5), option a: squash T004; R2, R3, R4, R6 to the M5 close-out task; R1, R5, R7 to design catch-up | .handoff/reviews/M5-pass5.md; m5/t004-platform-staff-adjust-stock@81939f7 | "a, squash T004" |
 
 ## Log
 
@@ -387,3 +388,4 @@ several harnesses read it and the repo is public.
 2026-10-10 22:15 CDT REVIEW M5 pass 6 (M5-T005): 10 rows, no P0/P1; money sums and privacy scoping confirmed
 2026-10-10 22:16 CDT REVIEW M5 pass 5 (M5-T004): 7 rows, all P3, no tests-that-lie, no security findings
 2026-10-10 22:19 CDT VERIFY M5-T003 squashed f386d76: relaunch done; scope-guard OK (2 paths); supervisor Done-when exit 0 (3/3 ATs; make check OK 166 unit + 43 M4); pass 4 confirms the P0 fix
+2026-10-10 22:24 CDT VERIFY M5-T004 squashed 061cd49: result done; scope-guard OK (6 paths); supervisor Done-when exit 0 (4/4 ATs; make check OK 166 unit + 43 M4); pass 5 all P3
