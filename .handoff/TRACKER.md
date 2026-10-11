@@ -243,6 +243,7 @@ several harnesses read it and the repo is public.
 | 2026-10-11 12:55 CDT | G5 SEC-17 | docs/security/CHECKLIST.md@a794224 | accept — STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
 | 2026-10-11 12:55 CDT | G5 security part (M6): approve checklist (0 reachable critical/high) | docs/security/CHECKLIST.md@a794224 | STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
 | 2026-10-11 12:55 CDT | M6 review pass 1 dispositions: R1 fix (M6-T008, D85 dashboard copy); R2 to R8 file (R6 = SEC-16, accepted) | .handoff/reviews/M6-pass1.md | STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
+| 2026-10-11 13:16 CDT | G5 Revise (M6 report recommendation): answer DV-4 (a) with a Log NOTE; MILESTONES M6 row gets G4 sha and D88, D89 (DV-7); re-run report-milestone | docs/milestones/M6.md (draft 13:12) | STANDING row 2026-10-10 23:09 CDT |
 
 ## Log
 
@@ -540,3 +541,4 @@ several harnesses read it and the repo is public.
 2026-10-11 12:42 CDT REVIEW M6 milestone: verifier pass 1 and check-security dispatched
 2026-10-11 12:58 CDT FIX M6-pass1 R1 (Fix track, 1 file, no API change): practice/dashboard.vue cancel-refusal copy reads the problem's from (D85), falling back to the loaded row; make check exit 0
 2026-10-11 13:07 CDT MIGRATE production (human run, ahead of the merge): scripts/railway-setup.sh --skip-seed from the M6 branch checkout applied 1 migration (1760000014000_operations-access.sql); live code is still M5.2 c9b890d, which ignores the new tables; the M6 deploy needs no further migration
+2026-10-11 13:16 CDT NOTE DV-4: b789a54 (M5.1 ship records: MILESTONES M5.1 done, the c956959 deploy row) sits on the M6 branch because main is protected; records reach main with the next milestone MR (the same pattern as the 2026-10-11 08:35 CDT DV-5 NOTE); records only, no decision
