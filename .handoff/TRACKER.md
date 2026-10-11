@@ -229,6 +229,7 @@ several harnesses read it and the repo is public.
 | 2026-10-11 10:22 CDT | G5 Merge (M5.2 report recommendation; 4 clauses yes; 0 open P0/P1; 0 unaccepted high/critical) | docs/milestones/M5.2.md@8f18a05 | STANDING row 2026-10-10 23:09 CDT |
 | 2026-10-11 10:36 CDT | G1 re-approval (clarify pass 4: CQ-6 to CQ-8) + G3 revise (Q-10 to Q-12 answered; role none keeps M5.2 S15) | docs/product/prd.md@97e8186 + lld.md + openapi.yaml | STANDING row 2026-10-10 23:09 CDT |
 | 2026-10-11 10:38 CDT | deploy (pre-approved): the M6 merge commit → Railway production (web-v2), once merged on green CI; migrations stay a human-run step | M6 MR (not yet opened) | "tell me when M6 is ready to deploy, also deploy it" |
+| 2026-10-11 11:08 CDT | G4 acceptance part (M6: 44 ATs, Q-1 to Q-13 recommendations, waivers EDGE-007, 033, 034, 039, 051, 058, 059; EDGE-039 waived with a verifier check of the repeatable-read transaction) | specs/M6-measurement-and-operations/acceptance.md@be96e14 + tests/acceptance/M6 | STANDING row 2026-10-10 23:09 CDT |
 
 ## Log
 
@@ -507,3 +508,4 @@ several harnesses read it and the repo is public.
 2026-10-11 10:31 CDT MERGE M5.2 MR !11 -> main c9b890d (pipeline #49910 success); make check on main exit 0 (218/43/44/5/5)
 2026-10-11 10:31 CDT DEPLOY M5.2 c9b890d → production web-v2 (deployment 5224c9ca SUCCESS); SMOKE GREEN 7/0; deploy pre-approved by "tell me when M5.2 is ready to deploy, also deploy it"
 2026-10-11 10:36 CDT DISPATCH M6-ACC harness=claude-subagent why=define-acceptance first pass for M6; branch milestone/m6-measurement-and-operations
+2026-10-11 11:08 CDT PHASE define-acceptance M6: 44 ATs (42 red, 2 green pins); committed be96e14
