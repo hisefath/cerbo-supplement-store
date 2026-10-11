@@ -555,3 +555,5 @@ several harnesses read it and the repo is public.
 2026-10-11 13:53 CDT DISPATCH M6.1-T001 harness=claude-subagent why=patient order list (M5-R03)
 2026-10-11 14:09 CDT VERIFY M6.1-T001 squashed d288d92: scope-guard OK (6 paths); milestone make check exit 0 (all seven suites incl. M6.1 5/5)
 2026-10-11 14:09 CDT REVIEW M6.1: verifier pass 1 and check-security dispatched
+2026-10-11 14:51 CDT MERGE M6.1 MR !14 -> main 1377d9d (pipeline success on d32d570); make check on main exit 0 (all seven suites)
+2026-10-11 14:51 CDT DEPLOY M6.1 1377d9d → production web-v2 (deployment ef903acd SUCCESS); SMOKE GREEN 7/0; pre-approved; M5-R03 closed
