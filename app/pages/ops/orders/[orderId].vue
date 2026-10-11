@@ -28,6 +28,13 @@ const route = useRoute()
 const orderId = Number(route.params.orderId)
 useHead({ title: `Order ${orderId}` })
 const { data: b, error, refresh, status } = await useFetch<OrderBreakdown>(`/api/ops/orders/${orderId}`) // ST-8
+// ST-1, shared with AppShell by key: the wrong-role copy names the viewer's role (acceptance Q-8; S14, AT-039).
+const { data: viewer } = await useFetch<{ role: string }>('/api/session', { key: 'viewer' })
+const FORBIDDEN: Record<string, string> = {
+  sre: "Your role can't open order breakdowns.",
+  data_analyst: 'Your role shows totals only.',
+}
+const forbidden = computed(() => FORBIDDEN[viewer.value?.role ?? ''] ?? 'Only platform reviewers can see order breakdowns.')
 
 const dollars = (c: number) => `$${(c / 100).toFixed(2)}`
 const paidAt = computed(() => {
@@ -69,7 +76,7 @@ const feeNote = computed(() => {
         v-else-if="error"
         :problem="(error.data as Problem) ?? null"
         :copy="{
-          forbidden: 'Only platform reviewers can see order breakdowns.',
+          forbidden,
           'not-found': `We can't find order ${orderId}.`,
           internal: `We couldn't load order ${orderId}. Try again.`,
         }"
