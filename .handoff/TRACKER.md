@@ -539,3 +539,4 @@ several harnesses read it and the repo is public.
 2026-10-11 12:42 CDT VERIFY M6-T007 squashed 5ffe173: scope-guard OK (2 paths); milestone make check exit 0 with M6 joined (all six suites)
 2026-10-11 12:42 CDT REVIEW M6 milestone: verifier pass 1 and check-security dispatched
 2026-10-11 12:58 CDT FIX M6-pass1 R1 (Fix track, 1 file, no API change): practice/dashboard.vue cancel-refusal copy reads the problem's from (D85), falling back to the loaded row; make check exit 0
+2026-10-11 13:07 CDT MIGRATE production (human run, ahead of the merge): scripts/railway-setup.sh --skip-seed from the M6 branch checkout applied 1 migration (1760000014000_operations-access.sql); live code is still M5.2 c9b890d, which ignores the new tables; the M6 deploy needs no further migration
