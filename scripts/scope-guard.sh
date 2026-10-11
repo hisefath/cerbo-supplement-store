@@ -62,6 +62,8 @@ while IFS= read -r f; do
   [ -n "$f" ] || continue
   n=$((n + 1)) ok=0
   for p in $owns; do
+    # an exact path matches literally first: Nuxt routes like app/pages/orders/[orderId].vue hold glob brackets
+    [ "$f" = "$p" ] && { ok=1; break; }
     # shellcheck disable=SC2254 # $p is deliberately a pattern
     case $f in $p) ok=1; break ;; esac
   done

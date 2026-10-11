@@ -26,7 +26,7 @@ const paidOn = computed(() => {
 </script>
 
 <template>
-  <section aria-labelledby="receipt-heading" class="receipt">
+  <section aria-labelledby="receipt-heading" class="receipt card">
     <h2 id="receipt-heading">Receipt</h2>
     <p role="status">{{ paidOn }}</p>
     <p>Thank you. Your practice has your order.</p>
@@ -42,9 +42,11 @@ const paidOn = computed(() => {
 </template>
 
 <style scoped>
-.receipt { max-width: 560px; margin: 0 auto; }
+/* S2 success on the VL-2 theme (theme.css): the receipt on a white card; layout only here. */
+.receipt { max-width: 560px; margin: 0 auto var(--space-section); }
+.receipt h2 { margin-top: 0; font-family: var(--font-serif); font-weight: 500; }
 .lines { list-style: none; padding: 0; }
-.lines li { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; padding: 4px 0; }
+.lines li { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--color-border); font-variant-numeric: tabular-nums; }
 .name { overflow-wrap: anywhere; }
-.test { color: #333; }
+.test { color: var(--color-ink-muted); }
 </style>

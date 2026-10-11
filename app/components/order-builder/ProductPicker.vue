@@ -25,7 +25,7 @@ function add(item: CatalogItem) {
 </script>
 
 <template>
-  <section aria-labelledby="products-heading">
+  <section aria-labelledby="products-heading" class="card">
     <h2 id="products-heading">Products</h2>
     <ul class="products">
       <li v-for="item in items" :key="item.product_id">
@@ -48,7 +48,7 @@ function add(item: CatalogItem) {
               aria-describedby="qty-help"
             />
           </label>
-          <button type="submit">Add</button>
+          <button type="submit" class="btn-secondary">Add</button>
         </form>
       </li>
     </ul>
@@ -58,9 +58,8 @@ function add(item: CatalogItem) {
 
 <style scoped>
 .products { list-style: none; padding: 0; }
-.products li { padding: 8px 0; border-bottom: 1px solid #ddd; }
+.products li { padding: 8px 0; border-bottom: 1px solid var(--color-border); }
 .name { font-weight: 600; overflow-wrap: anywhere; }
 input { width: 4em; margin: 0 8px; }
-button { min-width: 24px; min-height: 24px; }
-.help { color: #444; font-size: 14px; }
+.help { color: var(--color-ink-muted); font-size: var(--text-detail); }
 </style>

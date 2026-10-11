@@ -6,10 +6,10 @@
 # Commands table in AGENTS.md). Until then they fail on purpose, so an unconfigured repo can never look green.
 # Keep the target names: skills and hooks call `make check`, not the tools directly.
 
-.PHONY: check lint types test setup db-test-up test-acceptance test-acceptance-m4 test-acceptance-m5 decisions
+.PHONY: check lint types test setup db-test-up test-acceptance test-acceptance-m4 test-acceptance-m5 test-acceptance-m5.1 decisions
 
-## check: lint + types + tests + M4 and M5 acceptance suites + decision review in sync — the gate
-check: lint types test test-acceptance-m4 test-acceptance-m5 decisions
+## check: lint + types + tests + M4, M5 and M5.1 acceptance suites + decision review in sync — the gate
+check: lint types test test-acceptance-m4 test-acceptance-m5 test-acceptance-m5.1 decisions
 	@echo "make check: OK"
 
 ## lint: workflow scripts must parse (docs-only phase: no product code yet; stack tools are added at M3 design)
@@ -37,7 +37,7 @@ setup:
 db-test-up:
 	docker compose up -d db-test
 
-## test-acceptance: every milestone's QA-owned acceptance tests (check runs the M4 and M5 parts via test-acceptance-m4 and -m5; needs `make db-test-up`)
+## test-acceptance: every milestone's QA-owned acceptance tests (check runs the M4, M5 and M5.1 parts via test-acceptance-m4, -m5 and -m5.1; needs `make db-test-up`)
 test-acceptance:
 	npx vitest run --dir tests/acceptance
 
@@ -48,6 +48,10 @@ test-acceptance-m4:
 ## test-acceptance-m5: the M5 acceptance suite, part of check (needs `make db-test-up`)
 test-acceptance-m5:
 	npx vitest run --dir tests/acceptance/M5
+
+## test-acceptance-m5.1: the M5.1 acceptance suite, part of check (needs `make db-test-up`)
+test-acceptance-m5.1:
+	npx vitest run --dir tests/acceptance/M5.1
 
 # --- Example: Laravel 13 / PHP 8.5 (Pint + Larastan/PHPStan + Pest or PHPUnit) -------------------------------
 # Replace the three recipes above with these (recipe lines must start with a TAB):

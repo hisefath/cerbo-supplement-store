@@ -29,7 +29,7 @@ const dollars = (c: number) => `${c < 0 ? '-' : ''}$${(Math.abs(c) / 100).toFixe
 </script>
 
 <template>
-  <section aria-labelledby="order-heading" class="panel">
+  <section aria-labelledby="order-heading" class="panel card">
     <h2 id="order-heading">Your order</h2>
     <p v-if="sentMessage" role="status">{{ sentMessage }}</p>
     <p v-else-if="lines.length === 0">
@@ -38,7 +38,7 @@ const dollars = (c: number) => `${c < 0 ? '-' : ''}$${(Math.abs(c) / 100).toFixe
     <ul v-else class="lines">
       <li v-for="l in lines" :key="l.productId">
         <span class="name">{{ l.name }}</span> x{{ l.quantity }} <span>{{ dollars(l.lineTotalCents) }}</span>
-        <button type="button" :aria-label="`Remove ${l.name}`" @click="emit('remove', l.productId)">Remove</button>
+        <button type="button" :aria-label="`Remove ${l.name}`" class="btn-secondary" @click="emit('remove', l.productId)">Remove</button>
       </li>
     </ul>
     <dl aria-live="polite">
@@ -52,18 +52,18 @@ const dollars = (c: number) => `${c < 0 ? '-' : ''}$${(Math.abs(c) / 100).toFixe
       :copy="{ internal: 'We couldn\'t send the order. Nothing was sent. Try again.', offline: 'You\'re offline. Your order is kept; send it when you\'re back online.', validation: 'Add at least one supplement before sending.' }"
       @retry="emit('send')"
     />
-    <button type="button" class="send" :disabled="lines.length === 0 || sending" @click="emit('send')">
+    <button type="button" class="btn-primary send" :disabled="lines.length === 0 || sending" @click="emit('send')">
       {{ sending ? 'Sending…' : `Send to ${patientName}` }}
     </button>
   </section>
 </template>
 
 <style scoped>
-.panel { border: 1px solid #ccc; padding: 12px; align-self: start; position: sticky; top: 16px; }
+.panel { align-self: start; position: sticky; top: 16px; }
 .lines { list-style: none; padding: 0; }
-.lines li { padding: 4px 0; }
+.lines li { padding: 4px 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .name { overflow-wrap: anywhere; }
 dl { display: grid; grid-template-columns: 1fr auto; gap: 4px; }
 dd { margin: 0; text-align: right; }
-.send { width: 100%; min-height: 44px; font-weight: 600; }
+.send { width: 100%; margin-top: 8px; }
 </style>

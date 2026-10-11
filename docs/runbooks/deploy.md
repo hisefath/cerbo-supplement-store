@@ -6,7 +6,7 @@
 | Services | v2 demo: a new web service `web-v2` and a new managed PostgreSQL `postgres-v2` in project `cerbo-supplement-store` (to be created, FS-2). The project's existing `app` service and `Postgres` database run the v1 Laravel build and stay untouched (D22) |
 | Environments | production (Railway environment `production`): v2 demo at https://web-v2-production-6640.up.railway.app · v1 at https://supplement-store-slice.up.railway.app (not this release) |
 | Method | clean `git archive` upload of the release SHA with `railway up --path-as-root` |
-| Current release | M4 demo @ 1130822 — see §8 |
+| Current release | M5 @ 220a971 — see §8 |
 | Last updated | 2026-10-10 16:52 CDT |
 | Written by | ship-milestone (Claude Code, claude-opus-5-5) |
 | Approvals | deploy and rollback yes-es live in `.handoff/TRACKER.md ## Approvals` (never in this file) |
@@ -150,6 +150,7 @@ Never add `-y`, `--yes` or `--new` to `railway up`, and never deploy without `--
 | 2026-10-10 16:52 CDT | production (web-v2) | M4 demo | 1130822 | pending deploy ask | — | — | GAP-1 to GAP-3 done (M4-T901 to T903); setup FS-2 to FS-8 done |
 | 2026-10-10 16:56 CDT | production (web-v2) | M4 demo | 1130822 | 2026-10-10 16:54 CDT | 11308222f1ea5f74dbe4f2595cce23205b14988b | SMOKE GREEN: 7 passed, 0 failed against https://web-v2-production-6640.up.railway.app at 11308222f1ea5f74dbe4f2595cce23205b14988b (TLS verified) | live (deployment 59c086de SUCCESS) |
 | 2026-10-10 19:55 CDT | production (web-v2) | M4 from main | 158fb11 | 2026-10-10 19:53 CDT | 158fb11f36a3d86d8374a2bb97c4d29a9437038b | SMOKE GREEN: 7 passed, 0 failed against https://web-v2-production-6640.up.railway.app at 158fb11f36a3d86d8374a2bb97c4d29a9437038b (TLS verified) | live (deployment 21e295fd SUCCESS); rollback target 1130822 |
+| 2026-10-11 06:59 CDT | production (web-v2) | M5 from main | 220a971 | 2026-10-11 ("yes, deploy 220a971 to production") | 220a971f8ea2847d9e680238a2dda0ae55df0f30 | SMOKE GREEN: 7 passed, 0 failed against https://web-v2-production-6640.up.railway.app at 220a971f8ea2847d9e680238a2dda0ae55df0f30 (TLS verified) | live; deployment 373e2d7d; migrations 1760000012000, 1760000013000 applied first by `scripts/railway-setup.sh --skip-seed` (human run); rollback target 21e295fd (158fb11) |
 
 ## 9. Open questions
 

@@ -117,7 +117,7 @@ const pageProblem = computed<Problem | null>(() => (error.value ? (error.value.d
 <template>
   <AppShell>
     <section class="prices" aria-labelledby="prices-heading">
-      <h1 id="prices-heading">{{ title }}</h1>
+      <div class="page-band"><h1 id="prices-heading">{{ title }}</h1></div>
       <p v-if="status === 'pending' && !list" role="status">Loading prices…</p>
       <ProblemMessage
         v-else-if="pageProblem"
@@ -125,7 +125,7 @@ const pageProblem = computed<Problem | null>(() => (error.value ? (error.value.d
         :copy="{ forbidden: 'Only providers at this practice can change its prices.' }"
         @retry="refresh()"
       />
-      <template v-else-if="list">
+      <div v-else-if="list" class="card">
         <p class="success" role="status">{{ success }}</p>
         <table class="list">
           <thead>
@@ -142,7 +142,7 @@ const pageProblem = computed<Problem | null>(() => (error.value ? (error.value.d
               <td>{{ percent(p.margin_basis_points) }}</td>
               <td>{{ p.is_default ? 'Default' : p.set_by_display_name }}</td>
               <td>
-                <button :id="`change-${p.product_id}`" type="button" :aria-label="`Change price for ${p.name}`" @click="open(p)">
+                <button :id="`change-${p.product_id}`" type="button" class="btn-primary" :aria-label="`Change price for ${p.name}`" @click="open(p)">
                   Change price
                 </button>
               </td>
@@ -160,7 +160,7 @@ const pageProblem = computed<Problem | null>(() => (error.value ? (error.value.d
           </li>
         </ul>
         <NuxtLink v-if="list.history_next_cursor" :to="{ query: { history_cursor: list.history_next_cursor } }">Show 25 more</NuxtLink>
-      </template>
+      </div>
 
       <PracticePricesPriceChangeDialog
         v-if="editing"
@@ -179,15 +179,14 @@ const pageProblem = computed<Problem | null>(() => (error.value ? (error.value.d
 
 <style scoped>
 .list { width: 100%; border-collapse: collapse; }
-.list th, .list td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #ddd; overflow-wrap: anywhere; }
-.list button { min-height: 24px; min-width: 24px; }
+.list th, .list td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--color-border); overflow-wrap: anywhere; }
 .history { list-style: none; padding: 0; }
-.history li { padding: 6px 0; border-bottom: 1px solid #eee; display: flex; flex-wrap: wrap; gap: 8px; }
+.history li { padding: 6px 0; border-bottom: 1px solid var(--color-border); display: flex; flex-wrap: wrap; gap: 8px; }
 .history q { flex-basis: 100%; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 @media (max-width: 600px) {
   .list thead { display: none; }
-  .list tr { display: block; border: 1px solid #ddd; margin-bottom: 8px; padding: 4px; }
+  .list tr { display: block; border: 1px solid var(--color-border); border-radius: var(--radius-button); margin-bottom: 8px; padding: 4px; }
   .list td { display: block; border: 0; padding: 2px 4px; }
 }
 </style>

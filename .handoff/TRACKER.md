@@ -30,6 +30,11 @@ several harnesses read it and the repo is public.
 | M5-T009 | S7 stock page fixes | Standard / build | claude-subagent | done | 2026-10-10 23:16 CDT | see task file | 12acb25 |
 | M5-T010 | S6 dashboard fixes | Standard / build | claude-subagent | done | 2026-10-10 23:16 CDT | see task file | 635d015 |
 | M5-T011 | review fixes: checkout answers (R2, R3), practice name (R4) | Standard / build | claude-subagent | done | 2026-10-10 23:57 CDT | see task file | 0c4510a |
+| M5.1-T001 | theme, fonts, sign-in band | Standard / build | claude-subagent | done | 2026-10-11 07:31 CDT | see task file | 9987db7 |
+| M5.1-T002 | provider screens | Standard / build | claude-subagent | done | 2026-10-11 07:31 CDT | see task file | 3880298 |
+| M5.1-T003 | patient screens | Standard / build | claude-subagent | done | 2026-10-11 07:31 CDT | see task file | caabf90 |
+| M5.1-T004 | staff screens + suite join | Standard / build | claude-subagent | done | 2026-10-11 07:31 CDT | see task file | 7367c5d |
+| M5.1-T005 | review fixes R5, R7, R8 | Standard / build | claude-subagent | done | 2026-10-11 08:12 CDT | see task file | a6ebc86 |
 | M4-CI01 | CI on the MacBook runner: enable runner 245, .gitlab-ci.yml running make check | Fix / supervisor | supervisor (claude-opus-5-5) | done | 2026-10-10 19:05 CDT | .gitlab-ci.yml | — |
 | M5-T001 | Provider changes a practice price (specs/M5-prices-and-stock/tasks/T001.md) | Standard / implement-task | claude-subagent | done | 2026-10-10 21:09 CDT | see task file | 135b9ca |
 | M5-T002 | Payment reserves and releases stock (specs/M5-prices-and-stock/tasks/T002.md) | Standard / implement-task | claude-subagent | done | 2026-10-10 21:09 CDT | see task file | f5bb975 |
@@ -37,7 +42,7 @@ several harnesses read it and the repo is public.
 | M5-T004 | Platform staff adjust stock (specs/M5-prices-and-stock/tasks/T004.md) | Standard / implement-task | claude-subagent | done | 2026-10-10 21:09 CDT | see task file | 061cd49 |
 | M5-T005 | Provider opens the practice dashboard (specs/M5-prices-and-stock/tasks/T005.md) | Standard / implement-task | claude-subagent | done | 2026-10-10 21:09 CDT | see task file | 315a1c3 |
 | M5-T006 | M5 joins checks and menu (specs/M5-prices-and-stock/tasks/T006.md) | Standard / implement-task | claude-subagent | done | 2026-10-10 21:09 CDT | see task file | bc2b381 |
-| M5.1-R01 | Visual refresh inspired by cluely.com (Geist + serif display, sky-blue palette, soft glass cards, glow on primary buttons) — after M5 merges; starts with /map-ux-flows | Standard / map-ux-flows | supervisor | todo | 2026-10-10 22:36 CDT | docs/design/screens.md (visual language) | — |
+| M5.1-R01 | Visual refresh inspired by cluely.com (Geist + serif display, sky-blue palette, soft glass cards, glow on primary buttons) — after M5 merges; starts with /map-ux-flows | Standard / map-ux-flows | supervisor | done | 2026-10-10 22:36 CDT | docs/design/screens.md (visual language) | — |
 
 ## Approvals
 
@@ -197,6 +202,22 @@ several harnesses read it and the repo is public.
 | 2026-10-11 00:20 CDT | G5 Revise (report-milestone recommendation): answer DV-1, DV-8 (a, Log lines); D79 for 11 tasks (DV-3); re-run check-security on the head | docs/milestones/M5.md (draft, report run 2026-10-11 00:07 CDT) | STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
 | 2026-10-11 00:24 CDT | G5 security part: approve checklist (0 reachable critical/high, no new finding) | docs/security/CHECKLIST.md@77c555c | STANDING row 2026-10-10 23:09 CDT |
 | 2026-10-11 00:28 CDT | G5 Merge (report recommendation; 4 clauses yes; 0 open P0/P1; 0 unaccepted high/critical) | docs/milestones/M5.md@691b4e1 | STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
+| 2026-10-11 07:22 CDT | G-ux Revise (M5.1, D75): add a visual language to screens.md Global conventions, inspired by the cluely.com style (no Cluely name, logo or copy); layouts, states and copy unchanged | docs/design/screens.md@220a971 | "also revamp the front end to suite more of cluely's website style, make it more modern and like how this websites ui and colors and design language is: https://cluely.com/" (2026-10-10) · "go ahead with M5.1, /map-ux-flows" · STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-11 07:22 CDT | G-ux (M5.1 visual language, VL-2 chosen) | docs/design/screens.md@73063b6 | STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
+| 2026-10-11 07:23 CDT | G1 re-approval (clarify-spec pass 2, CQ-4: M5.1 row, NFR-015, NFR-016) | docs/product/prd.md@92d4a5f | STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-11 07:24 CDT | G3 (M5.1 delta: theme.css, self-hosted fonts; D81 recommendation) | docs/architecture/lld.md@4c4479e | STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
+| 2026-10-11 07:24 CDT | new dependencies (Ask-first, AGENTS.md): @fontsource-variable/geist 5.3.0 and @fontsource/eb-garamond 5.3.0 (OFL-1.1), exact pins, for D81 | package.json, package-lock.json | STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
+| 2026-10-11 07:25 CDT | G-ux + G3 re-approval (band gradient #1D4ED8→#2563EB and focus #3B82F6 so white text passes contrast; colour token names fixed in LLD) | docs/design/screens.md@6faccb4 + docs/architecture/lld.md@6faccb4 | STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-11 07:29 CDT | harness fix (route-failure candidate): scripts/scope-guard.sh matches an exact Owns path literally before the glob, so bracketed Nuxt route files pass (M5-T008 FAIL line) | scripts/scope-guard.sh | STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-11 07:31 CDT | G4 acceptance part (M5.1 AT-001 to AT-004 red; Q-1, Q-2 answered) | specs/M5.1-visual-refresh/acceptance.md@a7cb486 | STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-11 07:31 CDT | G4 (M5.1 slices T001-T004; analyze run with a dotted-milestone copy: 0 overlaps, 0 cycles; 2 known tool limits accepted: tracer bullet covers no AE and T001 covers NFRs only, because a restyle has no AE by CQ-4) | specs/M5.1-visual-refresh/tasks@6bc24f6 | STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-11 06:56 CDT | deploy (ship-milestone) | main@220a971 → Railway production (web-v2) | "yes, deploy 220a971 to production" |
+| 2026-10-11 08:12 CDT | M5.1 review pass 1 dispositions (STANDING): R5, R1, R2, R3, R7, R8, R9, R10 fix (tests and docs by supervisor, code in M5.1-T005); R4 keep (repro committed red first at 771b802); R6 file with M5-R03; R11 keep (real reset ran on the local demo database: "demo reset: 2 practices, 9 users, 3 products") | .handoff/reviews/M5.1-pass1.md | STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-11 08:12 CDT | G3 revise + G4 (M5.1: control-border and pill tokens, site-root paragraph; AT-001/002/004 tightened; M5.1-T005 review-fix task) | lld.md, screens.md, acceptance.md, tasks/T005.md | STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-11 08:18 CDT | G5 security part (M5.1): approve checklist (0 reachable critical/high, no new finding); re-run after M5.1-T005 (Q4) | docs/security/CHECKLIST.md@43215f6 | STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-11 08:25 CDT | G5 security part (M5.1 re-run after T005): approve checklist (0 reachable critical/high, no new finding) | docs/security/CHECKLIST.md@c06a229 | STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-11 08:35 CDT | G5 Revise (M5.1 report recommendation): answer DV-5 with a Log NOTE, correct MILESTONES gate SHAs (DV-6), add the missing T004 VERIFY line, re-run report-milestone | docs/milestones/M5.1.md (draft 08:25) | STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-11 08:40 CDT | G5 Merge (M5.1 report recommendation; 4 clauses yes; 0 open P0/P1; 0 unaccepted high/critical) | docs/milestones/M5.1.md@c26710a | STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
 
 ## Log
 
@@ -437,3 +458,25 @@ several harnesses read it and the repo is public.
 2026-10-11 00:20 CDT NOTE DV-1: M5-T001..T006 squash commits carry `Task:` in its own paragraph, apart from Co-Authored-By, so git does not parse it as a trailer; supervisor commit-message formatting, no decision; scope-guard re-run by hand exit 0 for all six (report §4.3)
 2026-10-11 00:20 CDT NOTE DV-8: ebac30e edits two comment lines in app/pages/practice/dashboard.vue: the supervisor updated the stale EP-17 comment that M5-T011's result named as out of date (outside T011 Owns); comment only, no decision
 2026-10-11 00:24 CDT SECURITY M5 re-run at 23f3451: 0 reachable critical/high; SEC-14 fixed, SEC-10/12/13 accepted D76-D78; ALL CHECKS PASSED
+2026-10-11 07:22 CDT PHASE map-ux-flows revise (M5.1): Visual language VL-2 added to screens.md Global conventions; 14 screens x 6 sections intact; leak greps clean
+2026-10-11 07:31 CDT NOTE analyze.sh rejects dotted milestones (M5.1) and counts only FR/AE in covers: route-failure candidate (kit slice-tasks references/analyze.md)
+2026-10-11 00:34 CDT MERGE M5 MR !9 -> main 220a971 (pipeline #49100 success); make check on main exit 0 (unit 217, M4 43, M5 44)
+2026-10-11 06:59 CDT DEPLOY M5 220a971 → production web-v2 (deployment 373e2d7d SUCCESS); migrations 12000, 13000 applied by human-run railway-setup.sh --skip-seed; /version 220a971; SMOKE GREEN 7/0
+2026-10-11 06:59 CDT BUG filed: db/seed/demo.ts reset list lacks price_changes and stock_movements, so a full re-seed now fails (FK); fix in M5.1 via fix-bug
+2026-10-11 07:31 CDT DISPATCH M5.1-T001 harness=claude-subagent why=tracer bullet (theme, fonts, sign-in band); worktree .claude/worktrees/m51-t001
+2026-10-11 07:43 CDT VERIFY M5.1-T001 squashed 9987db7: scope-guard OK (5 paths); supervisor make check exit 0 (217/43/44); M5.1 AT-001, AT-003 green, AT-002, AT-004 red as planned
+2026-10-11 07:43 CDT DISPATCH M5.1-T002 and M5.1-T003 harness=claude-subagent why=parallel restyles (disjoint Owns)
+2026-10-11 07:54 CDT VERIFY M5.1-T002 squashed 3880298 and M5.1-T003 squashed caabf90: scope-guard OK (6 and 4 paths); supervisor make check exit 0 in each worktree; T003 wrote a placeholder result.md before its worktree existed (supervisor setup slip), since replaced
+2026-10-11 07:54 CDT DISPATCH M5.1-T004 harness=claude-subagent why=last task: staff screens + M5.1 suite join
+2026-10-11 07:55 CDT FIX demo reset list misses M5 tables: RESET_TABLES names every table; unit guard compares it with db/migrations (specs/bugs/demo-reset-misses-m5-tables.md)
+2026-10-11 08:06 CDT FIX site root 404 after sign-in: app/pages/index.vue sends to the role home (shared ROLE_HOME); AT-005 red at 771b802 then green; make check exit 0
+2026-10-11 08:07 CDT REVIEW M5.1 milestone: verifier pass 1 and check-security dispatched; browser check done locally (sign-in, prices, dashboard, 375 px, stock; found and fixed the root 404)
+2026-10-11 08:12 CDT REVIEW M5.1 pass 1: 0 P0, 1 P1, 5 P2, 5 P3
+2026-10-11 08:12 CDT DISPATCH M5.1-T005 harness=claude-subagent why=pass 1 review fixes
+2026-10-11 08:18 CDT SECURITY M5.1: 0 reachable critical/high; font packages clean; NFR-016 holds; re-run due after T005
+2026-10-11 08:20 CDT VERIFY M5.1-T005 squashed a6ebc86: scope-guard OK (5 paths); supervisor make check on the milestone exit 0 (218/43/44/5)
+2026-10-11 08:35 CDT NOTE DV-5: the M5 ship records (MILESTONES M5 done, deploy history; branch chore/m5-ship-records) could not go straight to protected main, so they were merged into milestone/m5.1-visual-refresh at 0fd7dc5 to reach main with the next MR and avoid a MILESTONES.md conflict; records only, no decision
+2026-10-11 08:35 CDT NOTE DV-6: MILESTONES M5.1 gate SHAs corrected to G3@6faccb4 G4@6bc24f6 (the row had the acceptance commit as G3)
+2026-10-11 08:35 CDT VERIFY M5.1-T004 squashed 7367c5d (recorded late): scope-guard OK (6 paths); supervisor make check on the milestone exit 0 (218/43/44/4) at 2026-10-11 08:00 CDT
+2026-10-11 08:35 CDT NOTE M5.1-T003 VERIFY shares the T002 line (2026-10-11 07:50): scope-guard OK (4 paths); supervisor make check exit 0 in its worktree
+2026-10-11 08:36 CDT CHECK browser (local dev server on the milestone head after T005): Geist and EB Garamond loaded from the app; stock form input border rgb(100,116,139) = --color-control-border; sign-in redirect to next=/ops/stock works; earlier: sign-in, prices, dashboard, 375 px no sideways scroll, stock page

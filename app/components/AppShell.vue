@@ -29,7 +29,10 @@ const menu = computed(() => {
 </template>
 
 <style scoped>
-.shell { max-width: 1280px; margin: 0 auto; padding: 16px; font-family: system-ui, sans-serif; color: #1a1a1a; }
-.menu { display: flex; gap: 16px; margin-bottom: 16px; }
-.help { margin-top: 32px; color: #444; font-size: 14px; }
+/* VL-2 page frame (lld.md FE-1, D81): pale page and type come from theme.css; layout only here. */
+.shell { max-width: 1280px; margin: 0 auto; padding: 16px; }
+.menu { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 16px; }
+.menu a { font-weight: 500; text-decoration: none; }
+.menu a.router-link-active { text-decoration: underline; text-underline-offset: 4px; }
+.help { margin-top: var(--space-section); padding-top: 16px; border-top: 1px solid var(--color-border); color: var(--color-ink-muted); font-size: var(--text-detail); }
 </style>

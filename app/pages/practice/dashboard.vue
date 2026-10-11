@@ -145,19 +145,19 @@ function holdFocus(e: FocusEvent) {
 <template>
   <AppShell>
     <section class="dashboard" aria-labelledby="dashboard-heading">
-      <h1 id="dashboard-heading">{{ practiceName ? `Practice dashboard · ${practiceName}` : 'Practice dashboard' }}</h1>
+      <div class="page-band"><h1 id="dashboard-heading">{{ practiceName ? `Practice dashboard · ${practiceName}` : 'Practice dashboard' }}</h1></div>
       <label class="month">Month <input v-model="month" type="month" required></label>
       <p role="status">{{ pending ? (slow ? 'Still loading. Stock counts appear first.' : `Loading ${monthName}…`) : `Showing ${monthName}.` }} Times in UTC.</p>
       <p class="success" role="status">{{ success }}</p>
 
       <h2>Needs attention</h2>
       <ProblemMessage v-if="dash.error.value" :problem="problemOf(dash.error.value)" :copy="forbiddenCopy" @retry="dash.refresh()" />
-      <template v-else-if="dash.data.value">
+      <div v-else-if="dash.data.value" class="card">
         <p v-if="dash.data.value.attention.length === 0">Nothing needs attention.</p>
         <ul v-else class="attention">
           <li v-for="(a, i) in dash.data.value.attention" :key="i"><span aria-hidden="true">! </span>{{ attentionText(a) }}</li>
         </ul>
-      </template>
+      </div>
 
       <h2>Orders</h2>
       <ProblemMessage
@@ -166,7 +166,7 @@ function holdFocus(e: FocusEvent) {
         :copy="{ ...forbiddenCopy, internal: 'We couldn\'t load your orders. Try again.' }"
         @retry="list.refresh()"
       />
-      <template v-else-if="list.data.value">
+      <div v-else-if="list.data.value" class="card">
         <p v-if="orders.length === 0">{{ shownMonth === thisMonth ? "No orders yet. Send one from a patient's chart." : `No orders were sent in ${monthName}.` }}</p>
         <table v-else class="list">
           <thead>
@@ -176,22 +176,23 @@ function holdFocus(e: FocusEvent) {
             <tr v-for="o in orders" :key="o.order_id">
               <td>{{ o.patient_display_name }}</td>
               <td>{{ dollars(o.total_cents) }}</td>
-              <td>{{ STATUS[o.status] ?? o.status }}</td>
+              <td><span :class="`status-pill status-pill--${o.status}`">{{ STATUS[o.status] ?? o.status }}</span></td>
               <td>{{ when(o.sent_at) }}</td>
               <td>{{ when(o.paid_at) }}</td>
               <td>
-                <button v-if="o.status === 'sent' || o.status === 'payment_failed'" type="button" @click="cancelling = o">Cancel order</button>
+                <button v-if="o.status === 'sent' || o.status === 'payment_failed'" type="button" class="btn-danger" @click="cancelling = o">Cancel order</button>
                 <ProblemMessage v-if="rowProblem?.id === o.order_id" :problem="rowProblem.problem" :copy="cancelCopy" @retry="cancelling = o" />
               </td>
             </tr>
           </tbody>
         </table>
-        <button v-if="nextCursor" type="button" @click="showMore">Show 25 more</button>
+        <button v-if="nextCursor" type="button" class="btn-secondary" @click="showMore">Show 25 more</button>
         <ProblemMessage v-if="moreProblem" :problem="moreProblem" :copy="{ internal: 'We couldn\'t load your orders. Try again.' }" @retry="showMore" />
-      </template>
+      </div>
 
       <h2>Sales and stock</h2>
-      <table v-if="dash.data.value" class="list">
+      <div v-if="dash.data.value" class="card">
+      <table class="list">
         <thead>
           <tr><th scope="col">Product</th><th scope="col">Sold</th><th scope="col">Patients paid</th><th scope="col">Your payout</th><th scope="col">Stock</th></tr>
         </thead>
@@ -205,15 +206,18 @@ function holdFocus(e: FocusEvent) {
           </tr>
         </tbody>
       </table>
+      </div>
       <p>Questions? Contact platform support</p>
 
-      <div v-if="cancelling" ref="dialog" role="dialog" aria-modal="true" aria-labelledby="cancel-heading" class="dialog" @keydown="trapTab" @focusout="holdFocus">
-        <p id="cancel-heading">
-          Cancel {{ cancelling.patient_display_name }}'s {{ dollars(cancelling.total_cents) }} order?
-          {{ cancelling.patient_display_name.split(' ')[0] }} will see that your practice cancelled it. This can't be undone.
-        </p>
-        <button type="button" :disabled="busy" @click="confirmCancel">{{ busy ? 'Cancelling…' : 'Cancel order' }}</button>
-        <button type="button" class="keep" @click="cancelling = null">Keep order</button>
+      <div v-if="cancelling" class="backdrop">
+        <div ref="dialog" role="dialog" aria-modal="true" aria-labelledby="cancel-heading" class="dialog" @keydown="trapTab" @focusout="holdFocus">
+          <p id="cancel-heading">
+            Cancel {{ cancelling.patient_display_name }}'s {{ dollars(cancelling.total_cents) }} order?
+            {{ cancelling.patient_display_name.split(' ')[0] }} will see that your practice cancelled it. This can't be undone.
+          </p>
+          <button type="button" class="btn-danger" :disabled="busy" @click="confirmCancel">{{ busy ? 'Cancelling…' : 'Cancel order' }}</button>
+          <button type="button" class="btn-secondary keep" @click="cancelling = null">Keep order</button>
+        </div>
       </div>
     </section>
   </AppShell>
@@ -221,15 +225,17 @@ function holdFocus(e: FocusEvent) {
 
 <style scoped>
 .list { width: 100%; border-collapse: collapse; }
-.list th, .list td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #ddd; overflow-wrap: anywhere; }
-button { min-height: 24px; min-width: 24px; }
-.attention { list-style: none; padding: 0; }
+.list th, .list td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--color-border); overflow-wrap: anywhere; }
+.attention { list-style: none; padding: 0; margin: 0; }
+.card { margin-bottom: var(--space-section); overflow-x: auto; }
 .attention li { padding: 4px 0; }
-.dialog { border: 1px solid #999; padding: 12px; background: #fff; }
+.backdrop { position: fixed; inset: 0; z-index: 10; padding: 16px; background: color-mix(in srgb, var(--color-ink) 40%, transparent); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; }
+.dialog { max-width: 480px; width: 100%; box-sizing: border-box; border: 1px solid var(--color-border); border-radius: var(--radius-dialog); box-shadow: var(--shadow-card); padding: var(--space-card); background: var(--color-card); }
+.dialog button { margin-right: 8px; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 @media (max-width: 600px) {
   .list thead { display: none; }
-  .list tr { display: block; border: 1px solid #ddd; margin-bottom: 8px; padding: 4px; }
+  .list tr { display: block; border: 1px solid var(--color-border); border-radius: var(--radius-button); margin-bottom: 8px; padding: 4px; }
   .list td { display: block; border: 0; padding: 2px 4px; }
 }
 </style>

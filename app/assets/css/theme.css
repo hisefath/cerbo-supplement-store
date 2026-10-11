@@ -1,0 +1,160 @@
+/* Theme (lld.md §3 Theme, D81): the screens.md VL-2 visual language in one place. Every colour value in the app lives
+   here as a --color-* custom property; components read them with var() and keep their scoped styles for layout only.
+   Fonts are self-hosted from npm packages, so Vite bundles them under /_nuxt/ and the CSP stays 'self' (NFR-016). */
+@import '@fontsource-variable/geist/index.css';
+@import '@fontsource/eb-garamond/500.css';
+
+:root {
+  /* Colours (names fixed by lld.md Theme; each pair checked for WCAG 2.2 AA by M5.1_AT_001, NFR-015) */
+  --color-page: #F5F9FF;
+  --color-card: #FFFFFF;
+  --color-border: #E3EAF6;
+  --color-ink: #0F172A;
+  --color-ink-muted: #475569;
+  --color-primary: #1D4ED8;
+  --color-on-primary: #FFFFFF;
+  --color-danger: #B91C1C;
+  --color-band-from: #1D4ED8;
+  --color-band-to: #2563EB;
+  --color-band-glow: #8EC5F5;
+  --color-on-band: #FFFFFF;
+  --color-focus: #3B82F6;
+  --color-control-border: #64748B;
+  /* Status pill tints (screens.md VL-2): dark text on a pale tint, each pair 4.5:1 or better */
+  --color-pill-green: #DCFCE7;
+  --color-on-pill-green: #166534;
+  --color-pill-blue: #DBEAFE;
+  --color-on-pill-blue: #1E40AF;
+  --color-pill-amber: #FEF3C7;
+  --color-on-pill-amber: #92400E;
+  --color-pill-grey: #F1F5F9;
+  --color-on-pill-grey: #334155;
+
+  /* Radii, shadows, spacing, type */
+  --radius-card: 16px;
+  --radius-button: 12px;
+  --radius-dialog: 20px;
+  --radius-pill: 999px;
+  --shadow-card: 0 12px 40px -12px color-mix(in srgb, var(--color-primary) 18%, transparent);
+  --shadow-glow: 0 6px 18px -4px color-mix(in srgb, var(--color-primary) 45%, transparent);
+  --shadow-glow-hover: 0 8px 26px -4px color-mix(in srgb, var(--color-primary) 65%, transparent);
+  --shadow-glow-pressed: 0 2px 6px -2px color-mix(in srgb, var(--color-primary) 45%, transparent);
+  --highlight-top: inset 0 1px 0 color-mix(in srgb, var(--color-on-primary) 25%, transparent);
+  --space-card: 24px;
+  --space-section: 32px;
+  --font-sans: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'EB Garamond', Georgia, 'Times New Roman', serif;
+  --text-body: 16px;
+  --text-detail: 14px;
+  --text-title: 32px;
+  --motion: 180ms ease-out;
+}
+
+body {
+  margin: 0;
+  background: var(--color-page);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  line-height: 1.5;
+}
+
+table { font-variant-numeric: tabular-nums; }
+td, th { font-size: var(--text-detail); }
+a { color: var(--color-primary); }
+
+/* Header band: a page's title (and subtitle) on the sky gradient; the glow stays in the far corner, clear of text */
+.page-band {
+  margin-bottom: var(--space-section);
+  padding: var(--space-card) 96px var(--space-card) var(--space-card);
+  border-radius: var(--radius-card);
+  color: var(--color-on-band);
+  background:
+    radial-gradient(circle at 100% 0, var(--color-band-glow) 0, transparent 80px),
+    linear-gradient(135deg, var(--color-band-from), var(--color-band-to));
+}
+.page-band h1 {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-weight: 500;
+  font-size: var(--text-title);
+  line-height: 1.2;
+}
+.page-band p { margin: 4px 0 0; color: var(--color-on-band); }
+@media (max-width: 600px) {
+  .page-band h1 { font-size: 26px; }
+}
+
+.card {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-card);
+}
+
+.btn-primary,
+.btn-secondary,
+.btn-danger {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 20px;
+  border-radius: var(--radius-button);
+  font: 500 var(--text-body) var(--font-sans);
+  cursor: pointer;
+  transition: box-shadow var(--motion), transform var(--motion);
+}
+.btn-primary {
+  border: 0;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  box-shadow: var(--shadow-glow), var(--highlight-top);
+}
+.btn-primary:hover { box-shadow: var(--shadow-glow-hover), var(--highlight-top); }
+.btn-primary:active { box-shadow: var(--shadow-glow-pressed), var(--highlight-top); transform: translateY(1px); }
+.btn-secondary {
+  border: 1px solid var(--color-primary);
+  background: var(--color-card);
+  color: var(--color-primary);
+}
+.btn-danger {
+  border: 1px solid var(--color-danger);
+  background: var(--color-card);
+  color: var(--color-danger);
+}
+.btn-primary:disabled,
+.btn-secondary:disabled,
+.btn-danger:disabled { cursor: not-allowed; opacity: 0.7; }
+
+/* Status words keep their text; the pill is a second signal, never the only one. One modifier per order status. */
+.status-pill {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-detail);
+  font-weight: 500;
+  background: var(--color-pill-grey);
+  color: var(--color-on-pill-grey);
+}
+.status-pill--paid { background: var(--color-pill-green); color: var(--color-on-pill-green); }
+.status-pill--sent,
+.status-pill--in_checkout { background: var(--color-pill-blue); color: var(--color-on-pill-blue); }
+.status-pill--payment_failed,
+.status-pill--needs_review { background: var(--color-pill-amber); color: var(--color-on-pill-amber); }
+.status-pill--cancelled { background: var(--color-pill-grey); color: var(--color-on-pill-grey); }
+
+/* Focus: a 3 px blue ring with a white gap, visible on white and on the band */
+:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px var(--color-card);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+  .btn-primary:active { transform: none; }
+}

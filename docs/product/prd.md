@@ -261,6 +261,8 @@ changes made by one person and reviewed by another, so that nobody holds more ac
 - **NFR-012** [Privacy] Platform staff see 0 records containing a patient's name or contact details on any page or report. Source: (Q11).
 - **NFR-013** [Auditability] 100 % of paid orders, their splits, and the price, stock and access histories are kept for at least 3 years. Source: R14 F7 (IRS record keeping), (Q12).
 - **NFR-014** [Auditability] 100 % of privileged actions (role changes, stock adjustments, price changes, report exports) are logged with who acted and when, and reviewed by someone other than the actor. Source: R15 F2, F4, F5, (Q12).
+- **NFR-015** [Accessibility] 100 % of text and control colour pairs on every screen meet WCAG 2.2 AA contrast (4.5:1 for normal text, 3:1 for large text and focus rings). Source: CQ-4; screens.md Global conventions (planned, not verified).
+- **NFR-016** [Privacy] Pages shown inside the EHR load 0 scripts, styles or fonts from any origin but the app's own, so no outside party learns who opened a chart. Source: CQ-4; D80.
 
 ## Success criteria
 
@@ -423,6 +425,7 @@ Answered from sources: Problem → brief Problem, REQ-01, R02, R08, R10 · Users
 | M3 Design | Approved HLD, LLD, data design, contract, diagrams | none (docs only) | G2-G3 approvals | A reviewer can read every design doc from docs/README.md. |
 | M4 Tracer bullet | Each person signs in; provider sends an order, patient pays once, the split is recorded and shown to the cent | FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-007, FR-008, FR-009, FR-010, FR-011, FR-012, FR-013, FR-014, FR-015, FR-017, FR-031, FR-035, FR-036, FR-039, FR-040, FR-041, FR-042, FR-043, FR-044, FR-050, FR-066, FR-067, FR-068 | AE-001 to AE-015, AE-028, AE-031, AE-032, AE-037 to AE-041, AE-047, AE-063 to AE-065 | Dr. Chen sends Ana a $60.00 order, Ana pays it with the test payment, and a reviewer sees $30.00 + $29.55 + $0.45. |
 | M5 Prices and stock | Price-change form with history, price notices, checkout lock, stock limits, practice dashboard | FR-018, FR-019, FR-020, FR-021, FR-022, FR-023, FR-024, FR-025, FR-026, FR-027, FR-028, FR-029, FR-030, FR-037, FR-038, FR-045, FR-046, FR-047, FR-069 | AE-016 to AE-027, AE-035, AE-036, AE-042 to AE-044, AE-066 | Dr. Chen changes a price, Ana sees the notice, pays, and the dashboard shows the sale and lower stock. |
+| M5.1 Visual refresh | Every screen restyled to the M5.1 visual language (screens.md, D75, D80) with no change in behaviour | FR-005, FR-018, FR-028, FR-030, FR-045, NFR-015, NFR-016 (restyle only: every existing acceptance test stays green) | NFR-015, NFR-016 | A reviewer opens the prices page and the dashboard and sees the sky header band, serif titles and glowing buttons, with every number still readable. |
 | M6 Measurement and operations | Platform health dashboard, volume report, financial report, operations roles, access log and system health | FR-032, FR-048, FR-049, FR-051, FR-052, FR-053, FR-054, FR-055, FR-056, FR-057, FR-058, FR-059, FR-060, FR-061, FR-062, FR-063, FR-064, FR-065 | AE-029, AE-045, AE-046, AE-048 to AE-062, SC-001, SC-002, SC-003 | Fran runs October's report and sees $90.00 = $45.00 + $44.32 + $0.68, balanced; Sam grants Dana a role and Fran sees it in the access log. |
 | Later | Not in this appetite: pricing campaigns and corrections; broader holistic-care products were considered for the future of the product and parked (NG-12, CQ-3) | FR-016, FR-033, FR-034 | — | — |
 
@@ -468,6 +471,7 @@ Answered from sources: Problem → brief Problem, REQ-01, R02, R08, R10 · Users
 | 2026-10-09 20:27 CDT | G1 Revise: HIPAA-ready, not HIPAA-compliant (Q8); added NFR-007 to NFR-011, NG-10, A-9 | NFR-007, NFR-008, NFR-009, NFR-010, NFR-011, NG-10, A-9 | G1 |
 | 2026-10-09 21:45 CDT | G1 Revise (Q9-Q11): sign-in story US-8, notices without health details, order-status list and practice alerts in M5, platform health dashboard in M6, no patient identity for platform staff | US-5, US-6, US-8, FR-039 to FR-050, NFR-004, NFR-012, AE-037 to AE-047, EC-13, EC-14, NG-11, A-10 to A-12 | G1 |
 | 2026-10-09 22:14 CDT | G1 Revise (Q12, R14, R15): financial report US-9, operations roles US-10, personas P-5 to P-8, retention and privileged-action logging | US-9, US-10, FR-051 to FR-065, NFR-013, NFR-014, AE-048 to AE-062, EC-15, EC-16, A-13, A-14 | G1 |
+| 2026-10-11 07:23 CDT | Clarify pass 2 (CQ-4): M5.1 visual refresh row; NFR-015 contrast, NFR-016 own-origin assets | M5.1, NFR-015, NFR-016 | G1 (STANDING) |
 
 ## Clarifications
 
@@ -503,3 +507,14 @@ Parked for a later phase: none
 - Applied: new NG-12 naming the categories, why they wait (product types, a payee per line, work with no patient present, regulation) and "considered for the future of the product … revisit later"; the Later milestone row points at NG-12
 - Decision candidate: yes — it sets product scope for the future (a non-goal that defers prescriptions, services and recurring billing), which changes what later milestones may take on
 - Scope change: none
+
+### Pass 2 · 2026-10-11 07:23 CDT · clarify-spec (Claude Code, claude-opus-5-5) · base d2e7c81
+
+#### CQ-4 · [Scope] · Milestone cut › M5.1, NFR-015, NFR-016
+- Question: M5.1 (D75) restyles every screen but the PRD has no M5.1 row and no requirement that guards readability or keeps pages free of outside requests. Add the row and two NFRs?
+- Options: A add the M5.1 row (restyle only) with NFR-015 contrast and NFR-016 own-origin assets · B run M5.1 with no PRD row (later skills cannot trace it) · do nothing: leave it untraced · recommendation: A
+- Answer (verbatim): "go ahead with M5.1, /map-ux-flows" with the STANDING approval 2026-10-10 23:09 CDT "i approve all next recommendations until project completion"
+- Status: resolved
+- Applied: Milestone cut row M5.1; NFR-015 [Accessibility]; NFR-016 [Privacy]
+- Decision candidate: no — it records an approved milestone (D75, D80) in the PRD
+- Scope change: none (no new behaviour)

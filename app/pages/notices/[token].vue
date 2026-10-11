@@ -12,9 +12,11 @@ useHead({ title: () => (notice.value ? `Message from ${notice.value.practice_nam
 <template>
   <AppShell>
     <article v-if="notice" class="card">
-      <h1>Message from {{ notice.practice_name }}</h1>
+      <div class="page-band">
+        <h1>Message from {{ notice.practice_name }}</h1>
+      </div>
       <p>{{ notice.practice_name }} sent you a supplement order. Sign in to view and pay.</p>
-      <NuxtLink :to="notice.sign_in_path" class="button">Sign in to view</NuxtLink>
+      <NuxtLink :to="notice.sign_in_path" class="button btn-primary">Sign in to view</NuxtLink>
       <p class="note">Stand-in message: in a real launch this arrives by email or text.</p>
     </article>
     <ProblemMessage
@@ -26,7 +28,9 @@ useHead({ title: () => (notice.value ? `Message from ${notice.value.practice_nam
 </template>
 
 <style scoped>
+/* S3 on the VL-2 theme (theme.css): the title sits in the sky band at the top of the card; layout only here. */
 .card { max-width: 480px; margin: 0 auto; overflow-wrap: anywhere; }
-.button { display: block; text-align: center; min-height: 44px; line-height: 44px; background: #1a4d8f; color: #fff; text-decoration: none; }
-.note { color: #444; font-size: 14px; }
+.card .page-band { margin: calc(-1 * var(--space-card)) calc(-1 * var(--space-card)) 16px; border-radius: var(--radius-card) var(--radius-card) 0 0; }
+.button { display: block; box-sizing: border-box; text-align: center; line-height: 44px; text-decoration: none; }
+.note { color: var(--color-ink-muted); font-size: var(--text-detail); }
 </style>

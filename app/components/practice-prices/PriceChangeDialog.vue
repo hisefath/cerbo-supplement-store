@@ -147,8 +147,8 @@ const onTab = (e: KeyboardEvent) => dialog.value && trapTab(e, dialog.value, doc
         <p v-if="errors.form" class="error" role="alert">{{ errors.form }}</p>
         <p v-if="saving" role="status">{{ slow ? "Still saving. Don't close this window." : 'Saving…' }}</p>
         <div class="actions">
-          <button type="submit" :disabled="saving">Save new price</button>
-          <button type="button" @click="emit('cancel')">Cancel</button>
+          <button type="submit" class="btn-primary" :disabled="saving">Save new price</button>
+          <button type="button" class="btn-secondary" @click="emit('cancel')">Cancel</button>
         </div>
       </form>
     </section>
@@ -156,18 +156,17 @@ const onTab = (e: KeyboardEvent) => dialog.value && trapTab(e, dialog.value, doc
 </template>
 
 <style scoped>
-.backdrop { position: fixed; inset: 0; background: rgb(0 0 0 / 40%); display: flex; align-items: center; justify-content: center; }
-.dialog { background: #fff; padding: 16px 20px; max-width: 480px; width: 100%; }
+.backdrop { position: fixed; inset: 0; background: color-mix(in srgb, var(--color-ink) 40%, transparent); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; }
+.dialog { background: var(--color-card); border-radius: var(--radius-dialog); box-shadow: var(--shadow-card); padding: var(--space-card); max-width: 480px; width: 100%; }
 fieldset { border: 0; padding: 0; margin: 0; }
 .choice { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 4px 0; }
 .choice input[type='radio'] { width: 24px; height: 24px; }
-.helper { flex-basis: 100%; margin: 0; color: #444; font-size: 14px; }
-.floor { color: #1a1a1a; }
-.error { color: #b00020; }
+.helper { flex-basis: 100%; margin: 0; color: var(--color-ink-muted); font-size: var(--text-detail); }
+.floor { color: var(--color-ink); }
+.error { color: var(--color-danger); }
 #reason { display: block; width: 100%; }
 .actions { display: flex; gap: 8px; margin-top: 12px; }
-.actions button { min-height: 32px; }
 @media (max-width: 600px) {
-  .dialog { max-width: none; height: 100%; overflow: auto; }
+  .dialog { max-width: none; height: 100%; overflow: auto; border-radius: 0; }
 }
 </style>

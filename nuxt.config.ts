@@ -32,6 +32,8 @@ export default defineNuxtConfig({
   compatibilityDate: '2026-08-01',
   devtools: { enabled: false },
   buildId,
+  // Theme (lld.md §3, D81): one global stylesheet; its fonts are bundled under /_nuxt/, so style-src 'self' holds.
+  css: ['~/assets/css/theme.css'],
   // No other inline script or style, so the CSP needs no 'unsafe-inline': CSS ships as files, no inline import map.
   features: { inlineStyles: false },
   experimental: { entryImportMap: false },

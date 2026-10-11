@@ -49,10 +49,11 @@ const retryable = computed(() => slug.value === 'internal' || slug.value === 'of
   <div v-if="problem" role="alert" class="problem">
     <p>{{ text }}</p>
     <NuxtLink v-if="slug === 'unauthenticated'" :to="{ path: '/sign-in', query: { next: route.fullPath } }">Sign in</NuxtLink>
-    <button v-if="retryable" type="button" @click="emit('retry')">Try again</button>
+    <button v-if="retryable" type="button" class="btn-secondary" @click="emit('retry')">Try again</button>
   </div>
 </template>
 
 <style scoped>
-.problem { border: 2px solid #b00020; padding: 8px 12px; margin: 8px 0; }
+.problem { border: 2px solid var(--color-danger); border-radius: var(--radius-button); background: var(--color-card); color: var(--color-ink); padding: 8px 12px; margin: 8px 0; }
+.problem p { margin: 0 0 4px; }
 </style>

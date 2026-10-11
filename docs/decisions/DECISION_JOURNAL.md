@@ -913,3 +913,29 @@ Copy this block for each new entry (D-ids increase by one, starting at D1):
 - Cost accepted: the 10-task cap now has two exceptions; route-failure should decide whether review-fix tasks count toward it. · Reversibility: Type 2 two-way · Confidence: high
 - Revisit if: a third milestone needs more than 10 tasks (then the cap rule changes via route-failure). · Evidence: .handoff/reviews/M5-pass7.md R2-R4; Approvals G3+G4 T011 row 2026-10-10 23:57 CDT; D54 · Interview line: "Review found three user-facing bugs after the plan finished, so we added one fix task instead of reopening the PRD; twice now means the cap rule needs revisiting."
 - Review: Topic Process · Weight ●○○ · One-liner: M5 adds an 11th task for review fixes, like M4.
+
+### D80 Light pages with a sky header band (VL-2)  [status: accepted]
+- Date 2026-10-11 07:22 CDT · phase 4 map-ux-flows (G-ux) · milestone M5.1 · Decided by: human, G-ux 2026-10-11 07:22 CDT: STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" · Proposed by: map-ux-flows (Claude Code, claude-opus-5-5) · artifact: docs/design/screens.md@73063b6
+- Context and forces: the human asked for a cluely.com-like look (Geist sans, EB Garamond serif titles, sky-blue gradients, rounded glassy cards, glowing buttons). These are dense work screens of prices and counts shown inside a light EHR; white small text on light sky blue fails WCAG AA.
+- Options:
+  - Do nothing / simplest (keep the current plain style) — cost: none — rejected: the human asked for a modern look (D75)
+  - VL-1 sky gradient on every page with glass cards — cost: small text fails contrast; tables hard to read — rejected: readability inside the EHR
+  - VL-2 light page, sky header band, white cards, serif titles, glowing deep-blue buttons (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: the sky look is confined to the band and buttons — chosen
+  - VL-3 night mode — cost: clashes with the light host chart — rejected
+- Choice: VL-2 · Why: In the context of dense work screens inside a light EHR, facing a sky-blue style that hurts small-text contrast, we chose a light page with a sky header band over full-sky or dark pages, accepting a quieter version of the inspiration.
+- Cost accepted: the look is less dramatic than the inspiration site. · Reversibility: Type 2 two-way · Confidence: high
+- Revisit if: the app leaves the EHR frame for a standalone site, or contrast checks fail on the band. · Evidence: docs/design/screens.md Visual language (M5.1); D75 · Interview line: "We kept the new look in the header band and buttons so every price and count stays readable inside the clinician's chart."
+- Review: Topic Product · Weight ●○○ · One-liner: M5.1 restyle uses light pages with a sky header band.
+
+### D81 One theme stylesheet with self-hosted fonts  [status: accepted]
+- Date 2026-10-11 07:24 CDT · phase 6 design-lld (G3) · milestone M5.1 · Decided by: human, G3 2026-10-11 07:24 CDT: STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" · Proposed by: design-lld (Claude Code, claude-opus-5-5) · artifact: docs/architecture/lld.md@4c4479e D81
+- Context and forces: 18 files carry their own scoped styles with hard-coded colours; the CSP allows only same-origin styles and fonts; NFR-016 forbids third-party requests inside the EHR.
+- Options:
+  - Do nothing / simplest: restyle each file with system fonts — cost: colours drift across 18 files; no serif or Geist — rejected: drift
+  - one theme.css of custom properties and shared classes, fonts self-hosted from @fontsource-variable/geist and @fontsource/eb-garamond (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: two small font packages — chosen
+  - Google Fonts stylesheet — cost: a third-party request from inside the EHR — rejected: NFR-016
+  - a utility CSS framework — cost: a large new toolchain dependency — rejected: too big for a restyle
+- Choice: theme.css + self-hosted fonts · Why: In the context of a restyle across 18 files under a same-origin CSP, facing drift and third-party font requests, we chose one theme stylesheet with self-hosted fonts, accepting two small font packages.
+- Cost accepted: two OFL font packages in package.json. · Reversibility: Type 2 two-way · Confidence: high
+- Revisit if: a design-system package is adopted, or the EHR host supplies its own fonts. · Evidence: lld.md Theme paragraph, D81; NFR-016 · Interview line: "The whole look lives in one theme file and the fonts ship with the app, so the restyle never calls a third party from inside the chart."
+- Review: Topic Infrastructure · Weight ●○○ · One-liner: One theme stylesheet; fonts ship with the app.
