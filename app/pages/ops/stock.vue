@@ -28,10 +28,14 @@ const LARGE_CHANGE = 10_000
 
 useHead({ title: 'Stock adjustments' })
 const route = useRoute()
-const cursor = computed(() => (typeof route.query.history_cursor === 'string' ? route.query.history_cursor : undefined))
-const { data: list, error, refresh, status } = await useFetch<StockList>('/api/ops/stock', {
-  query: { history_cursor: cursor },
-}) // ST-8
+const { data: list, error, refresh, status } = await useFetch<StockList>('/api/ops/stock') // ST-8, first page
+// "Show 25 more" appends older pages under the first one (R4); a reload starts from the first page again.
+const older = ref<StockMovement[]>([])
+const olderCursor = ref<string | null | undefined>(undefined)
+const loadingMore = ref(false)
+const moreProblem = ref<Problem | null>(null)
+const history = computed(() => [...(list.value?.history ?? []), ...older.value])
+const nextCursor = computed(() => (olderCursor.value === undefined ? list.value?.history_next_cursor ?? null : olderCursor.value))
 
 const editing = ref<StockProduct | null>(null)
 const draft = ref<StockDraft>({ change: '', reason: '' }) // ST-10
@@ -43,8 +47,36 @@ const slow = ref(false)
 const success = ref('')
 
 const signed = (n: number) => (n > 0 ? `+${n}` : `${n}`)
+// UTC on server and browser alike, so the SSR text and the hydrated text match (R6).
 const when = (iso: string) =>
-  new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+  new Date(iso).toLocaleString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+const slugOf = (p?: Problem | null) => p?.type?.replace('/problems/', '')
+// S7 Permission denied, signed out: the sign-in page with the idle message (as IdleCountdown does).
+const toSignIn = () => navigateTo({ path: '/sign-in', query: { next: route.fullPath, idle: '1' } })
+if (slugOf(error.value?.data as Problem | undefined) === 'unauthenticated') await toSignIn()
+
+async function reload() {
+  older.value = []
+  olderCursor.value = undefined
+  moreProblem.value = null
+  await refresh()
+}
+async function showMore() {
+  if (!nextCursor.value || loadingMore.value) return
+  loadingMore.value = true
+  moreProblem.value = null
+  try {
+    const page = await $fetch<StockList>('/api/ops/stock', { query: { history_cursor: nextCursor.value } })
+    older.value = [...older.value, ...page.history]
+    olderCursor.value = page.history_next_cursor
+  } catch (e: unknown) {
+    const data = (e as { data?: Problem }).data
+    if (slugOf(data) === 'unauthenticated') await toSignIn()
+    else moreProblem.value = navigator.onLine ? data ?? { type: '/problems/internal' } : { type: '/problems/offline' }
+  } finally {
+    loadingMore.value = false
+  }
+}
 const belowZero = (n: number) => `That would take stock below 0. ${n} are in stock.`
 
 function open(p: StockProduct) {
@@ -98,13 +130,21 @@ async function save() {
     })
     success.value = `${saved.product_name} stock is now ${saved.units_in_stock_after}.`
     close()
-    await refresh()
+    await reload()
   } catch (e: unknown) {
     const data = (e as { data?: Problem & { unitsInStock?: number; errors?: { pointer: string; detail: string }[] } }).data
-    const slug = data?.type?.replace('/problems/', '')
-    if (slug === 'stale-stock') {
+    const slug = slugOf(data)
+    if (slug === 'unauthenticated') {
+      await toSignIn()
+    } else if (slug === 'forbidden') {
+      errors.value = { form: 'Only platform staff can change stock.' }
+    } else if (slug === 'idempotency-in-flight') {
+      // The first save with this key is still running: its outcome is unknown, so never claim the old count. The key
+      // is kept, so saving again replays that same request.
+      errors.value = { form: "Still saving. Don't close this window." }
+    } else if (slug === 'stale-stock') {
       errors.value = { form: `Stock changed while you were here. It's now ${data!.unitsInStock}. Check your change.` }
-      await refresh()
+      await reload()
       editing.value = list.value?.products.find((x) => x.product_id === p.product_id) ?? p
     } else if (slug === 'insufficient-stock') {
       errors.value = { change: belowZero(data!.unitsAvailable?.[0] ?? p.units_in_stock) }
@@ -137,7 +177,7 @@ const pageProblem = computed<Problem | null>(() => (error.value ? (error.value.d
         v-else-if="pageProblem"
         :problem="pageProblem"
         :copy="{ forbidden: 'Only platform staff can change stock.' }"
-        @retry="refresh()"
+        @retry="reload()"
       />
       <template v-else-if="list">
         <p class="success" role="status">{{ success }}</p>
@@ -148,39 +188,52 @@ const pageProblem = computed<Problem | null>(() => (error.value ? (error.value.d
             </tr>
           </thead>
           <tbody>
-            <tr v-for="p in list.products" :key="p.product_id">
-              <td>{{ p.name }}</td>
-              <td>{{ p.units_in_stock }}</td>
-              <td>
-                <button :id="`record-${p.product_id}`" type="button" :aria-label="`Record a change for ${p.name}`" @click="open(p)">
-                  Record a change
-                </button>
-              </td>
-            </tr>
+            <template v-for="p in list.products" :key="p.product_id">
+              <tr>
+                <td>{{ p.name }}</td>
+                <td>{{ p.units_in_stock }}</td>
+                <td>
+                  <button :id="`record-${p.product_id}`" type="button" :aria-label="`Record a change for ${p.name}`" @click="open(p)">
+                    Record a change
+                  </button>
+                </td>
+              </tr>
+              <!-- S7 Accessibility: the form opens in place under its row (a full-screen sheet on phones). -->
+              <tr v-if="editing?.product_id === p.product_id" class="form-row">
+                <td colspan="3">
+                  <OpsStockChangeForm
+                    :name="p.name"
+                    :draft="draft"
+                    :errors="errors"
+                    :saving="saving"
+                    :slow="slow"
+                    @change="onChange"
+                    @save="save"
+                    @cancel="close"
+                  />
+                </td>
+              </tr>
+            </template>
           </tbody>
         </table>
 
-        <OpsStockChangeForm
-          v-if="editing"
-          :name="editing.name"
-          :draft="draft"
-          :errors="errors"
-          :saving="saving"
-          :slow="slow"
-          @change="onChange"
-          @save="save"
-          @cancel="close"
-        />
-
         <h2>Stock history</h2>
-        <p v-if="list.history.length === 0 && !cursor">No stock changes recorded yet.</p>
+        <p class="helper">Times in UTC</p>
+        <p v-if="history.length === 0">No stock changes recorded yet.</p>
         <ul v-else class="history">
-          <li v-for="(h, i) in list.history" :key="i">
+          <li v-for="(h, i) in history" :key="i">
             <span>{{ when(h.created_at) }}</span> <span v-if="h.actor_display_name">{{ h.actor_display_name }}</span>
             <span>{{ h.product_name }}</span> <span>{{ signed(h.change) }}</span> <q>{{ h.reason }}</q>
           </li>
         </ul>
-        <NuxtLink v-if="list.history_next_cursor" :to="{ query: { history_cursor: list.history_next_cursor } }">Show 25 more</NuxtLink>
+        <p v-if="loadingMore" role="status">Loading stock…</p>
+        <ProblemMessage
+          v-if="moreProblem"
+          :problem="moreProblem"
+          :copy="{ forbidden: 'Only platform staff can change stock.' }"
+          @retry="showMore()"
+        />
+        <button v-if="nextCursor" type="button" :disabled="loadingMore" @click="showMore()">Show 25 more</button>
       </template>
     </section>
   </AppShell>
@@ -192,6 +245,8 @@ const pageProblem = computed<Problem | null>(() => (error.value ? (error.value.d
 .list button { min-height: 24px; min-width: 24px; }
 .history { list-style: none; padding: 0; }
 .history li { padding: 6px 0; border-bottom: 1px solid #eee; display: flex; flex-wrap: wrap; gap: 8px; }
+.form-row td { padding: 0; }
+.helper { margin: 2px 0; color: #444; font-size: 14px; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 @media (max-width: 600px) {
   .list thead { display: none; }

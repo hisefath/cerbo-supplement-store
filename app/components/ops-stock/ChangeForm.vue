@@ -64,4 +64,8 @@ input { display: block; width: 100%; max-width: 360px; min-height: 24px; }
 .error { color: #b00020; }
 .actions { display: flex; gap: 8px; margin-top: 12px; }
 .actions button { min-height: 32px; }
+/* S7 Responsive: at phone width the form opens as a full-screen sheet. */
+@media (max-width: 600px) {
+  .change { position: fixed; inset: 0; z-index: 10; margin: 0; padding: 16px; background: #fff; overflow-y: auto; }
+}
 </style>
