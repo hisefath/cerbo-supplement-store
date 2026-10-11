@@ -267,6 +267,7 @@ several harnesses read it and the repo is public.
 | 2026-10-11 17:20 CDT | deploy (pre-approved) | main@502d111 → production web-v2 | "yes, deploy it when merged" |
 | 2026-10-11 17:27 CDT | G1 clarify CQ-10 (M7 Defensibility row) + G2/G3 n/a (docs/tooling, no design change) + G4 job files M7-J01..J04 | docs/product/prd.md | "go M7" (STANDING 2026-10-10 23:09 CDT) |
 | 2026-10-11 18:00 CDT | G5 M7 (report) + merge on green | docs/milestones/M7.md | STANDING 2026-10-10 23:09 CDT "i approve all next recommendations until project completion" |
+| 2026-10-11 18:23 CDT | deploy (pre-approved) | main@612c5bf → production web-v2 | "tell me when M7 is merged, also deploy it" |
 
 ## Log
 
@@ -596,3 +597,6 @@ several harnesses read it and the repo is public.
 2026-10-11 17:51 CDT FLAKE M4_AT_028 paid_at 33 ms before a Node timestamp (DB clock vs app clock), passed on rerun
 2026-10-11 18:00 CDT VERIFY M7 55c255f make check exit 0 (unit 347, db 3, M4 43, M5 44, M5.1 5, M5.2 6, M6 44, M6.1 5)
 2026-10-11 18:00 CDT REPORT M7 docs/milestones/M7.md; G5 4/4
+2026-10-11 18:23 CDT HUMAN ran railway-setup.sh --skip-seed: 1 migration applied (1760000015000 LINV-1)
+2026-10-11 18:23 CDT MERGE M7 MR !20 -> main 612c5bf; make check on main OK
+2026-10-11 18:23 CDT DEPLOY M7 612c5bf → production web-v2 (deployment 6773f61f SUCCESS); SMOKE GREEN 7/0
