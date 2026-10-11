@@ -218,6 +218,7 @@ several harnesses read it and the repo is public.
 | 2026-10-11 08:25 CDT | G5 security part (M5.1 re-run after T005): approve checklist (0 reachable critical/high, no new finding) | docs/security/CHECKLIST.md@c06a229 | STANDING row 2026-10-10 23:09 CDT |
 | 2026-10-11 08:35 CDT | G5 Revise (M5.1 report recommendation): answer DV-5 with a Log NOTE, correct MILESTONES gate SHAs (DV-6), add the missing T004 VERIFY line, re-run report-milestone | docs/milestones/M5.1.md (draft 08:25) | STANDING row 2026-10-10 23:09 CDT |
 | 2026-10-11 08:40 CDT | G5 Merge (M5.1 report recommendation; 4 clauses yes; 0 open P0/P1; 0 unaccepted high/critical) | docs/milestones/M5.1.md@c26710a | STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
+| 2026-10-11 09:37 CDT | G1 (clarify CQ-5: M5.2 Safe landing) + G-ux (S15, page-not-found and wrong-role conventions) + G3 (ROLE_PAGES, FE-25, FE-26, FE-23) + G4 (AT-001..004, T001) | prd.md, screens.md, flows.md, lld.md, specs/M5.2-safe-landing on milestone/m5.2-safe-landing | "also everytime i log in, i get 404s. i dont reroute safely to a homepage, or have any info like i dont have access or get a link to a page i should be reaching, etc. lets fix that" · STANDING row 2026-10-10 23:09 CDT |
 
 ## Log
 
@@ -480,3 +481,4 @@ several harnesses read it and the repo is public.
 2026-10-11 08:35 CDT VERIFY M5.1-T004 squashed 7367c5d (recorded late): scope-guard OK (6 paths); supervisor make check on the milestone exit 0 (218/43/44/4) at 2026-10-11 08:00 CDT
 2026-10-11 08:35 CDT NOTE M5.1-T003 VERIFY shares the T002 line (2026-10-11 07:50): scope-guard OK (4 paths); supervisor make check exit 0 in its worktree
 2026-10-11 08:36 CDT CHECK browser (local dev server on the milestone head after T005): Geist and EB Garamond loaded from the app; stock form input border rgb(100,116,139) = --color-control-border; sign-in redirect to next=/ops/stock works; earlier: sign-in, prices, dashboard, 375 px no sideways scroll, stock page
+2026-10-11 09:37 CDT DISPATCH M5.2-T001 harness=claude-subagent why=safe landing fix (human report: 404s after sign-in)

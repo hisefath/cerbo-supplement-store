@@ -1,8 +1,8 @@
 # Screens — In-EHR supplement orders
 
 status: complete
-Milestones: M4, M5, M5.1 (visual language), M6 · Flows: docs/design/flows.md · PRD: docs/product/prd.md@998ed94
-Updated: 2026-10-11 07:22 CDT (M5.1 visual language added under Global conventions)
+Milestones: M4, M5, M5.1 (visual language), M5.2 (safe landing), M6 · Flows: docs/design/flows.md · PRD: docs/product/prd.md@998ed94
+Updated: 2026-10-11 09:34 CDT (M5.2: S15 Your home, page-not-found and wrong-role conventions)
 
 ## Global conventions
 
@@ -13,6 +13,9 @@ Updated: 2026-10-11 07:22 CDT (M5.1 visual language added under Global conventio
 - Help: a "Questions? Contact your practice" line (patient) or "Contact platform support" (staff) in the same place at the foot of every screen
 - Privacy: platform staff screens show an order number, never a patient's name or contact detail (FR-050); patient notices name only the practice (FR-044)
 - Sample data: obviously fake names and values only (Dr. Maya Chen, Ana Ruiz, Willow Creek Wellness)
+
+- Page not found (M5.2): any address with no page shows, in the page frame, the title "We couldn't find that page", the text "The link may be old or mistyped." and a primary button "Go to your home"; any other failure to open a page shows "Something went wrong on our side. Try again in a moment." with the same button. Signed out, "Go to your home" leads to sign-in
+- Wrong role (M5.2, S8 Permission denied): every screen's wrong-role message is followed by a "Go to your home" link, so "Here is your own work" always has a way there
 
 ### Visual language (M5.1)
 
@@ -1470,6 +1473,72 @@ WCAG 2.2 AA — planned, not verified.
 |---|---|---|
 | 375 px | One column | Each measure is a card: value, target, met; nothing scrolls sideways |
 | 1280 px | A list with four columns | As drawn |
+
+## S15 Your home
+
+Stories: US-8 · Flows: F7 step 2 · Key screen: no
+
+### Variants
+
+n/a — not a key screen
+
+### Layout
+
+```text
+1280 px
++--------------------------------------------------------------+
+|~~ Welcome, Sam Reyes ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
+|   Site reliability                                            |
+| +----------------------------------------------------------+ |
+| | Your pages                                               | |
+| | Nothing to open yet: system health and operations access | |
+| | will appear here when they are ready.                    | |
+| +----------------------------------------------------------+ |
+| Questions? Contact platform support                           |
++--------------------------------------------------------------+
+```
+
+A person whose role already has a work page (provider, operations specialist, finance lead) goes straight to that page and never sees this screen.
+
+### States
+
+| State | When it happens | What the user sees | Microcopy (exact) | What they can do |
+|---|---|---|---|---|
+| Empty | First use: the role has no page yet (patient, site reliability, data analyst) / Filtered: n/a — nothing to filter / Cleared: n/a — nothing to clear | The welcome band and one card that says what to do instead | First use: patient "Your orders open from the message your practice sends you." / site reliability "Nothing to open yet: system health and operations access will appear here when they are ready." / data analyst "Nothing to open yet: platform health and the volume report will appear here when they are ready." / Filtered: n/a — nothing to filter / Cleared: n/a — nothing to clear | Open the practice's message; contact support |
+| Loading | The person's details are loading | The page frame stays; progress after 1 s | "Loading your home…" / after 10 s: "Still loading. Try again in a moment." | Wait |
+| Error | Their mistake: n/a — nothing to type / Our failure: details could not load / No connection: offline | The sign-in page (the person cannot be confirmed) | Their mistake: n/a — nothing to type / Our failure: the sign-in page shows "Sign in again to continue." / No connection: "You're offline. Try again when you're back online." | Sign in |
+| Success | A role with a work page | Goes straight to that page | n/a — the work page is the confirmation | Work |
+| Permission denied | Signed out | The sign-in page | "You were signed out after 15 minutes without activity." when a session ended | Sign in |
+| Edge data | A 60-character name / a role with several pages later | Long names wrap in the band; pages list one per line, each a link | n/a — no extra text | Open a page |
+
+### Microcopy
+
+| Element | Text |
+|---|---|
+| Page title | "Welcome, Sam Reyes" (the person's name) |
+| Primary action | Each page link, named by its page title (none yet for these roles) |
+| Secondary action | "Questions? Contact platform support" (staff) / "Questions? Contact your practice" (patient) |
+| Field labels and helper text | n/a — nothing to type |
+| Confirmation | n/a — nothing changes on this screen |
+
+### Accessibility
+
+WCAG 2.2 AA — planned, not verified.
+
+- Focus order: 1. Page title 2. Each page link in order 3. Help link
+- Labels: the role name is text under the title, not only a colour
+- Keyboard: every link reachable with Tab, opened with Enter
+- Contrast and color: VL-2 tokens; white on the band 4.5:1 or better
+- Targets: links at least 24 px tall
+- Errors and status: the loading line is a status message
+- Focus not hidden: no sticky bars
+
+### Responsive
+
+| Width | Layout | What changes |
+|---|---|---|
+| 375 px | One column | The band wraps the name; the card fills the width; nothing scrolls sideways |
+| 1280 px | Band and one card | As drawn |
 
 ## Demo layout (90 seconds)
 

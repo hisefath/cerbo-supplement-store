@@ -1287,6 +1287,8 @@ flowchart TD
 ### Component tree
 
 - FE-1 AppShell (every screen)
+  - FE-25 HomePage (S15, new M5.2)
+  - FE-26 ErrorPage (every page error, new M5.2)
   - FE-2 SignInPage (S8)
     - FE-23 ProblemMessage
   - FE-3 NoticePage (S9)
@@ -1359,6 +1361,8 @@ FE-12, FE-22 and FE-23 are shared, stateless components; each appears under ever
 | **FE-22** | MonthPicker | S6, S10, S11, S13, S14 | value: string | change(month) | none (stateless) | — |
 | **FE-23** | ProblemMessage | all | problem: Problem | retry() | none (stateless) | error (maps each problem type to the screen's exact copy) |
 | **FE-24** | OrderFunnel | S10 | funnel: Funnel | none | none (stateless) | edge data (few orders: "read the counts, not the bars") |
+| **FE-25** (new, M5.2) | HomePage | S15 | none | none | none (reads ST-1) | empty (role has no page yet), loading, permission denied (signed out: sign-in) |
+| **FE-26** (new, M5.2) | ErrorPage | all | error: { statusCode, message } | none | none (stateless) | error (404: "We couldn't find that page"; other: "Something went wrong on our side"), with "Go to your home" |
 
 **Theme (new, M5.1, D81).** One global stylesheet, `app/assets/css/theme.css`, registered in `nuxt.config.ts` `css`, holds
 the screens.md VL-2 visual language as CSS custom properties (colours, radii, shadows, spacing, type sizes; the colour
@@ -1379,9 +1383,14 @@ and read colours, radii and type from the custom properties; no colour value is 
 is proven by an acceptance check that reads the colour custom properties from theme.css and computes each listed
 text/background pair's WCAG contrast ratio.
 
-**Site root (new, M5.1 fix, specs/bugs/root-url-404-after-sign-in.md).** `app/pages/index.vue` sends a signed-in person to
-their role's home from the shared `ROLE_HOME` table (`app/utils/role-home.ts`, also used by FE-2); if the session
-cannot be read it goes to `/sign-in`. It redirects only to fixed paths, never to input.
+**Site root and safe landing (changed, M5.2; FE-25, FE-26).** One table, `ROLE_PAGES` in `app/utils/role-home.ts`, lists
+for each role the pages that exist today (path and title, in order); `ROLE_HOME` is a role's first listed page. `app/pages/index.vue`
+(FE-25 HomePage, S15) sends a signed-in person to `ROLE_HOME` when their role has a page, otherwise renders S15 with the
+role's pages (none yet for patient, sre, data_analyst) and the S15 copy; if the session cannot be read it goes to `/sign-in`.
+It redirects only to fixed paths. `app/error.vue` (FE-26 ErrorPage) renders every page error inside FE-1's frame: a 404 shows
+"We couldn't find that page" and a primary "Go to your home" link to `/`; any other status shows "Something went wrong on our
+side. Try again in a moment." with the same link; the response keeps its status code. FE-23 ProblemMessage (changed): for
+`/problems/forbidden` it adds a "Go to your home" link to `/` after the screen's wrong-role copy (S8 "Here is your own work").
 
 ### State ownership
 
@@ -2794,3 +2803,4 @@ stateDiagram-v2
 | 2026-10-10 23:57 CDT | Revise (M5 review pass 7 R4, pass 6 R9 a/b, pass 1 R3; Approvals STANDING 2026-10-10 23:09 CDT): EP-17 `Me` gains `practice_name` (string or null), read with the session's user; S5 and S6 titles use it | EP-17, BE-3, openapi Me | G3 by STANDING approval 2026-10-10 23:57 CDT |
 | 2026-10-11 07:24 CDT | Delta (M5.1, D75, D80): FE-1 page frame (changed); Theme paragraph (theme.css custom properties, shared classes, self-hosted fonts); D81 proposed | FE-1, D81 | G3 by STANDING approval 2026-10-11 07:24 CDT |
 | 2026-10-11 08:11 CDT | Revise (M5.1 review pass 1 R5, R9): control-border token; pill tokens listed; D81 marked accepted (journal D81); site-root page recorded | Theme, FE-2, D81 | G3 by STANDING approval 2026-10-11 08:11 CDT |
+| 2026-10-11 09:35 CDT | Delta (M5.2 safe landing, CQ-5): ROLE_PAGES; FE-25 HomePage (S15); FE-26 ErrorPage; FE-23 forbidden link | FE-23, FE-25, FE-26 | G3 by STANDING approval 2026-10-11 09:35 CDT |
