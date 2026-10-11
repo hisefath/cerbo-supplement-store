@@ -3,10 +3,11 @@
 // US-5 Stock limits, stock adjustments by platform staff, and the practice dashboard.
 // Seeded stock: Vitamin D3 10, Magnesium Glycinate 5, Omega-3 Fish Oil 3 (tests/acceptance/support/people.ts).
 // Tests marked "green: pins" in acceptance.md guard behaviour M4 already built (Q-1).
+import pg from 'pg'
 import { describe, expect, it } from 'vitest'
 import { allocateFee } from '../../../server/services/money'
 import { useApp } from '../support/app'
-import { q } from '../support/db'
+import { OWNER_URL, q } from '../support/db'
 import { call, expectProblem, newKey, signIn } from '../support/http'
 import { EMAIL } from '../support/people'
 
@@ -255,5 +256,63 @@ describe('US-5 the practice dashboard', () => {
     const shares = new Map(rows.map((r: any) => [Number(r.product_id), r.fee_share_cents]))
     expect([shares.get(w.vitaminD3), shares.get(w.magnesium), shares.get(w.omega3)]).toEqual([14, 18, 22])
     expect((await q('select platform_fee_cents from orders where id = $1', [id]))[0].platform_fee_cents).toBe(54)
+  })
+})
+
+describe('US-5 review pins (M5-pass3 R1, M5-pass6 R5)', () => {
+  it('M5_AT_037 awaiting-payment items stay inside the viewer\'s practice: Dr. Chen sees Ben\'s 4-day order, Dr. Lee sees Carla\'s, neither sees the other\'s (FR-046, FR-045)', async () => {
+    const w = app.world()
+    const bens = await send(w.ben, [{ product_id: w.vitaminD3, quantity: 1 }])
+    const carlas = await send(w.carla, [{ product_id: w.vitaminD3, quantity: 1 }], EMAIL.drLee)
+    await q("update orders set sent_at = now() - interval '4 days' where id in ($1, $2)", [bens, carlas])
+    const awaiting = async (email: string) => {
+      const d = await call(`/api/practice/dashboard?month=${thisMonth()}`, { cookie: await signIn(email) })
+      expect(d.status).toBe(200)
+      return d.body.attention.filter((a: any) => a.kind === 'awaiting_payment')
+    }
+    expect(await awaiting(EMAIL.drChen)).toEqual([{ kind: 'awaiting_payment', label: 'Awaiting payment for 4 days', order_id: bens, product_id: null }])
+    expect(await awaiting(EMAIL.drLee)).toEqual([{ kind: 'awaiting_payment', label: 'Awaiting payment for 4 days', order_id: carlas, product_id: null }])
+  })
+
+  it('M5_AT_038 with the last Omega-3 row held by another transaction, Ana and Ben both pay and wait; once it is let go exactly one succeeds and the other gets 422 naming Omega-3 with 0 available (AE-024, FR-026, INV-5, M5-pass3 R1)', async () => {
+    const w = app.world()
+    const a = await send(w.ana, [{ product_id: w.omega3, quantity: 1 }])
+    const b = await send(w.ben, [{ product_id: w.omega3, quantity: 1 }])
+    await setStock(w.omega3, 1)
+    const anaCookie = await signIn(EMAIL.ana)
+    const benCookie = await signIn(EMAIL.ben)
+    for (const [cookie, id] of [[anaCookie, a], [benCookie, b]] as const)
+      expect((await call(`/api/orders/${id}/checkout`, { method: 'POST', cookie })).status).toBe(200)
+    // Hold the Omega-3 row from a side connection, so both payments are queued behind it before either reads stock.
+    const side = new pg.Client({ connectionString: OWNER_URL })
+    await side.connect()
+    let pays: Promise<Awaited<ReturnType<typeof call>>[]> | undefined
+    try {
+      await side.query('begin')
+      await side.query('select 1 from products where id = $1 for update', [w.omega3])
+      pays = Promise.all([
+        call(`/api/orders/${a}/payments`, { method: 'POST', cookie: anaCookie, key: newKey() }),
+        call(`/api/orders/${b}/payments`, { method: 'POST', cookie: benCookie, key: newKey() }),
+      ])
+      let waiting = 0
+      for (let i = 0; i < 200 && waiting < 2; i++) {
+        waiting = (await side.query("select count(distinct pid)::int as n from pg_locks where not granted and locktype in ('tuple', 'transactionid')")).rows[0].n
+        if (waiting < 2) await new Promise((r) => setTimeout(r, 50))
+      }
+      expect(waiting).toBe(2)
+    } finally {
+      await side.query('rollback')
+      await side.end()
+    }
+    const [ra, rb] = await pays!
+    expect([ra.status, rb.status].sort()).toEqual([201, 422])
+    const refused = ra.status === 422 ? ra : rb
+    expectProblem(refused, 422, 'insufficient-stock')
+    expect(refused.body.productIds).toEqual([w.omega3])
+    expect(refused.body.unitsAvailable).toEqual([0])
+    expect(await stock(w.omega3)).toBe(0)
+    expect(await q("select kind, change from stock_movements where product_id = $1 order by id", [w.omega3])).toEqual([{ kind: 'sale', change: -1 }])
+    const paid = await q("select count(*)::int as n from payment_attempts where order_id in ($1, $2) and status = 'succeeded'", [a, b])
+    expect(paid[0].n).toBe(1)
   })
 })

@@ -107,6 +107,10 @@ Out of scope this milestone: FR-032, FR-048, FR-049, FR-051 to FR-064 (M6 measur
 | AT-032 | FR-066, FR-067 | FR-066 (M4): a provider cancels only a sent or payment-failed order (review M4-pass6 R2) | **Given** Ben's sent order and Ana's order in a live checkout **When** Dr. Chen cancels both **Then** Ben's is cancelled; Ana's is 409 and stays in_checkout | state | integration | `tests/acceptance/M5/m4-regressions.test.ts::M5_AT_032` | green: pins the cancel guard (shown failing when in_checkout is allowed) |
 | AT-033 | FR-013, INV-6 | FR-013 (M4) and D47: a split that leaves a payout below $0.00 is listed for review before any charge (review M4-pass2 R2) | **Given** Vitamin D3 fixed at $18.00 and its cost raised to $18.00 after sending **When** Ana pays **Then** 422 order-under-review; status needs_review; no payment attempt | decision-table | integration | `tests/acceptance/M5/m4-regressions.test.ts::M5_AT_033` | green: pins the D47 guard (shown failing when the guard is removed) |
 | AT-034 | FR-026, FR-027, INV-5 | FR-027 (as above) and lld.md stock_movements.kind: sale reserved when payment starts, sale_release returned when it fails | **Given** 10 Vitamin D3; the payment stand-in declines **When** Ana pays for 2 **Then** 502 payment-failed; movements sale −2 then sale_release +2; stock 10 | error-guess | integration | `tests/acceptance/M5/stock-release.test.ts::M5_AT_034` | red @ c1e3d70 |
+| AT-035 | FR-037, FR-024, INV-8 | FR-037 (as above), with lld.md SM-2 (a processing attempt keeps the order in checkout) | **Given** Ana's and Ben's orders in checkout with ended holds; Ana's payment started 1 minute 50 seconds ago and reserved 2 Vitamin D3 **When** each reads their order **Then** Ben's is sent; Ana's stays in checkout with $18.00 held, the attempt still processing, stock 8 | state-transition | integration | `tests/acceptance/M5/stock-release.test.ts::M5_AT_035` | green: pins a payment in flight keeps its hold (M5-pass2 R3) |
+| AT-036 | FR-027, FR-026, INV-5 | FR-027 (as above), with lld.md FM-7: an attempt processing for 2 minutes is abandoned, failed as no_answer, its stock returned | **Given** Ana's ended checkout and a payment processing for 2 minutes 10 seconds with 2 Vitamin D3 reserved **When** she reads her order twice at once, then again **Then** payment_failed; the attempt failed no_answer; one sale and one sale_release; stock 10 | error-guessing | integration | `tests/acceptance/M5/stock-release.test.ts::M5_AT_036` | green: pins FM-7 reconciles an abandoned attempt once (M5-pass4 R1, R2) |
+| AT-037 | FR-046, FR-045 | FR-046: the dashboard flags an order unpaid for more than 3 days (as in AT-024), for the viewer's own practice only (lld.md EP-29 practice scope) | **Given** Ben's Willow Creek order and Carla's Maple Grove order, both sent 4 days ago **When** Dr. Chen and Dr. Lee open their dashboards **Then** each sees exactly one "Awaiting payment for 4 days": Dr. Chen Ben's, Dr. Lee Carla's | authorization | integration | `tests/acceptance/M5/stock-dashboard.test.ts::M5_AT_037` | green: pins attention items stay in the practice (M5-pass6 R5) |
+| AT-038 | AE-024, FR-026, INV-5, EC-7 | FR-026 (as above) | **Given** 1 Omega-3 left, Ana and Ben each in checkout for 1, and the Omega-3 row held by another transaction **When** both pay and both are waiting, then the row is let go **Then** one 201 and one 422 insufficient-stock naming Omega-3 with 0 available; stock 0; one sale movement; one succeeded attempt | concurrency | integration | `tests/acceptance/M5/stock-dashboard.test.ts::M5_AT_038` | green: pins the product row lock (M5-pass3 R1) |
 
 ## Edge cases
 
@@ -140,6 +144,7 @@ Out of scope this milestone: FR-032, FR-048, FR-049, FR-051 to FR-064 (M6 measur
 | EDGE-012 | FR-018 | a change from a form that loaded at $18.00 after the price became $19.50 | 409 stale-price with current $19.50 (lld.md /problems/stale-price) | AT-008 |
 | EDGE-013 | FR-024 | the price changes between checkout start and Pay | charged the held price (AE-021; INV-8) | AT-006 |
 | EDGE-019 | FR-030 | a stock form that loaded at 8 after stock became 9 | 409 stale-stock with 9 (lld.md /problems/stale-stock) | AT-019 |
+| EDGE-045 | FR-037 | Ana's hold ends while her payment has been processing for 1 minute 50 seconds | she stays in checkout at the held prices; the units stay reserved (lld.md SM-2; FR-024 charges the held price) | AT-035 |
 
 ### Decision tables
 
@@ -157,6 +162,7 @@ Out of scope this milestone: FR-032, FR-048, FR-049, FR-051 to FR-064 (M6 measur
 | EDGE-024 | FR-028 | month "2026-13" in the dashboard query | 422 validation (lld.md EP-29 errors) | not tested: input validation of a read-only query; no money or data at risk |
 | EDGE-025 | FR-030 | a change of 0 units | 422 validation (StockAdjustmentRequest change not 0) | not tested: schema rule, no stock moves either way |
 | EDGE-026 | FR-006 | the database fails after payment transaction 1 (a stuck processing attempt, review M4-pass2 R1) | the attempt closes as failed with no reason and the order stays as it was (lld.md FM-3) | not tested: no seam makes the database fail mid-payment through the API; the implementer's unit tests cover it (outside M5 scope, Q-1 pin list) |
+| EDGE-046 | FR-027 | the server stopped after payment transaction 1: an attempt still processing after 2 minutes 10 seconds, read twice at once | attempt failed no_answer, stock returned exactly once, order payment_failed (lld.md FM-7) | AT-036 |
 
 ### Concurrency, idempotency, double-submit
 
@@ -168,6 +174,7 @@ Out of scope this milestone: FR-032, FR-048, FR-049, FR-051 to FR-064 (M6 measur
 | EDGE-029 | FR-018 | two providers change one price at the same moment | one wins, the other gets 409 stale-price (lld.md /problems/stale-price; screens S5 Edge data) | not tested: AT-008 proves the check-and-set sequentially; a true race needs both requests inside one row lock, and a lost race only shows a stale-price message |
 | EDGE-030 | FR-039 | 11 wrong passwords at the same moment | 10 × 401, 1 × 429 (EP-15 limit; review M4-pass5 R3) | AT-030 |
 | EDGE-031 | FR-006 | 11 Pay presses at the same moment | 10 reach the order, 1 × 429 (SEC-9; review M4-pass7 R2) | AT-031 |
+| EDGE-048 | FR-026 | Ana and Ben pay for the last Omega-3 while its row is held, so both are certainly waiting together | one 201, one 422 insufficient-stock with 0 available (AE-024; INV-5) | AT-038 |
 
 ### Authorization and abuse
 
@@ -179,6 +186,7 @@ Out of scope this milestone: FR-032, FR-048, FR-049, FR-051 to FR-064 (M6 measur
 | EDGE-034 | FR-028 | Ana opens the practice dashboard | 403 forbidden (EP-29 role provider) | AT-026 |
 | EDGE-035 | FR-045 | Dr. Lee opens his orders list and dashboard | no Willow Creek orders, 0 Vitamin D3 sold (NFR-004; INV-7) | AT-026 |
 | EDGE-036 | FR-066 | Dr. Chen cancels an order in a live checkout | 409 invalid-transition, still in_checkout (SM-1; review M4-pass6 R2) | AT-032 |
+| EDGE-047 | FR-046 | Maple Grove's 4-day unpaid order when Dr. Chen of Willow Creek opens her dashboard | not listed; Dr. Lee sees it (lld.md EP-29 practice scope) | AT-037 |
 
 ### Money, rounding, time zones
 
@@ -213,15 +221,15 @@ Every in-scope FR against every group: EDGE ids, or `n/a: <why>`. No blank cell.
 | FR-023 | n/a: one action | n/a: covered by FR-037 | EDGE-013 | EDGE-015 | n/a: no outbound call | n/a: repeat returns the same hold (M4) | n/a: tested in M4 | EDGE-013 | n/a: no input |
 | FR-024 | n/a: one action | n/a: covered by FR-037 | EDGE-013 | EDGE-015 | n/a: no outbound call | EDGE-013 | n/a: tested in M4 | EDGE-013 | n/a: no input |
 | FR-025 | n/a: covered by EDGE-007 | EDGE-007 | n/a: no state | n/a: one rule | n/a: no outbound call | n/a: send is idempotent (M4) | n/a: tested in M4 | n/a: units, not money | n/a: numbers only |
-| FR-026 | n/a: covered by EDGE-027 | n/a: covered by EDGE-027 | n/a: covered by SM-2 rows | n/a: one rule | EDGE-023 | EDGE-027 | n/a: tested in M4 | n/a: no charge either way | n/a: no input |
-| FR-027 | n/a: one action | n/a: covered by EDGE-027 | n/a: covered by EDGE-023 | n/a: one rule | EDGE-023 | EDGE-027 | n/a: no input | n/a: units, not money | n/a: no input |
+| FR-026 | n/a: covered by EDGE-027 | n/a: covered by EDGE-027 | n/a: covered by SM-2 rows | n/a: one rule | EDGE-023 | EDGE-027, EDGE-048 | n/a: tested in M4 | n/a: no charge either way | n/a: no input |
+| FR-027 | n/a: one action | n/a: covered by EDGE-027 | n/a: covered by EDGE-023 | n/a: one rule | EDGE-023, EDGE-046 | EDGE-027 | n/a: no input | n/a: units, not money | n/a: no input |
 | FR-028 | EDGE-018 | n/a: whole month | n/a: read only | EDGE-020 | EDGE-024 | n/a: read only | EDGE-034 | EDGE-038 | EDGE-041 |
 | FR-029 | n/a: one value per product | n/a: covered by FR-047 | n/a: read only | n/a: one rule | n/a: read only | n/a: read only | n/a: covered by EDGE-034 | n/a: units, not money | n/a: covered by EDGE-041 |
 | FR-030 | n/a: covered by EDGE-025 | EDGE-019 | EDGE-019 | n/a: one rule | EDGE-025 | EDGE-028 | EDGE-033 | n/a: units, not money | EDGE-025 |
-| FR-037 | n/a: one rule | EDGE-010 | EDGE-010 | EDGE-015 | n/a: no outbound call | n/a: on read | n/a: tested in M4 | n/a: covered by EDGE-015 | EDGE-044 |
+| FR-037 | n/a: one rule | EDGE-010 | EDGE-010, EDGE-045 | EDGE-015 | n/a: no outbound call | n/a: on read | n/a: tested in M4 | n/a: covered by EDGE-015 | EDGE-044 |
 | FR-038 | n/a: one rule | n/a: no limit | n/a: no state | n/a: one rule | n/a: no outbound call | n/a: refusal only | EDGE-033 | n/a: units, not money | n/a: no input |
 | FR-045 | n/a: one list | n/a: covered by pagination (lld.md) | n/a: read only | n/a: one rule | n/a: read only | n/a: read only | EDGE-035 | n/a: totals only | EDGE-042 |
-| FR-046 | n/a: one rule | EDGE-008 | n/a: derived flag | n/a: one rule | n/a: read only | n/a: read only | n/a: covered by EDGE-034 | EDGE-040 | n/a: no input |
+| FR-046 | n/a: one rule | EDGE-008 | n/a: derived flag | n/a: one rule | n/a: read only | n/a: read only | EDGE-047 | EDGE-040 | n/a: no input |
 | FR-047 | n/a: one rule | EDGE-009 | n/a: derived flag | EDGE-021 | n/a: read only | n/a: read only | n/a: covered by EDGE-034 | n/a: units, not money | n/a: no input |
 | FR-069 | n/a: one rule | EDGE-037 | n/a: no state | EDGE-037 | n/a: pure rule | n/a: pure rule | n/a: no access | EDGE-037 | n/a: numbers only |
 
@@ -236,7 +244,8 @@ Ways a test could pass while the feature is wrong (`references/silent-success.md
 | SS-03 | a refusal is asserted only by status, so any 403 or 422 passes | AT-003, AT-008, AT-011, AT-012, AT-014, AT-015, AT-019 | `expectProblem` checks the problem type, and the extension values (lowestAllowedPriceCents 1209, currentPriceCents 1950, unitsAvailable [2], unitsInStock 9) are asserted |
 | SS-04 | "nothing changed" is asserted by a count that is 0 because nothing was ever written | AT-003, AT-008, AT-011, AT-015 | history counts are asserted after a successful change in the same test (AT-003, AT-008) and price rows are read back |
 | SS-05 | a concurrency test passes because the two requests ran one after the other | AT-016, AT-030, AT-031 | requests are fired together with Promise.all, and the exact split of outcomes (one 201 and one 422; 10 and 1) is asserted |
-| SS-06 | a green pin passes whatever the code does | AT-014, AT-027 to AT-033 | each pin was run once against a throwaway copy with its rule removed, and every one failed (Red run) |
+| SS-06 | a green pin passes whatever the code does | AT-014, AT-027 to AT-033, AT-035 to AT-038 | each pin was run once against a throwaway copy with its rule removed, and every one failed (Red run) |
+| SS-07 | a race test passes because the two requests happened to run one after the other | AT-038 | a side connection holds the Omega-3 row until pg_locks shows both payments waiting (asserted: 2 waiters), then lets go; AT-036 fires its two reads with Promise.all |
 
 Laziest-stub check (reasoned test by test at step 7, not executed): 34 automated tests reasoned against a
 hard-coded, always-200 and always-allow stub. Refusal or no-effect tests whose allowed twin runs first in the same
@@ -279,6 +288,8 @@ builds on it.
 - Runner summary: Test Files 3 failed, 1 passed (4) · Tests 26 failed, 8 passed (34)
 - Single-test proof: `npx vitest run tests/acceptance/M5 -t 'M5_AT_002 '` → runs only M5_AT_002 (× M5_AT_002 …; 1 failed, 32 skipped), exit 1 · `npx vitest run tests/acceptance/M5 -t 'M5_AT_999 '` → exit 0 (33 skipped): ⚠ Q-5, vitest has no fail-on-empty option for `-t`
 - Green pins (Q-1): AT-014, AT-027 to AT-033 pass today; with each guarded rule removed in a throwaway worktree (stock check at send, leftover fee cents, key release, sign-in limit 10, pay limit 10, cancel guard, D47 guard) all 8 failed: `Tests 8 failed | 25 skipped (33)`.
+- Re-run 2026-10-10 23:02 CDT on 32d3a55 (plus the 4 new tests, uncommitted): `npx vitest run tests/acceptance/M5` exit 0, `Test Files 4 passed (4)`, `Tests 38 passed (38)`, output `/var/folders/hy/jdyfzw1d74j_zxvpgy4bysm80000gp/T/M5-acceptance-rerun.txt`. AT-001 to AT-034 are green because M5-T001 to T006 landed.
+- Re-run green pins AT-035 to AT-038, each run once in a throwaway worktree with its guarded rule removed, all 4 failed (`Tests 1 failed / 37 skipped (38)` each): AT-035 without `attempt` in the hold-ending guard → expected 'sent' to be 'in_checkout'; AT-036 without the FM-7 `releaseForOrder` → only the sale movement, no sale_release; AT-037 without the dashboard's practice filter → 2 awaiting items, not 1; AT-038 without `forUpdate()` in the product lock → expected [ 201, 500 ] to deeply equal [ 201, 422 ].
 
 | AT | Test | Why it fails (assertion, or missing: <name from an approved artifact>) | First failing line |
 |---|---|---|---|
@@ -346,3 +357,4 @@ of a wrong guess first. Unasked gaps stay here as ⚠.
 | Date | Change | Ids | Why (approved artifact, or the human's exact words) |
 |---|---|---|---|
 | 2026-10-10 20:46 CDT | First draft | all | G1 prd.md@998ed94, G2 hld.md@fea2e18, G-ux screens.md@bff1dd4, G3 lld.md@9708841; Q-1 answered "yes" |
+| 2026-10-10 23:02 CDT | Re-run: added review pins; M5-pass4 R3 needs no new test, since AT-007 already has Ana's own read end her hold and runs in make check | AT-035 to AT-038, EDGE-045 to EDGE-048, SS-06, SS-07 | 21:51 "a, relaunch T002 with R2, R3" (pass 3 R1 to define-acceptance); 22:19 "a, squash T003 and add the acceptance tests" (pass 4 R1, R2, R3); 22:31 "a, relaunch T005 with R2, R1, R3" (pass 6 R5 to the define-acceptance re-run) |
