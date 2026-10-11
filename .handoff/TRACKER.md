@@ -190,6 +190,10 @@ several harnesses read it and the repo is public.
 | 2026-10-10 23:16 CDT | G4 (close-out slices T007 to T010, option a; analyze RESULT: PASS) | specs/M5-prices-and-stock/tasks/T007-T010@2738485 | STANDING row 2026-10-10 23:09 CDT |
 | 2026-10-10 23:57 CDT | M5 review pass 7 dispositions (STANDING): R1 keep AT-042, track slip (payment change via Fix track) to route-failure; R2, R3, R4 fix in M5-T011; R5, R6 filed for M6 | .handoff/reviews/M5-pass7.md | STANDING row 2026-10-10 23:09 CDT |
 | 2026-10-10 23:57 CDT | G3 revise (EP-17 Me.practice_name) + G4 (AT-043 red; M5-T011 review-fix task, 11th task over the 10 cap per the M4-T011 precedent) | lld.md, openapi.yaml, acceptance.md, tasks/T011.md | STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-10 23:59 CDT | G5 SEC-10 | docs/security/CHECKLIST.md@adfd6fa | accept (re-decided after FR-025) — STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
+| 2026-10-10 23:59 CDT | G5 SEC-12 | docs/security/CHECKLIST.md@adfd6fa | accept — STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
+| 2026-10-10 23:59 CDT | G5 SEC-13 | docs/security/CHECKLIST.md@adfd6fa | accept — STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
+| 2026-10-10 23:59 CDT | G5 SEC-14 | docs/security/CHECKLIST.md@adfd6fa | fix: AT-044 stock history append-only — STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
 
 ## Log
 
@@ -425,3 +429,4 @@ several harnesses read it and the repo is public.
 2026-10-10 23:51 CDT REVIEW M5 milestone: diff main..milestone written to .handoff/reviews/M5-diff.patch; verifier pass 7 dispatched
 2026-10-10 23:57 CDT REVIEW M5 pass 7: 0 P0, 2 P1, 1 P2, 3 P3 (.handoff/reviews/M5-pass7.md)
 2026-10-10 23:57 CDT DISPATCH M5-T011 harness=claude-subagent why=pass 7 review fixes; worktree .claude/worktrees/m5-t011
+2026-10-10 23:59 CDT SECURITY M5 check-security: 0 reachable critical/high; SEC-14 fixed by AT-044 (green pin, fails with the grant widened); SEC-10, 12, 13 accepted (D76-D78)

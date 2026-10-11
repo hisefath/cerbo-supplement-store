@@ -7,7 +7,7 @@ import pg from 'pg'
 import { describe, expect, it } from 'vitest'
 import { allocateFee } from '../../../server/services/money'
 import { useApp } from '../support/app'
-import { OWNER_URL, q } from '../support/db'
+import { APP_URL, OWNER_URL, q, withClient } from '../support/db'
 import { call, expectProblem, newKey, signIn } from '../support/http'
 import { EMAIL } from '../support/people'
 
@@ -314,5 +314,27 @@ describe('US-5 review pins (M5-pass3 R1, M5-pass6 R5)', () => {
     expect(await q("select kind, change from stock_movements where product_id = $1 order by id", [w.omega3])).toEqual([{ kind: 'sale', change: -1 }])
     const paid = await q("select count(*)::int as n from payment_attempts where order_id in ($1, $2) and status = 'succeeded'", [a, b])
     expect(paid[0].n).toBe(1)
+  })
+})
+
+describe('US-5 stock history is append-only (check-security SEC-14)', () => {
+  it('M5_AT_044 the app user cannot edit or delete a stock history entry; Omar\'s +12 "delivery received" still shows (FR-030, INV-4, SEC-14)', async () => {
+    const w = app.world()
+    const omar = await signIn(EMAIL.omar)
+    expect((await adjust(omar, w.vitaminD3, { change: 12, reason: 'delivery received', expected_units_in_stock: 10 })).status).toBe(201)
+    const codes = await withClient(APP_URL, async (c) => {
+      const out: string[] = [`select:${(await c.query('select count(*)::int as n from stock_movements')).rows[0].n}`]
+      for (const sql of ['update stock_movements set change = 1', 'delete from stock_movements']) {
+        try {
+          await c.query(sql)
+          out.push('allowed')
+        } catch (e) {
+          out.push((e as { code?: string }).code ?? 'unknown')
+        }
+      }
+      return out
+    })
+    expect(codes).toEqual(['select:1', '42501', '42501'])
+    expect(await q('select change, reason from stock_movements')).toEqual([{ change: 12, reason: 'delivery received' }])
   })
 })

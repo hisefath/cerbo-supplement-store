@@ -865,3 +865,39 @@ Copy this block for each new entry (D-ids increase by one, starting at D1):
 - Cost accepted: M6 starts after M5.1; the inspiration stays a design language only (no Cluely branding, images or name), and dense clinical screens keep their contrast. · Reversibility: Type 2 two-way — revert the milestone merge · Confidence: high
 - Revisit if: Cerbo supplies its own design system for embedded apps, or the restyle hurts readability on the dense screens. · Evidence: https://cluely.com/ (computed styles read 2026-10-10: Geist and EB Garamond, 12px buttons with blue glow, 16-32px cards); .handoff/TRACKER.md M5.1-R01; approval decision: visual refresh placement 2026-10-10 22:36 CDT · Interview line: "I took a modern design language as inspiration, not a brand, and shipped it as its own milestone so the restyle is reviewed and reversible on its own."
 - Review: Topic Product · Weight ●○○ · One-liner: The cluely-inspired restyle is its own milestone, M5.1, after M5.
+
+### D76 Keep quantity uncapped now that stock caps it  [status: accepted]
+- Date 2026-10-10 23:59 CDT · phase 12 check-security (G5) · milestone M5 · Decided by: human, G5 SEC-10 2026-10-10 23:59 CDT: STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" · Proposed by: check-security (Claude Code, claude-opus-5-5) · artifact: docs/security/CHECKLIST.md@adfd6fa
+- Context and forces: D53's revisit trigger fired: M5 caps quantity by stock at send (server/services/orders.ts:60), so the overflow 500 needs an absurd stock count.
+- Options:
+  - Do nothing / simplest (shown as "default: pending G5"): leave it undecided — cost: the milestone cannot merge — rejected: blocks G5
+  - fix: add an explicit quantity maximum — rejected: cost outweighs a low, harmless finding
+  - accept (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: a 500 instead of a 422 only with absurd stock counts; no data harm — chosen
+- Choice: accept · Why: In the context of stock now limiting quantity, facing a 500 only at absurd stock counts, we chose to accept it over a new cap, accepting a poor error in an unreachable case.
+- Cost accepted: a 500 instead of a 422 only with absurd stock counts; no data harm · Reversibility: Type 2 two-way · Confidence: high
+- Revisit if: a real user hits the 500, or stock limits are removed · Evidence: docs/security/CHECKLIST.md SEC-10; approval G5 SEC-10 2026-10-10 23:59 CDT · Interview line: "Stock already caps quantity, so the leftover overflow needs absurd stock; we accepted it rather than invent a limit."
+- Review: Topic Security · Weight ●○○ · One-liner: Stock limits now cap quantity; the overflow 500 stays accepted.
+
+### D77 Accept 500s on out-of-range price and stock input  [status: accepted]
+- Date 2026-10-10 23:59 CDT · phase 12 check-security (G5) · milestone M5 · Decided by: human, G5 SEC-12 2026-10-10 23:59 CDT: STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" · Proposed by: check-security (Claude Code, claude-opus-5-5) · artifact: docs/security/CHECKLIST.md@adfd6fa
+- Context and forces: Signed-in providers or operations staff can send a price or stock change beyond the 32-bit integer column, or an odd cursor, and get a 500 instead of a 422 (server/services/pricing.ts:15). Nothing is exposed and the transaction rolls back.
+- Options:
+  - Do nothing / simplest (shown as "default: pending G5"): leave it undecided — cost: the milestone cannot merge — rejected: blocks G5
+  - fix: add upper bounds and cursor validation — rejected: cost outweighs a low, harmless finding
+  - accept (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: a 500 instead of a 422 for absurd staff input; no data harm — chosen
+- Choice: accept · Why: In the context of privileged staff-only inputs, facing a 500 with no data harm, we chose to accept it over bounds now, accepting a confusing error for absurd input.
+- Cost accepted: a 500 instead of a 422 for absurd staff input; no data harm · Reversibility: Type 2 two-way · Confidence: high
+- Revisit if: a real user hits one, or the routes open to patients · Evidence: docs/security/CHECKLIST.md SEC-12; approval G5 SEC-12 2026-10-10 23:59 CDT · Interview line: "Only staff can send absurd numbers, the database refuses them, and nothing leaks, so a nicer error waits."
+- Review: Topic Security · Weight ●○○ · One-liner: Absurd staff input gives a 500, not a 422; accepted, no harm.
+
+### D78 Accept that reading an order can end a due hold  [status: accepted]
+- Date 2026-10-10 23:59 CDT · phase 12 check-security (G5) · milestone M5 · Decided by: human, G5 SEC-13 2026-10-10 23:59 CDT: STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" · Proposed by: check-security (Claude Code, claude-opus-5-5) · artifact: docs/security/CHECKLIST.md@adfd6fa
+- Context and forces: GET EP-21 now writes: it ends a due checkout hold or closes an abandoned payment (server/services/orders.ts:312), only transitions already due, and only after the access check.
+- Options:
+  - Do nothing / simplest (shown as "default: pending G5"): leave it undecided — cost: the milestone cannot merge — rejected: blocks G5
+  - fix: move the transitions to a scheduled job — rejected: cost outweighs a low, harmless finding
+  - accept (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: a GET with side effects, limited to due transitions after the access check — chosen
+- Choice: accept · Why: In the context of time-driven transitions that are already due, facing a GET that writes, we chose to accept it over a job runner, accepting a read with side effects.
+- Cost accepted: a GET with side effects, limited to due transitions after the access check · Reversibility: Type 2 two-way · Confidence: high
+- Revisit if: a GET handler gains a write that is not time-driven, or a job runner arrives · Evidence: docs/security/CHECKLIST.md SEC-13; approval G5 SEC-13 2026-10-10 23:59 CDT · Interview line: "Reading an order may finish a transition that was already due, only for people allowed to see it; a job runner can replace it later."
+- Review: Topic Security · Weight ●○○ · One-liner: GET of an order may end a due hold; accepted, access-checked.

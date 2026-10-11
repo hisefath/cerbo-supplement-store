@@ -34,7 +34,7 @@ Weight: ●●● critical (hard to undo, or touches money, personal data or sig
 - ●○○ D56 — Demo database runs PostgreSQL 18 while tests run 16.
 - ●○○ ~~D11~~ — v1: one stock path through a single method. (replaced by D22)
 
-### Security (7)
+### Security (10)
 
 - ●●● D26 — Sign-in, notices without health details, no patient identity for platform staff.
 - ●●○ D37 — Seeded test accounts with server-side sessions.
@@ -43,6 +43,9 @@ Weight: ●●● critical (hard to undo, or touches money, personal data or sig
 - ●○○ D50 — braces advisory accepted: build tooling only.
 - ●○○ D51 — simple-git advisory accepted: Nuxt devtools only.
 - ●○○ D72 — Session and notice tokens come straight from randomBytes; no test seam.
+- ●○○ D76 — Stock limits now cap quantity; the overflow 500 stays accepted.
+- ●○○ D77 — Absurd staff input gives a 500, not a 422; accepted, no harm.
+- ●○○ D78 — GET of an order may end a due hold; accepted, access-checked.
 
 ### Money (8)
 
@@ -127,6 +130,9 @@ Decisions that adopted a software-factory-kit change (H) and the finding (F) beh
 
 ### 2026-10-10
 
+- D78 · Security · ●○○ — GET of an order may end a due hold; accepted, access-checked.
+- D77 · Security · ●○○ — Absurd staff input gives a 500, not a 422; accepted, no harm.
+- D76 · Security · ●○○ — Stock limits now cap quantity; the overflow 500 stays accepted.
 - D75 · Product · ●○○ — The cluely-inspired restyle is its own milestone, M5.1, after M5.
 - D74 · Process · ●●○ — M5 is six vertical slices: price change first, stock at payment second.
 - D73 · Process · ●●○ — The design caught up with M4's code before M5 builds on it.
