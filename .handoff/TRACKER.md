@@ -490,3 +490,4 @@ several harnesses read it and the repo is public.
 2026-10-11 09:52 CDT DISPATCH M5.2-T002 harness=claude-subagent why=pass 1 review fixes
 2026-10-11 09:59 CDT VERIFY M5.2-T002 squashed e9b46fc: worker stopped human_review on Q1 (button vs link vs AT-003); answer A recorded; supervisor committed the verified worktree diff (scope-guard OK, 4 paths); make check exit 0 (218/43/44/5/5)
 2026-10-11 09:59 CDT REVIEW M5.2: report-milestone and check-security dispatched
+2026-10-11 10:04 CDT FAIL flaky: pre-push make check failed once on unit tests and once on M5_AT_037 (awaiting-payment items) on milestone/m5.2-safe-landing; not reproducible: unit 218/218 alone, AT-037 3/3 alone, M5 suite 44/44 twice; route-failure candidate (shared test database or timing)
