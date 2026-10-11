@@ -6,10 +6,10 @@
 # Commands table in AGENTS.md). Until then they fail on purpose, so an unconfigured repo can never look green.
 # Keep the target names: skills and hooks call `make check`, not the tools directly.
 
-.PHONY: check lint types test setup db-test-up test-acceptance test-acceptance-m4 test-acceptance-m5 test-acceptance-m5.1 test-acceptance-m5.2 decisions
+.PHONY: check lint types test setup db-test-up test-acceptance test-acceptance-m4 test-acceptance-m5 test-acceptance-m5.1 test-acceptance-m5.2 test-acceptance-m6 decisions
 
-## check: lint + types + tests + M4, M5, M5.1 and M5.2 acceptance suites + decision review in sync — the gate
-check: lint types test test-acceptance-m4 test-acceptance-m5 test-acceptance-m5.1 test-acceptance-m5.2 decisions
+## check: lint + types + tests + M4, M5, M5.1, M5.2 and M6 acceptance suites + decision review in sync — the gate
+check: lint types test test-acceptance-m4 test-acceptance-m5 test-acceptance-m5.1 test-acceptance-m5.2 test-acceptance-m6 decisions
 	@echo "make check: OK"
 
 ## lint: workflow scripts must parse (docs-only phase: no product code yet; stack tools are added at M3 design)
@@ -37,7 +37,7 @@ setup:
 db-test-up:
 	docker compose up -d db-test
 
-## test-acceptance: every milestone's QA-owned acceptance tests (check runs the M4, M5, M5.1 and M5.2 parts via test-acceptance-m4, -m5, -m5.1 and -m5.2; needs `make db-test-up`)
+## test-acceptance: every milestone's QA-owned acceptance tests (check runs the M4, M5, M5.1, M5.2 and M6 parts via test-acceptance-m4, -m5, -m5.1, -m5.2 and -m6; needs `make db-test-up`)
 test-acceptance:
 	npx vitest run --dir tests/acceptance
 
@@ -56,6 +56,10 @@ test-acceptance-m5.1:
 ## test-acceptance-m5.2: the M5.2 acceptance suite, part of check (needs `make db-test-up`)
 test-acceptance-m5.2:
 	npx vitest run --dir tests/acceptance/M5.2
+
+## test-acceptance-m6: the M6 acceptance suite, part of check (needs `make db-test-up`)
+test-acceptance-m6:
+	npx vitest run --dir tests/acceptance/M6
 
 # --- Example: Laravel 13 / PHP 8.5 (Pint + Larastan/PHPStan + Pest or PHPUnit) -------------------------------
 # Replace the three recipes above with these (recipe lines must start with a TAB):
