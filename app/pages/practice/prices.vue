@@ -19,7 +19,10 @@ interface PriceList {
   history_next_cursor: string | null
 }
 
-useHead({ title: 'Practice prices' })
+// S5 title names the practice (EP-17 Me.practice_name, read from the session AppShell fetches).
+const viewer = useNuxtData<{ practice_name?: string | null } | null>('viewer').data
+const title = computed(() => (viewer.value?.practice_name ? `Practice prices · ${viewer.value.practice_name}` : 'Practice prices'))
+useHead({ title })
 const route = useRoute()
 const cursor = computed(() => (typeof route.query.history_cursor === 'string' ? route.query.history_cursor : undefined))
 const { data: list, error, refresh, status } = await useFetch<PriceList>('/api/practice/prices', {
@@ -114,7 +117,7 @@ const pageProblem = computed<Problem | null>(() => (error.value ? (error.value.d
 <template>
   <AppShell>
     <section class="prices" aria-labelledby="prices-heading">
-      <h1 id="prices-heading">Practice prices</h1>
+      <h1 id="prices-heading">{{ title }}</h1>
       <p v-if="status === 'pending' && !list" role="status">Loading prices…</p>
       <ProblemMessage
         v-else-if="pageProblem"

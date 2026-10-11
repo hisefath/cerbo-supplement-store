@@ -9,6 +9,7 @@ import { clientAddress, idleCutoff, signIn, signOut, toMe, toViewer, verifyPassw
 import { ProblemError } from '../../server/utils/problem'
 import signOutHandler from '../../server/api/session/index.delete'
 import signInHandler from '../../server/api/session/index.post'
+import getSessionHandler from '../../server/api/session/index.get'
 
 const fake = vi.hoisted(() => ({
   queries: [] as { sql: string; parameters: readonly unknown[] }[],
@@ -105,16 +106,42 @@ describe('idle limit: 15 minutes (FR-041, NFR-008, AE-039)', () => {
   })
   it('the viewer expires 15 minutes after last activity; Me carries it as ISO time', () => {
     const lastSeen = new Date('2026-10-10T12:00:00Z')
-    const v = toViewer({ id: '7', display_name: 'Ana Ruiz', role: 'patient', practice_id: '3' }, lastSeen)
+    const v = toViewer({ id: '7', display_name: 'Ana Ruiz', role: 'patient', practice_id: '3', practice_name: 'Willow Creek Wellness' }, lastSeen)
     expect(v.idleExpiresAt.toISOString()).toBe('2026-10-10T12:15:00.000Z')
     expect(toMe(v)).toEqual({
       user_id: 7,
       display_name: 'Ana Ruiz',
       role: 'patient',
       practice_id: 3,
+      practice_name: 'Willow Creek Wellness',
       idle_expires_at: '2026-10-10T12:15:00.000Z',
     })
-    expect(toMe(toViewer({ id: '9', display_name: 'Omar', role: 'sre', practice_id: null }, lastSeen)).practice_id).toBeNull()
+    const staff = toMe(toViewer({ id: '9', display_name: 'Omar', role: 'sre', practice_id: null, practice_name: null }, lastSeen))
+    expect(staff.practice_id).toBeNull()
+    expect(staff.practice_name).toBeNull()
+  })
+})
+
+describe('EP-17 Me.practice_name: the viewer\'s practice, read with the user (M5-pass7 R4)', () => {
+  it('resolve and signIn read the practice name by left join, so platform staff (no practice) still sign in', async () => {
+    freezeClock(T0)
+    fake.answer = (s) =>
+      s.startsWith('update "sessions" set "last_seen_at"')
+        ? [{ user_id: '2', last_seen_at: T0 }]
+        : s.startsWith('select') && s.includes('"users"')
+          ? [{ id: '2', display_name: 'Dr. Chen', role: 'provider', practice_id: '3', practice_name: 'Willow Creek Wellness', password_hash: hashFor('pw') }]
+          : s.startsWith('insert into "sessions"')
+            ? [{ last_seen_at: T0 }]
+            : []
+    const res = await toWebHandler(createApp().use(getSessionHandler))(
+      new Request('http://localhost/api/session', { headers: { cookie: 'session=tok-1' } }),
+    )
+    expect((await res.json()).practice_name).toBe('Willow Creek Wellness')
+    const { viewer } = await signIn('chen@example.test', 'pw', '10.0.0.1')
+    expect(toMe(viewer).practice_name).toBe('Willow Creek Wellness')
+    const reads = sqlOf('select').filter((q) => q.sql.includes('"users"'))
+    expect(reads).toHaveLength(2)
+    for (const q of reads) expect(q.sql).toMatch(/left join "practices" on "practices"\."id" = "users"\."practice_id"/)
   })
 })
 

@@ -15,6 +15,7 @@ export interface Viewer {
   displayName: string
   role: Role
   practiceId: bigint | null
+  practiceName: string | null
   idleExpiresAt: Date
 }
 
@@ -61,12 +62,16 @@ export async function verifyPassword(password: string, stored: string): Promise<
   }
 }
 
-export function toViewer(u: { id: string; display_name: string; role: string; practice_id: string | null }, lastSeen: Date): Viewer {
+export function toViewer(
+  u: { id: string; display_name: string; role: string; practice_id: string | null; practice_name: string | null },
+  lastSeen: Date,
+): Viewer {
   return {
     userId: BigInt(u.id),
     displayName: u.display_name,
     role: u.role as Role,
     practiceId: u.practice_id === null ? null : BigInt(u.practice_id),
+    practiceName: u.practice_name,
     idleExpiresAt: new Date(lastSeen.getTime() + IDLE_MS),
   }
 }
@@ -122,12 +127,18 @@ async function countAttempt(email: string, ip: string): Promise<void> {
     })
 }
 
+/** Users with their practice's name (EP-17 Me.practice_name); platform staff have no practice, hence the left join. */
+const usersWithPractice = () =>
+  useDb()
+    .selectFrom('users')
+    .leftJoin('practices', 'practices.id', 'users.practice_id')
+    .select(['users.id', 'users.display_name', 'users.role', 'users.practice_id', 'practices.name as practice_name'])
+
 export async function signIn(email: string, password: string, ip: string): Promise<{ viewer: Viewer; cookieToken: string }> {
   const db = useDb()
   await countAttempt(email.toLowerCase(), ip)
-  const user = await db
-    .selectFrom('users')
-    .select(['id', 'display_name', 'role', 'practice_id', 'password_hash'])
+  const user = await usersWithPractice()
+    .select('users.password_hash')
     .where(sql`lower(email)`, '=', email.toLowerCase())
     .executeTakeFirst()
   const ok = await verifyPassword(password, user?.password_hash ?? dummyHash())
@@ -166,10 +177,8 @@ export async function resolve(cookieToken: string | undefined): Promise<Viewer |
       .execute()
     return null
   }
-  const user = await db
-    .selectFrom('users')
-    .select(['id', 'display_name', 'role', 'practice_id'])
-    .where('id', '=', live.user_id)
+  const user = await usersWithPractice()
+    .where('users.id', '=', live.user_id)
     .executeTakeFirstOrThrow()
   return toViewer(user, live.last_seen_at)
 }
@@ -205,6 +214,7 @@ export function toMe(v: Viewer) {
     display_name: v.displayName,
     role: v.role,
     practice_id: v.practiceId === null ? null : Number(v.practiceId),
+    practice_name: v.practiceName,
     idle_expires_at: v.idleExpiresAt.toISOString(),
   }
 }
