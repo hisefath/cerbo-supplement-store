@@ -815,3 +815,15 @@ Copy this block for each new entry (D-ids increase by one, starting at D1):
 - Cost accepted: one checklist line per MR. · Reversibility: Type 2 two-way — revert the commit · Confidence: high
 - Revisit if: an MR merges without a pipeline link. · Evidence: HARNESS_CHANGELOG.md H17; .gitlab/merge_request_templates/Default.md; D70; approval G-L5 (approval covers apply and project commit) 2026-10-10 19:46 CDT · Interview line: "Each Cerbo MR shows its CI pipeline before it merges."
 - Review: Topic Process · Weight ●○○ · One-liner: Cerbo's MR template asks for the green pipeline link.
+
+### D72 No test seam for random tokens  [status: accepted]
+- Date 2026-10-10 20:32 CDT · phase 6 design-lld (G3, M5-R01 catch-up) · milestone M5 · Decided by: human, G3 D72 2026-10-10 20:32 CDT: "Approve, drop the seam" · Proposed by: design-lld (Claude Code, claude-opus-5-5) · artifact: docs/architecture/lld.md@9708841
+- Context and forces: the first LLD planned SEAM-2, a token module tests could replace; M4 built BE-3 and BE-12 calling Node's randomBytes directly (review M4-pass1 R5). Tokens are opaque and stored or compared only by SHA-256 hash, so no test needs to predict one.
+- Options:
+  - Do nothing / simplest: leave the LLD saying "token module" while the code calls randomBytes — cost: design and code disagree; the next reviewer flags it again — rejected: the design must match the code
+  - Drop the seam: tokens come from randomBytes directly; SEAM-2 says "not faked" (agent's recommendation) — cost: none now (document only) — chosen
+  - Build the token module now and replace it in tests (agent's first proposal) — cost: about 1 hour for code no test uses — rejected: no current test needs a known token
+- Choice: drop the seam · Why: In the context of opaque tokens compared only by hash, facing a design that asked for a seam no test uses, we chose to drop SEAM-2's module over building it, to keep the design true to the code, accepting that a test needing a known token would bring it back.
+- Cost accepted: a future test that must know a token in advance needs the seam added then. · Reversibility: Type 2 two-way — add the module later · Confidence: high
+- Revisit if: a test needs a known token value, or tokens start carrying meaning. · Evidence: docs/architecture/lld.md SEAM-2, BE-3, BE-12; .handoff/reviews/M4-pass1.md R5; proposed as docs/architecture/lld.md D72; approval G3 D72 2026-10-10 20:32 CDT · Interview line: "Tokens are random and only compared by hash, so I dropped the planned test seam instead of building code no test needed."
+- Review: Topic Security · Weight ●○○ · One-liner: Session and notice tokens come straight from randomBytes; no test seam.

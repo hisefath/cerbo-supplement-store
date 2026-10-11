@@ -33,7 +33,7 @@ Weight: ●●● critical (hard to undo, or touches money, personal data or sig
 - ●○○ D56 — Demo database runs PostgreSQL 18 while tests run 16.
 - ●○○ ~~D11~~ — v1: one stock path through a single method. (replaced by D22)
 
-### Security (6)
+### Security (7)
 
 - ●●● D26 — Sign-in, notices without health details, no patient identity for platform staff.
 - ●●○ D37 — Seeded test accounts with server-side sessions.
@@ -41,6 +41,7 @@ Weight: ●●● critical (hard to undo, or touches money, personal data or sig
 - ●○○ D49 — node-forge advisory accepted: Nuxt dev tooling only.
 - ●○○ D50 — braces advisory accepted: build tooling only.
 - ●○○ D51 — simple-git advisory accepted: Nuxt devtools only.
+- ●○○ D72 — Session and notice tokens come straight from randomBytes; no test seam.
 
 ### Money (8)
 
@@ -123,6 +124,7 @@ Decisions that adopted a software-factory-kit change (H) and the finding (F) beh
 
 ### 2026-10-10
 
+- D72 · Security · ●○○ — Session and notice tokens come straight from randomBytes; no test seam.
 - D71 · Process · ●○○ — Cerbo's MR template asks for the green pipeline link.
 - D70 · Process · ●●○ — Every push runs make check on the MacBook shell runner; merge only on green.
 - D69 · Process · ●○○ — Three product fixes queued for M5; eight one-offs logged, not fixed.

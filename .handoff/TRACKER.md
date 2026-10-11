@@ -159,6 +159,7 @@ several harnesses read it and the repo is public.
 | 2026-10-10 19:46 CDT | G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) | H18@0ee4f6f2422d | "Approve, adopt H18 and H17" |
 | 2026-10-10 19:46 CDT | G-L5 (approval covers apply and project commit) | H17@1730d3f72cea | "Approve, adopt H18 and H17" |
 | 2026-10-10 19:53 CDT | deploy-production (option b: roll back to 1130822 at once if smoke is red) | M4@158fb11 | "yes, deploy 158fb11 to production" |
+| 2026-10-10 20:32 CDT | G3 D72 | docs/architecture/lld.md@9708841 D72 | "Approve, drop the seam" |
 
 ## Log
 
