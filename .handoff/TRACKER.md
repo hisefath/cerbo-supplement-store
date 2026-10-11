@@ -568,3 +568,4 @@ several harnesses read it and the repo is public.
 2026-10-11 14:09 CDT REVIEW M6.1: verifier pass 1 and check-security dispatched
 2026-10-11 14:51 CDT MERGE M6.1 MR !14 -> main 1377d9d (pipeline success on d32d570); make check on main exit 0 (all seven suites)
 2026-10-11 14:51 CDT DEPLOY M6.1 1377d9d → production web-v2 (deployment ef903acd SUCCESS); SMOKE GREEN 7/0; pre-approved; M5-R03 closed
+2026-10-11 15:44 CDT APPLY route-failure G-L5 "A, adopt all 10": kit H20 63163f4, H22 99195f4, H24 f1f7494, H26 9279262, H29 fa952bb (pushed); project H21, H23, H25, H27, H28 on chore/route-failure-h21-h28; bash login shell resolves node, npx, glab, railway
