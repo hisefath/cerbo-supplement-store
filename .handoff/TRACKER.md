@@ -505,3 +505,4 @@ several harnesses read it and the repo is public.
 2026-10-11 10:05 CDT FIX harness: .githooks/pre-push unsets GIT_DIR/GIT_WORK_TREE before make check; inside a worktree embed-diagrams resolved doubled paths and blocked the push (the earlier 'flaky' failures came from the same broken hook run); route-failure candidate for the kit
 2026-10-11 10:31 CDT MERGE M5.2 MR !11 -> main c9b890d (pipeline #49910 success); make check on main exit 0 (218/43/44/5/5)
 2026-10-11 10:31 CDT DEPLOY M5.2 c9b890d → production web-v2 (deployment 5224c9ca SUCCESS); SMOKE GREEN 7/0; deploy pre-approved by "tell me when M5.2 is ready to deploy, also deploy it"
+2026-10-11 10:36 CDT DISPATCH M6-ACC harness=claude-subagent why=define-acceptance first pass for M6; branch milestone/m6-measurement-and-operations
