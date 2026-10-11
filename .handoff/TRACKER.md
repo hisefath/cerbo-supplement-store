@@ -478,3 +478,4 @@ several harnesses read it and the repo is public.
 2026-10-11 08:35 CDT NOTE DV-6: MILESTONES M5.1 gate SHAs corrected to G3@6faccb4 G4@6bc24f6 (the row had the acceptance commit as G3)
 2026-10-11 08:35 CDT VERIFY M5.1-T004 squashed 7367c5d (recorded late): scope-guard OK (6 paths); supervisor make check on the milestone exit 0 (218/43/44/4) at 2026-10-11 08:00 CDT
 2026-10-11 08:35 CDT NOTE M5.1-T003 VERIFY shares the T002 line (2026-10-11 07:50): scope-guard OK (4 paths); supervisor make check exit 0 in its worktree
+2026-10-11 08:36 CDT CHECK browser (local dev server on the milestone head after T005): Geist and EB Garamond loaded from the app; stock form input border rgb(100,116,139) = --color-control-border; sign-in redirect to next=/ops/stock works; earlier: sign-in, prices, dashboard, 375 px no sideways scroll, stock page
