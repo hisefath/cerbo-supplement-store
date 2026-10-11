@@ -210,6 +210,7 @@ several harnesses read it and the repo is public.
 | 2026-10-11 07:29 CDT | harness fix (route-failure candidate): scripts/scope-guard.sh matches an exact Owns path literally before the glob, so bracketed Nuxt route files pass (M5-T008 FAIL line) | scripts/scope-guard.sh | STANDING row 2026-10-10 23:09 CDT |
 | 2026-10-11 07:31 CDT | G4 acceptance part (M5.1 AT-001 to AT-004 red; Q-1, Q-2 answered) | specs/M5.1-visual-refresh/acceptance.md@a7cb486 | STANDING row 2026-10-10 23:09 CDT |
 | 2026-10-11 07:31 CDT | G4 (M5.1 slices T001-T004; analyze run with a dotted-milestone copy: 0 overlaps, 0 cycles; 2 known tool limits accepted: tracer bullet covers no AE and T001 covers NFRs only, because a restyle has no AE by CQ-4) | specs/M5.1-visual-refresh/tasks@6bc24f6 | STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-11 06:56 CDT | deploy (ship-milestone) | main@220a971 → Railway production (web-v2) | "yes, deploy 220a971 to production" |
 
 ## Log
 
@@ -452,3 +453,6 @@ several harnesses read it and the repo is public.
 2026-10-11 00:24 CDT SECURITY M5 re-run at 23f3451: 0 reachable critical/high; SEC-14 fixed, SEC-10/12/13 accepted D76-D78; ALL CHECKS PASSED
 2026-10-11 07:22 CDT PHASE map-ux-flows revise (M5.1): Visual language VL-2 added to screens.md Global conventions; 14 screens x 6 sections intact; leak greps clean
 2026-10-11 07:31 CDT NOTE analyze.sh rejects dotted milestones (M5.1) and counts only FR/AE in covers: route-failure candidate (kit slice-tasks references/analyze.md)
+2026-10-11 00:34 CDT MERGE M5 MR !9 -> main 220a971 (pipeline #49100 success); make check on main exit 0 (unit 217, M4 43, M5 44)
+2026-10-11 06:59 CDT DEPLOY M5 220a971 → production web-v2 (deployment 373e2d7d SUCCESS); migrations 12000, 13000 applied by human-run railway-setup.sh --skip-seed; /version 220a971; SMOKE GREEN 7/0
+2026-10-11 06:59 CDT BUG filed: db/seed/demo.ts reset list lacks price_changes and stock_movements, so a full re-seed now fails (FK); fix in M5.1 via fix-bug
