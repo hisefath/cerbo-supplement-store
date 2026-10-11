@@ -30,9 +30,9 @@ several harnesses read it and the repo is public.
 | M5-T009 | S7 stock page fixes | Standard / build | claude-subagent | done | 2026-10-10 23:16 CDT | see task file | 12acb25 |
 | M5-T010 | S6 dashboard fixes | Standard / build | claude-subagent | done | 2026-10-10 23:16 CDT | see task file | 635d015 |
 | M5-T011 | review fixes: checkout answers (R2, R3), practice name (R4) | Standard / build | claude-subagent | done | 2026-10-10 23:57 CDT | see task file | 0c4510a |
-| M5.1-T001 | theme, fonts, sign-in band | Standard / build | claude-subagent | todo | 2026-10-11 07:31 CDT | see task file | — |
-| M5.1-T002 | provider screens | Standard / build | claude-subagent | todo | 2026-10-11 07:31 CDT | see task file | — |
-| M5.1-T003 | patient screens | Standard / build | claude-subagent | todo | 2026-10-11 07:31 CDT | see task file | — |
+| M5.1-T001 | theme, fonts, sign-in band | Standard / build | claude-subagent | done | 2026-10-11 07:31 CDT | see task file | 9987db7 |
+| M5.1-T002 | provider screens | Standard / build | claude-subagent | working | 2026-10-11 07:31 CDT | see task file | — |
+| M5.1-T003 | patient screens | Standard / build | claude-subagent | working | 2026-10-11 07:31 CDT | see task file | — |
 | M5.1-T004 | staff screens + suite join | Standard / build | claude-subagent | todo | 2026-10-11 07:31 CDT | see task file | — |
 | M4-CI01 | CI on the MacBook runner: enable runner 245, .gitlab-ci.yml running make check | Fix / supervisor | supervisor (claude-opus-5-5) | done | 2026-10-10 19:05 CDT | .gitlab-ci.yml | — |
 | M5-T001 | Provider changes a practice price (specs/M5-prices-and-stock/tasks/T001.md) | Standard / implement-task | claude-subagent | done | 2026-10-10 21:09 CDT | see task file | 135b9ca |
@@ -457,3 +457,5 @@ several harnesses read it and the repo is public.
 2026-10-11 06:59 CDT DEPLOY M5 220a971 → production web-v2 (deployment 373e2d7d SUCCESS); migrations 12000, 13000 applied by human-run railway-setup.sh --skip-seed; /version 220a971; SMOKE GREEN 7/0
 2026-10-11 06:59 CDT BUG filed: db/seed/demo.ts reset list lacks price_changes and stock_movements, so a full re-seed now fails (FK); fix in M5.1 via fix-bug
 2026-10-11 07:31 CDT DISPATCH M5.1-T001 harness=claude-subagent why=tracer bullet (theme, fonts, sign-in band); worktree .claude/worktrees/m51-t001
+2026-10-11 07:43 CDT VERIFY M5.1-T001 squashed 9987db7: scope-guard OK (5 paths); supervisor make check exit 0 (217/43/44); M5.1 AT-001, AT-003 green, AT-002, AT-004 red as planned
+2026-10-11 07:43 CDT DISPATCH M5.1-T002 and M5.1-T003 harness=claude-subagent why=parallel restyles (disjoint Owns)
