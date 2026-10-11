@@ -262,6 +262,7 @@ several harnesses read it and the repo is public.
 | 2026-10-11 15:40 CDT | G-L5 | H28@886510ef97aa | "A, adopt all 10" |
 | 2026-10-11 15:40 CDT | G-L5 | H29@0a295ac08761 | "A, adopt all 10" |
 | 2026-10-11 15:40 CDT | G-L5 (block decision, rows without a diff) | FINDINGS.md F32, F34, F36, F41-F46 | "A, adopt all 10" (recommended A: accept all as listed) |
+| 2026-10-11 16:33 CDT | Fix track: Sign out button (screens.md Global conventions; AT-006; 2 code files, no API change) | fix/sign-out-button | "theres no logout button, please make one" |
 
 ## Log
 
@@ -569,3 +570,4 @@ several harnesses read it and the repo is public.
 2026-10-11 14:51 CDT MERGE M6.1 MR !14 -> main 1377d9d (pipeline success on d32d570); make check on main exit 0 (all seven suites)
 2026-10-11 14:51 CDT DEPLOY M6.1 1377d9d → production web-v2 (deployment ef903acd SUCCESS); SMOKE GREEN 7/0; pre-approved; M5-R03 closed
 2026-10-11 15:44 CDT APPLY route-failure G-L5 "A, adopt all 10": kit H20 63163f4, H22 99195f4, H24 f1f7494, H26 9279262, H29 fa952bb (pushed); project H21, H23, H25, H27, H28 on chore/route-failure-h21-h28; bash login shell resolves node, npx, glab, railway
+2026-10-11 16:33 CDT FIX sign out: AppShell shows Sign out to signed-in people (EP-16, then /sign-in?signed_out=1 "You signed out."); AT-006 red at d3bd726 then green; make check exit 0; browser check: button shown, signs out, notice shown, hidden when signed out
