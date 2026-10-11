@@ -482,3 +482,5 @@ several harnesses read it and the repo is public.
 2026-10-11 08:35 CDT NOTE M5.1-T003 VERIFY shares the T002 line (2026-10-11 07:50): scope-guard OK (4 paths); supervisor make check exit 0 in its worktree
 2026-10-11 08:36 CDT CHECK browser (local dev server on the milestone head after T005): Geist and EB Garamond loaded from the app; stock form input border rgb(100,116,139) = --color-control-border; sign-in redirect to next=/ops/stock works; earlier: sign-in, prices, dashboard, 375 px no sideways scroll, stock page
 2026-10-11 09:37 CDT DISPATCH M5.2-T001 harness=claude-subagent why=safe landing fix (human report: 404s after sign-in)
+2026-10-11 09:48 CDT VERIFY M5.2-T001 squashed 2727f99: scope-guard OK (5 paths); supervisor make check exit 0 (218/43/44/5/4); diff read
+2026-10-11 09:48 CDT REVIEW M5.2: verifier pass 1 dispatched

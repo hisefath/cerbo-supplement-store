@@ -1,0 +1,700 @@
+diff --git a/MILESTONES.md b/MILESTONES.md
+index 34b4443..352aa5c 100644
+--- a/MILESTONES.md
++++ b/MILESTONES.md
+@@ -19,3 +19,4 @@ LLD); `slice-tasks` adds each implementation milestone's row at G4; the supervis
+ | M4 | Each person signs in; provider sends an order, patient pays once, the split is recorded and shown to the cent | 11 tasks: T001–T011 (+ T901–T903 deploy gaps) | D45-D56 (close-out D57-D69) | !4 (close-out !5) | done | G1@998ed94 G2@fea2e18 G3@5a984b8 G5@2604a27 | 10a020e (close-out c6a9438) | c6a9438 | — |
+ | M5 | Price-change form with history, price notices, checkout lock, stock limits, practice dashboard | 11 tasks: T001–T011 (T007–T011 close-out) | D33, D36, D39, D40, D41, D42, D44, D47, D72 (review D76-D79) | !9 | done | G1@998ed94 G2@fea2e18 G3@9708841 G4@c807534 G5@5213974 | 220a971 | 220a971 | — |
+ | M5.1 | Visual refresh: every screen in the VL-2 look, no behaviour change | 5 tasks: T001–T005 (T005 review fixes) | D75, D80, D81 | — | planned | G1@92d4a5f G3@6faccb4 G4@6bc24f6 | — | — | — |
++| M5.2 | Safe landing: every person lands on their work page or S15 Your home; not-found and wrong-role pages link home | 1 task: T001 | — | — | planned | G1 (CQ-5) | — | — | — |
+diff --git a/Makefile b/Makefile
+index 85307ba..b6889d7 100644
+--- a/Makefile
++++ b/Makefile
+@@ -6,10 +6,10 @@
+ # Commands table in AGENTS.md). Until then they fail on purpose, so an unconfigured repo can never look green.
+ # Keep the target names: skills and hooks call `make check`, not the tools directly.
+ 
+-.PHONY: check lint types test setup db-test-up test-acceptance test-acceptance-m4 test-acceptance-m5 test-acceptance-m5.1 decisions
++.PHONY: check lint types test setup db-test-up test-acceptance test-acceptance-m4 test-acceptance-m5 test-acceptance-m5.1 test-acceptance-m5.2 decisions
+ 
+-## check: lint + types + tests + M4, M5 and M5.1 acceptance suites + decision review in sync — the gate
+-check: lint types test test-acceptance-m4 test-acceptance-m5 test-acceptance-m5.1 decisions
++## check: lint + types + tests + M4, M5, M5.1 and M5.2 acceptance suites + decision review in sync — the gate
++check: lint types test test-acceptance-m4 test-acceptance-m5 test-acceptance-m5.1 test-acceptance-m5.2 decisions
+ 	@echo "make check: OK"
+ 
+ ## lint: workflow scripts must parse (docs-only phase: no product code yet; stack tools are added at M3 design)
+@@ -37,7 +37,7 @@ setup:
+ db-test-up:
+ 	docker compose up -d db-test
+ 
+-## test-acceptance: every milestone's QA-owned acceptance tests (check runs the M4, M5 and M5.1 parts via test-acceptance-m4, -m5 and -m5.1; needs `make db-test-up`)
++## test-acceptance: every milestone's QA-owned acceptance tests (check runs the M4, M5, M5.1 and M5.2 parts via test-acceptance-m4, -m5, -m5.1 and -m5.2; needs `make db-test-up`)
+ test-acceptance:
+ 	npx vitest run --dir tests/acceptance
+ 
+@@ -53,6 +53,10 @@ test-acceptance-m5:
+ test-acceptance-m5.1:
+ 	npx vitest run --dir tests/acceptance/M5.1
+ 
++## test-acceptance-m5.2: the M5.2 acceptance suite, part of check (needs `make db-test-up`)
++test-acceptance-m5.2:
++	npx vitest run --dir tests/acceptance/M5.2
++
+ # --- Example: Laravel 13 / PHP 8.5 (Pint + Larastan/PHPStan + Pest or PHPUnit) -------------------------------
+ # Replace the three recipes above with these (recipe lines must start with a TAB):
+ #
+diff --git a/app/components/ProblemMessage.vue b/app/components/ProblemMessage.vue
+index f899b65..e2b58b6 100644
+--- a/app/components/ProblemMessage.vue
++++ b/app/components/ProblemMessage.vue
+@@ -49,6 +49,7 @@ const retryable = computed(() => slug.value === 'internal' || slug.value === 'of
+   <div v-if="problem" role="alert" class="problem">
+     <p>{{ text }}</p>
+     <NuxtLink v-if="slug === 'unauthenticated'" :to="{ path: '/sign-in', query: { next: route.fullPath } }">Sign in</NuxtLink>
++    <NuxtLink v-if="slug === 'forbidden'" to="/">Go to your home</NuxtLink>
+     <button v-if="retryable" type="button" class="btn-secondary" @click="emit('retry')">Try again</button>
+   </div>
+ </template>
+diff --git a/app/error.vue b/app/error.vue
+new file mode 100644
+index 0000000..f42ceca
+--- /dev/null
++++ b/app/error.vue
+@@ -0,0 +1,23 @@
++<!-- FE-26 ErrorPage (lld.md Site root and safe landing; screens.md Global conventions "Page not found"): every page
++     error, inside FE-1's frame. 404: "We couldn't find that page"; anything else: "Something went wrong on our side".
++     Both offer "Go to your home" (/), which leads a signed-out person to sign-in. Nuxt keeps the status code. -->
++<script setup lang="ts">
++import type { NuxtError } from '#app'
++
++const props = defineProps<{ error: NuxtError }>()
++const notFound = computed(() => props.error.statusCode === 404)
++const title = computed(() => (notFound.value ? "We couldn't find that page" : 'Something went wrong on our side. Try again in a moment.'))
++useHead({ title })
++</script>
++
++<template>
++  <AppShell>
++    <div class="page-band">
++      <h1>{{ title }}</h1>
++    </div>
++    <section class="card">
++      <p v-if="notFound">The link may be old or mistyped.</p>
++      <NuxtLink to="/" class="btn-primary" @click.prevent="clearError({ redirect: '/' })">Go to your home</NuxtLink>
++    </section>
++  </AppShell>
++</template>
+diff --git a/app/pages/index.vue b/app/pages/index.vue
+index e339b0a..6277faa 100644
+--- a/app/pages/index.vue
++++ b/app/pages/index.vue
+@@ -1,10 +1,42 @@
+-<!-- Site root: sends the signed-in person to their role's home (flows.md F7 step 2). The page guard (BE-2) has already
+-     sent a stranger to sign-in; if the session still can't be read, sign-in it is (lld.md Site root). -->
++<!-- FE-25 HomePage (S15; lld.md Site root and safe landing): a role with a work page goes straight to it (ROLE_HOME);
++     a role with none yet sees its home with what to do instead. The page guard (BE-2) has already sent a stranger to
++     sign-in; if the session still can't be read, sign-in it is. Redirects only to fixed paths. -->
+ <script setup lang="ts">
+-const me = await useRequestFetch()<{ role: string }>('/api/session').catch(() => null)
+-await navigateTo((me && ROLE_HOME[me.role]) ?? '/sign-in', { replace: true, redirectCode: 302 })
++interface Me { role: string; display_name: string }
++
++const me = await useRequestFetch()<Me>('/api/session').catch(() => null)
++const pages = me ? ROLE_PAGES[me.role] : undefined
++if (!me || !pages) await navigateTo('/sign-in', { replace: true, redirectCode: 302 })
++else if (pages[0]) await navigateTo(pages[0].path, { replace: true, redirectCode: 302 })
++
++const ROLE_NAMES: Record<string, string> = { patient: 'Patient', sre: 'Site reliability', data_analyst: 'Data analyst' }
++const EMPTY: Record<string, string> = {
++  patient: 'Your orders open from the message your practice sends you.',
++  sre: 'Nothing to open yet: system health and operations access will appear here when they are ready.',
++  data_analyst: 'Nothing to open yet: platform health and the volume report will appear here when they are ready.',
++}
++const title = `Welcome, ${me?.display_name ?? ''}`
++useHead({ title })
+ </script>
+ 
+ <template>
+-  <div />
++  <AppShell>
++    <div class="page-band">
++      <h1>{{ title }}</h1>
++      <p>{{ ROLE_NAMES[me?.role ?? ''] }}</p>
++    </div>
++    <section class="card">
++      <h2>Your pages</h2>
++      <ul v-if="pages?.length">
++        <li v-for="p in pages" :key="p.path"><NuxtLink :to="p.path">{{ p.title }}</NuxtLink></li>
++      </ul>
++      <p v-else>{{ EMPTY[me?.role ?? ''] }}</p>
++    </section>
++  </AppShell>
+ </template>
++
++<style scoped>
++/* S15 on the VL-2 theme (theme.css): layout only here. */
++h1 { overflow-wrap: anywhere; }
++li a { display: inline-block; min-height: 24px; }
++</style>
+diff --git a/app/utils/role-home.ts b/app/utils/role-home.ts
+index 1f2723b..7940105 100644
+--- a/app/utils/role-home.ts
++++ b/app/utils/role-home.ts
+@@ -1,11 +1,25 @@
+-// Each role's home (flows.md F7 step 2): a patient her orders, a provider the practice dashboard, a reviewer Paid
+-// orders. Finance, SRE and analyst roles open the one operations page their role is for. Used by the sign-in page
+-// (FE-2) and the site root.
+-export const ROLE_HOME: Record<string, string> = {
+-  patient: '/orders',
+-  provider: '/practice/dashboard',
+-  operations_specialist: '/ops/orders',
+-  finance_lead: '/ops/orders',
+-  sre: '/ops/system',
+-  data_analyst: '/ops/health',
++// Each role's pages that exist today, in order (lld.md Site root and safe landing; flows.md F7 step 2): a provider the
++// practice dashboard, a reviewer Paid orders, an operations specialist also Stock adjustments. Patient, site
++// reliability and data analyst have none yet and land on S15 Your home. Used by the sign-in page (FE-2) and the site
++// root (FE-25).
++export interface RolePage { path: string; title: string }
++
++export const ROLE_PAGES: Record<string, RolePage[]> = {
++  patient: [],
++  provider: [
++    { path: '/practice/dashboard', title: 'Practice dashboard' },
++    { path: '/practice/prices', title: 'Practice prices' },
++  ],
++  operations_specialist: [
++    { path: '/ops/orders', title: 'Paid orders' },
++    { path: '/ops/stock', title: 'Stock adjustments' },
++  ],
++  finance_lead: [{ path: '/ops/orders', title: 'Paid orders' }],
++  sre: [],
++  data_analyst: [],
+ }
++
++/** A role's first listed page; a role with none goes to the site root, which shows S15 Your home. */
++export const ROLE_HOME: Record<string, string> = Object.fromEntries(
++  Object.entries(ROLE_PAGES).map(([role, pages]) => [role, pages[0]?.path ?? '/']),
++)
+diff --git a/docs/architecture/lld.md b/docs/architecture/lld.md
+index 1e62cd2..4408a30 100644
+--- a/docs/architecture/lld.md
++++ b/docs/architecture/lld.md
+@@ -1287,6 +1287,8 @@ flowchart TD
+ ### Component tree
+ 
+ - FE-1 AppShell (every screen)
++  - FE-25 HomePage (S15, new M5.2)
++  - FE-26 ErrorPage (every page error, new M5.2)
+   - FE-2 SignInPage (S8)
+     - FE-23 ProblemMessage
+   - FE-3 NoticePage (S9)
+@@ -1359,6 +1361,8 @@ FE-12, FE-22 and FE-23 are shared, stateless components; each appears under ever
+ | **FE-22** | MonthPicker | S6, S10, S11, S13, S14 | value: string | change(month) | none (stateless) | — |
+ | **FE-23** | ProblemMessage | all | problem: Problem | retry() | none (stateless) | error (maps each problem type to the screen's exact copy) |
+ | **FE-24** | OrderFunnel | S10 | funnel: Funnel | none | none (stateless) | edge data (few orders: "read the counts, not the bars") |
++| **FE-25** (new, M5.2) | HomePage | S15 | none | none | none (reads ST-1) | empty (role has no page yet), loading, permission denied (signed out: sign-in) |
++| **FE-26** (new, M5.2) | ErrorPage | all | error: { statusCode, message } | none | none (stateless) | error (404: "We couldn't find that page"; other: "Something went wrong on our side"), with "Go to your home" |
+ 
+ **Theme (new, M5.1, D81).** One global stylesheet, `app/assets/css/theme.css`, registered in `nuxt.config.ts` `css`, holds
+ the screens.md VL-2 visual language as CSS custom properties (colours, radii, shadows, spacing, type sizes; the colour
+@@ -1379,9 +1383,14 @@ and read colours, radii and type from the custom properties; no colour value is
+ is proven by an acceptance check that reads the colour custom properties from theme.css and computes each listed
+ text/background pair's WCAG contrast ratio.
+ 
+-**Site root (new, M5.1 fix, specs/bugs/root-url-404-after-sign-in.md).** `app/pages/index.vue` sends a signed-in person to
+-their role's home from the shared `ROLE_HOME` table (`app/utils/role-home.ts`, also used by FE-2); if the session
+-cannot be read it goes to `/sign-in`. It redirects only to fixed paths, never to input.
++**Site root and safe landing (changed, M5.2; FE-25, FE-26).** One table, `ROLE_PAGES` in `app/utils/role-home.ts`, lists
++for each role the pages that exist today (path and title, in order); `ROLE_HOME` is a role's first listed page. `app/pages/index.vue`
++(FE-25 HomePage, S15) sends a signed-in person to `ROLE_HOME` when their role has a page, otherwise renders S15 with the
++role's pages (none yet for patient, sre, data_analyst) and the S15 copy; if the session cannot be read it goes to `/sign-in`.
++It redirects only to fixed paths. `app/error.vue` (FE-26 ErrorPage) renders every page error inside FE-1's frame: a 404 shows
++"We couldn't find that page" and a primary "Go to your home" link to `/`; any other status shows "Something went wrong on our
++side. Try again in a moment." with the same link; the response keeps its status code. FE-23 ProblemMessage (changed): for
++`/problems/forbidden` it adds a "Go to your home" link to `/` after the screen's wrong-role copy (S8 "Here is your own work").
+ 
+ ### State ownership
+ 
+@@ -2794,3 +2803,4 @@ stateDiagram-v2
+ | 2026-10-10 23:57 CDT | Revise (M5 review pass 7 R4, pass 6 R9 a/b, pass 1 R3; Approvals STANDING 2026-10-10 23:09 CDT): EP-17 `Me` gains `practice_name` (string or null), read with the session's user; S5 and S6 titles use it | EP-17, BE-3, openapi Me | G3 by STANDING approval 2026-10-10 23:57 CDT |
+ | 2026-10-11 07:24 CDT | Delta (M5.1, D75, D80): FE-1 page frame (changed); Theme paragraph (theme.css custom properties, shared classes, self-hosted fonts); D81 proposed | FE-1, D81 | G3 by STANDING approval 2026-10-11 07:24 CDT |
+ | 2026-10-11 08:11 CDT | Revise (M5.1 review pass 1 R5, R9): control-border token; pill tokens listed; D81 marked accepted (journal D81); site-root page recorded | Theme, FE-2, D81 | G3 by STANDING approval 2026-10-11 08:11 CDT |
++| 2026-10-11 09:35 CDT | Delta (M5.2 safe landing, CQ-5): ROLE_PAGES; FE-25 HomePage (S15); FE-26 ErrorPage; FE-23 forbidden link | FE-23, FE-25, FE-26 | G3 by STANDING approval 2026-10-11 09:35 CDT |
+diff --git a/docs/design/flows.md b/docs/design/flows.md
+index da4173a..46e84bf 100644
+--- a/docs/design/flows.md
++++ b/docs/design/flows.md
+@@ -32,6 +32,7 @@ Updated: 2026-10-10 11:05 CDT
+ | S12 | Operations access | See who holds which operations role, and grant or remove one with a reason | US-10 | yes |
+ | S13 | Access log | Review every role grant and removal in a period | US-10 | no |
+ | S14 | System health | See availability, errors and slow pages for a period | US-10 | no |
++| S15 | Your home | Land somewhere safe after sign-in and see which pages the role can open | US-8 | no |
+ 
+ ## Flows
+ 
+@@ -122,6 +123,8 @@ Actor: any person (patient, provider, reviewer, platform staff) · Trigger: they
+ 
+ 1. [S8] Opens any page while signed out → sees the sign-in page and nothing of the page they asked for
+ 2. [S8] Signs in as herself → lands on the page she asked for, or her role's home: a patient her orders, a provider the practice dashboard, a reviewer Paid orders, staff Stock adjustments
++   - 2c. [S15] her role has no work page yet (patient, site reliability, data analyst) → sees her home with what to do instead, never a missing page
++   - 2d. [S15] she opens an address with no page → sees "We couldn't find that page" and "Go to your home"
+    - 2a. [S8 · Error] sign-in details not recognised → sees what to check, and her typed name is kept
+    - 2b. [S8 · Permission denied] she asked for a page her role does not allow → sees that her account can't open it and where her own work is
+ 3. [S8] Is inactive for 15 minutes → is signed out and sees the sign-in page with "You were signed out after 15 minutes without activity."
+@@ -190,7 +193,7 @@ Ends when: he knows whether October met its targets.
+ | US-1 | P1 | F1, F2, F5 | S1, S2, S6, S9 |
+ | US-2 | P1 | F2 | S2 |
+ | US-3 | P1 | F3 | S3, S4 |
+-| US-8 | P1 | F1, F2, F3, F7 | S3, S4, S8, S9 |
++| US-8 | P1 | F1, F2, F3, F7 | S3, S4, S8, S9, S15 |
+ | US-6 | P3 | F8 | S10 |
+ | US-9 | P3 | F9 | S11 |
+ | US-10 | P3 | F8, F10, F11, F12 | S10, S12, S13, S14 |
+diff --git a/docs/design/screens.md b/docs/design/screens.md
+index 65e7718..3c07c62 100644
+--- a/docs/design/screens.md
++++ b/docs/design/screens.md
+@@ -1,8 +1,8 @@
+ # Screens — In-EHR supplement orders
+ 
+ status: complete
+-Milestones: M4, M5, M5.1 (visual language), M6 · Flows: docs/design/flows.md · PRD: docs/product/prd.md@998ed94
+-Updated: 2026-10-11 07:22 CDT (M5.1 visual language added under Global conventions)
++Milestones: M4, M5, M5.1 (visual language), M5.2 (safe landing), M6 · Flows: docs/design/flows.md · PRD: docs/product/prd.md@998ed94
++Updated: 2026-10-11 09:34 CDT (M5.2: S15 Your home, page-not-found and wrong-role conventions)
+ 
+ ## Global conventions
+ 
+@@ -14,6 +14,9 @@ Updated: 2026-10-11 07:22 CDT (M5.1 visual language added under Global conventio
+ - Privacy: platform staff screens show an order number, never a patient's name or contact detail (FR-050); patient notices name only the practice (FR-044)
+ - Sample data: obviously fake names and values only (Dr. Maya Chen, Ana Ruiz, Willow Creek Wellness)
+ 
++- Page not found (M5.2): any address with no page shows, in the page frame, the title "We couldn't find that page", the text "The link may be old or mistyped." and a primary button "Go to your home"; any other failure to open a page shows "Something went wrong on our side. Try again in a moment." with the same button. Signed out, "Go to your home" leads to sign-in
++- Wrong role (M5.2, S8 Permission denied): every screen's wrong-role message is followed by a "Go to your home" link, so "Here is your own work" always has a way there
++
+ ### Visual language (M5.1)
+ 
+ Revised for M5.1 (decision D75): every screen keeps its layout, states, copy and focus order; only how it looks
+@@ -1471,6 +1474,72 @@ WCAG 2.2 AA — planned, not verified.
+ | 375 px | One column | Each measure is a card: value, target, met; nothing scrolls sideways |
+ | 1280 px | A list with four columns | As drawn |
+ 
++## S15 Your home
++
++Stories: US-8 · Flows: F7 step 2 · Key screen: no
++
++### Variants
++
++n/a — not a key screen
++
++### Layout
++
++```text
++1280 px
+++--------------------------------------------------------------+
++|~~ Welcome, Sam Reyes ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
++|   Site reliability                                            |
++| +----------------------------------------------------------+ |
++| | Your pages                                               | |
++| | Nothing to open yet: system health and operations access | |
++| | will appear here when they are ready.                    | |
++| +----------------------------------------------------------+ |
++| Questions? Contact platform support                           |
+++--------------------------------------------------------------+
++```
++
++A person whose role already has a work page (provider, operations specialist, finance lead) goes straight to that page and never sees this screen.
++
++### States
++
++| State | When it happens | What the user sees | Microcopy (exact) | What they can do |
++|---|---|---|---|---|
++| Empty | First use: the role has no page yet (patient, site reliability, data analyst) / Filtered: n/a — nothing to filter / Cleared: n/a — nothing to clear | The welcome band and one card that says what to do instead | First use: patient "Your orders open from the message your practice sends you." / site reliability "Nothing to open yet: system health and operations access will appear here when they are ready." / data analyst "Nothing to open yet: platform health and the volume report will appear here when they are ready." / Filtered: n/a — nothing to filter / Cleared: n/a — nothing to clear | Open the practice's message; contact support |
++| Loading | The person's details are loading | The page frame stays; progress after 1 s | "Loading your home…" / after 10 s: "Still loading. Try again in a moment." | Wait |
++| Error | Their mistake: n/a — nothing to type / Our failure: details could not load / No connection: offline | The sign-in page (the person cannot be confirmed) | Their mistake: n/a — nothing to type / Our failure: the sign-in page shows "Sign in again to continue." / No connection: "You're offline. Try again when you're back online." | Sign in |
++| Success | A role with a work page | Goes straight to that page | n/a — the work page is the confirmation | Work |
++| Permission denied | Signed out | The sign-in page | "You were signed out after 15 minutes without activity." when a session ended | Sign in |
++| Edge data | A 60-character name / a role with several pages later | Long names wrap in the band; pages list one per line, each a link | n/a — no extra text | Open a page |
++
++### Microcopy
++
++| Element | Text |
++|---|---|
++| Page title | "Welcome, Sam Reyes" (the person's name) |
++| Primary action | Each page link, named by its page title (none yet for these roles) |
++| Secondary action | "Questions? Contact platform support" (staff) / "Questions? Contact your practice" (patient) |
++| Field labels and helper text | n/a — nothing to type |
++| Confirmation | n/a — nothing changes on this screen |
++
++### Accessibility
++
++WCAG 2.2 AA — planned, not verified.
++
++- Focus order: 1. Page title 2. Each page link in order 3. Help link
++- Labels: the role name is text under the title, not only a colour
++- Keyboard: every link reachable with Tab, opened with Enter
++- Contrast and color: VL-2 tokens; white on the band 4.5:1 or better
++- Targets: links at least 24 px tall
++- Errors and status: the loading line is a status message
++- Focus not hidden: no sticky bars
++
++### Responsive
++
++| Width | Layout | What changes |
++|---|---|---|
++| 375 px | One column | The band wraps the name; the card fills the width; nothing scrolls sideways |
++| 1280 px | Band and one card | As drawn |
++
+ ## Demo layout (90 seconds)
+ 
+ | Beat | Time | Screen · state | What the viewer sees | Action |
+diff --git a/docs/product/prd.md b/docs/product/prd.md
+index 4878f4d..0d665a1 100644
+--- a/docs/product/prd.md
++++ b/docs/product/prd.md
+@@ -426,6 +426,7 @@ Answered from sources: Problem → brief Problem, REQ-01, R02, R08, R10 · Users
+ | M4 Tracer bullet | Each person signs in; provider sends an order, patient pays once, the split is recorded and shown to the cent | FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-007, FR-008, FR-009, FR-010, FR-011, FR-012, FR-013, FR-014, FR-015, FR-017, FR-031, FR-035, FR-036, FR-039, FR-040, FR-041, FR-042, FR-043, FR-044, FR-050, FR-066, FR-067, FR-068 | AE-001 to AE-015, AE-028, AE-031, AE-032, AE-037 to AE-041, AE-047, AE-063 to AE-065 | Dr. Chen sends Ana a $60.00 order, Ana pays it with the test payment, and a reviewer sees $30.00 + $29.55 + $0.45. |
+ | M5 Prices and stock | Price-change form with history, price notices, checkout lock, stock limits, practice dashboard | FR-018, FR-019, FR-020, FR-021, FR-022, FR-023, FR-024, FR-025, FR-026, FR-027, FR-028, FR-029, FR-030, FR-037, FR-038, FR-045, FR-046, FR-047, FR-069 | AE-016 to AE-027, AE-035, AE-036, AE-042 to AE-044, AE-066 | Dr. Chen changes a price, Ana sees the notice, pays, and the dashboard shows the sale and lower stock. |
+ | M5.1 Visual refresh | Every screen restyled to the M5.1 visual language (screens.md, D75, D80) with no change in behaviour | FR-005, FR-018, FR-028, FR-030, FR-045, NFR-015, NFR-016 (restyle only: every existing acceptance test stays green) | NFR-015, NFR-016 | A reviewer opens the prices page and the dashboard and sees the sky header band, serif titles and glowing buttons, with every number still readable. |
++| M5.2 Safe landing | Every person lands somewhere safe after sign-in: their work page, or a home that says what to do; unknown addresses and wrong-role pages link home | FR-039, FR-058 (flows.md F7 steps 2 and 2b, already approved; no new behaviour beyond them) | AE-038 | A reviewer signs in as Sam and sees his home instead of a 404, opens a wrong address and gets back home in one click. |
+ | M6 Measurement and operations | Platform health dashboard, volume report, financial report, operations roles, access log and system health | FR-032, FR-048, FR-049, FR-051, FR-052, FR-053, FR-054, FR-055, FR-056, FR-057, FR-058, FR-059, FR-060, FR-061, FR-062, FR-063, FR-064, FR-065 | AE-029, AE-045, AE-046, AE-048 to AE-062, SC-001, SC-002, SC-003 | Fran runs October's report and sees $90.00 = $45.00 + $44.32 + $0.68, balanced; Sam grants Dana a role and Fran sees it in the access log. |
+ | Later | Not in this appetite: pricing campaigns and corrections; broader holistic-care products were considered for the future of the product and parked (NG-12, CQ-3) | FR-016, FR-033, FR-034 | — | — |
+ 
+@@ -472,6 +473,7 @@ Answered from sources: Problem → brief Problem, REQ-01, R02, R08, R10 · Users
+ | 2026-10-09 21:45 CDT | G1 Revise (Q9-Q11): sign-in story US-8, notices without health details, order-status list and practice alerts in M5, platform health dashboard in M6, no patient identity for platform staff | US-5, US-6, US-8, FR-039 to FR-050, NFR-004, NFR-012, AE-037 to AE-047, EC-13, EC-14, NG-11, A-10 to A-12 | G1 |
+ | 2026-10-09 22:14 CDT | G1 Revise (Q12, R14, R15): financial report US-9, operations roles US-10, personas P-5 to P-8, retention and privileged-action logging | US-9, US-10, FR-051 to FR-065, NFR-013, NFR-014, AE-048 to AE-062, EC-15, EC-16, A-13, A-14 | G1 |
+ | 2026-10-11 07:23 CDT | Clarify pass 2 (CQ-4): M5.1 visual refresh row; NFR-015 contrast, NFR-016 own-origin assets | M5.1, NFR-015, NFR-016 | G1 (STANDING) |
++| 2026-10-11 09:34 CDT | Clarify (CQ-5): M5.2 Safe landing row | M5.2 | G1 (human words in CQ-5) |
+ 
+ ## Clarifications
+ 
+@@ -518,3 +520,14 @@ Parked for a later phase: none
+ - Applied: Milestone cut row M5.1; NFR-015 [Accessibility]; NFR-016 [Privacy]
+ - Decision candidate: no — it records an approved milestone (D75, D80) in the PRD
+ - Scope change: none (no new behaviour)
++
++### Pass 3 · 2026-10-11 09:35 CDT · clarify-spec (Claude Code, claude-opus-5-5)
++
++#### CQ-5 · [Scope] · Milestone cut › M5.2
++- Question: three roles land on pages that do not exist (patient /orders, site reliability /ops/system, data analyst /ops/health), unknown addresses show the framework's bare 404, and wrong-role pages lack the "Here is your own work" way out that S8 already promises. Add a small milestone to meet F7 steps 2 and 2b?
++- Options: A milestone M5.2 Safe landing (S15 Your home, page-not-found and wrong-role conventions) · B wait for M6, which builds two of the three missing pages · do nothing · recommendation: A
++- Answer (verbatim): "also everytime i log in, i get 404s. i dont reroute safely to a homepage, or have any info like i dont have access or get a link to a page i should be reaching, etc. lets fix that"
++- Status: resolved
++- Applied: Milestone cut row M5.2 (FR-039, FR-058)
++- Decision candidate: no — it meets approved flows F7 steps 2 and 2b
++- Scope change: none (the patient order list stays M5-R03)
+diff --git a/specs/M5.2-safe-landing/acceptance.md b/specs/M5.2-safe-landing/acceptance.md
+new file mode 100644
+index 0000000..b580153
+--- /dev/null
++++ b/specs/M5.2-safe-landing/acceptance.md
+@@ -0,0 +1,162 @@
++---
++milestone: M5.2
++slug: safe-landing
++artifact: acceptance
++status: draft
++written_by: define-acceptance (software-factory-kit 0.1)
++written_at: 2026-10-11 09:36 CDT (UTC-0500)
++base_sha: c956959
++inputs: "docs/product/prd.md (CQ-5, G1), docs/architecture/lld.md (Site root and safe landing, G3), docs/design/screens.md S15 + Global conventions (G-ux), docs/design/flows.md F7"
++tests: tests/acceptance/M5.2/
++gate: G4
++---
++
++# M5.2 acceptance: safe landing
++
++## Scope
++
++| Id | Kind | Text (short) | Source |
++|---|---|---|---|
++| FR-039 | FR | a signed-in person sees only the pages their role allows, and lands on them | prd.md M5.2 row |
++| FR-058 | FR | a wrong-role operations page refuses and shows none of its contents | prd.md M5.2 row |
++| AE-038 | AE | a person who is not signed in is sent to sign in | prd.md M5.2 row |
++
++Counts: `grep -E '^\| M5\.2 ' docs/product/prd.md | grep -oE '(FR|AE)-[0-9]{3}' | sort -u | wc -l` → 3.
++Out of scope this milestone: the patient order list (M5-R03); the M6 pages that will become the SRE's and analyst's work pages.
++
++## How these tests run
++
++| Item | Value | Source |
++|---|---|---|
++| Framework | Vitest 5 with @nuxt/test-utils | tests/acceptance/support/app.ts |
++| Run all | `npx vitest run tests/acceptance/M5.2` | AGENTS.md acceptance command |
++| Run one test (for a task's Done-when) | `npx vitest run tests/acceptance/M5.2 -t 'M5.2_AT_001 '` (exits 0 when no test matches: Q-1) | Red run |
++| Test database (safe to reset?) | yes: `supplements_test` on the throwaway container | tests/acceptance/support/db.ts:10-19 |
++| Suites | make check does not run M5.2 until M5.2-T001 adds it (Q-2) | Makefile |
++
++## Traceability
++
++| AT | Covers | Requirement (EARS, verbatim) | Given / When / Then (concrete values) | Technique | Level | Test (path::name) | Status |
++|---|---|---|---|---|---|---|---|
++| AT-001 | FR-039 | FR-039: When a person signs in with their own account, the system shall show only the pages their role allows: a patient their own orders, a provider their practice, platform staff the platform pages. | **Given** Sam (site reliability), Dana (data analyst) and Ana (patient), whose roles have no work page yet **When** each opens the site root **Then** 200 with "Welcome, <name>" and the S15 copy for their role | partition | integration | `tests/acceptance/M5.2/landing.test.ts::M5.2_AT_001` | red @ c956959 |
++| AT-002 | FR-039 | FR-039 (as above), flows.md F7 step 2 | **Given** Dr. Chen, Omar and Fran **When** each opens the site root **Then** a redirect to /practice/dashboard, /ops/orders, /ops/orders, and that page answers 200 | example | integration | `tests/acceptance/M5.2/landing.test.ts::M5.2_AT_002` | green: pins the role homes that exist |
++| AT-003 | AE-038, FR-039 | screens.md Global conventions "Page not found (M5.2)" | **Given** Dr. Chen signed in **When** she opens /no-such-page **Then** 404 with "We couldn't find that page" and a "Go to your home" link to /; a stranger gets 303 to sign-in | error-guessing | integration | `tests/acceptance/M5.2/landing.test.ts::M5.2_AT_003` | red @ c956959 |
++| AT-004 | FR-058, FR-039 | screens.md S8 Permission denied "Your account can't open that page. Here is your own work." and Global conventions "Wrong role (M5.2)" | **Given** Ana and Dr. Chen **When** each opens /practice/dashboard **Then** Dr. Chen's page has no home link; Ana's shows the provider-only message and a "Go to your home" link | decision-table | integration | `tests/acceptance/M5.2/landing.test.ts::M5.2_AT_004` | red @ c956959 |
++
++## Edge cases
++
++### Equivalence partitions
++
++| EDGE | FR | Case (concrete) | Expected (source) | Disposition |
++|---|---|---|---|---|
++| EDGE-001 | FR-039 | roles with a work page (provider, operations specialist, finance lead) and roles without (patient, site reliability, data analyst) | first: straight to the page; second: S15 (flows.md F7 2, 2c) | AT-001, AT-002 |
++
++### Boundary values
++
++| EDGE | FR | Case (concrete) | Expected (source) | Disposition |
++|---|---|---|---|---|
++| EDGE-002 | FR-039 | n/a | n/a | not tested: no numeric input on these pages |
++
++### State transitions
++
++| EDGE | FR | Case (concrete) | Expected (source) | Disposition |
++|---|---|---|---|---|
++| EDGE-003 | FR-039 | signed out, then signed in, opening the root | sign-in first, then the role's home (F7) | AT-002, AT-003 |
++
++### Decision tables
++
++| EDGE | FR | Case (concrete) | Expected (source) | Disposition |
++|---|---|---|---|---|
++| EDGE-004 | FR-058 | right role vs wrong role on the same page | right: the page; wrong: message plus "Go to your home" (S8) | AT-004 |
++
++### Error guessing
++
++| EDGE | FR | Case (concrete) | Expected (source) | Disposition |
++|---|---|---|---|---|
++| EDGE-005 | FR-039 | a mistyped or old address | 404 "We couldn't find that page" with a way home (Global conventions) | AT-003 |
++
++### Concurrency, idempotency, double-submit
++
++| EDGE | FR | Case (concrete) | Expected (source) | Disposition |
++|---|---|---|---|---|
++| EDGE-006 | FR-039 | n/a | n/a | not tested: no write on these pages |
++
++### Authorization and abuse
++
++| EDGE | FR | Case (concrete) | Expected (source) | Disposition |
++|---|---|---|---|---|
++| EDGE-007 | FR-058 | the home link or root redirect pointing off-site | only fixed paths (lld.md Site root) | AT-002 |
++
++### Money, rounding, time zones
++
++| EDGE | FR | Case (concrete) | Expected (source) | Disposition |
++|---|---|---|---|---|
++| EDGE-008 | FR-039 | n/a | n/a | not tested: no money on these pages |
++
++### Empty, huge and unicode data
++
++| EDGE | FR | Case (concrete) | Expected (source) | Disposition |
++|---|---|---|---|---|
++| EDGE-009 | FR-039 | a 60-character name on S15 | wraps inside the band (S15 Edge data) | not tested: needs a browser |
++
++## Edge-case coverage matrix
++
++Every in-scope FR against every group: EDGE ids, or `n/a: <why>`. No blank cell.
++
++| FR | partition | boundary | state | decision-table | error-guess | concurrency | authz | money-time | data-shape |
++|---|---|---|---|---|---|---|---|---|---|
++| FR-039 | EDGE-001 | EDGE-002 | EDGE-003 | n/a: one rule | EDGE-005 | EDGE-006 | EDGE-007 | EDGE-008 | EDGE-009 |
++| FR-058 | n/a: covered by EDGE-001 | n/a: no input | n/a: no state | EDGE-004 | n/a: covered by EDGE-005 | n/a: no write | EDGE-004 | n/a: no money | n/a: no input |
++
++## Silent-success guards
++
++Ways a test could pass while the feature is wrong (`references/silent-success.md`), and how these tests stop it.
++
++| SS | How a test could pass while the feature is wrong | Tests at risk | Guard used in those tests |
++|---|---|---|---|
++| SS-01 | a 200 page that is empty | AT-001 | the exact S15 title and copy per role |
++| SS-02 | a home link present on every page, refusal or not | AT-004 | the allowed twin (Dr. Chen) must not show it |
++| SS-03 | the 404 page asked for as JSON gives a JSON error | AT-003 | fetched as a browser does (accept text/html) |
++
++## NFR and SC checks
++
++| Id | Threshold (verbatim) | How measured | When |
++|---|---|---|---|
++| n/a | none: no NFR in M5.2 scope | n/a: covered by M4 to M5.1 checks in make check | n/a |
++
++## Demo smoke
++
++| Step | What the person does | What they see | Re-checks |
++|---|---|---|---|
++| 1 | Sam signs in | "Welcome, Sam Reyes" and what will appear here | AT-001 |
++| 2 | Ana signs in from the root | her home: orders open from the practice's message | AT-001 |
++| 3 | Dr. Chen signs in | her dashboard | AT-002 |
++| 4 | Dr. Chen opens /no-such-page | "We couldn't find that page", Go to your home | AT-003 |
++| 5 | Ana opens the practice dashboard (unhappy) | the provider-only message and Go to your home | AT-004 |
++
++## Red run
++
++- Command: `npx vitest run tests/acceptance/M5.2 --reporter=verbose`
++- Run at: 2026-10-11 09:36 CDT (UTC-0500) on c956959 (plus the uncommitted M5.2 test file) · exit code: 1
++- Output file: `/var/folders/hy/jdyfzw1d74j_zxvpgy4bysm80000gp/T/M5.2-acceptance-red.txt`
++- Runner summary: Tests 3 failed / 1 passed (4); AT-002 is a green pin (Q-1 pattern from M5): with ROLE_HOME pointing at a missing page it would fail.
++- Single-test proof: `-t 'M5.2_AT_001 '` runs one test; `-t 'M5.2_AT_999 '` exits 0 (Q-1)
++
++| AT | Test | Why it fails (assertion, or missing: <name from an approved artifact>) | First failing line |
++|---|---|---|---|
++| AT-001 | `M5.2_AT_001 a role with no work page yet …` | assertion: redirected to a missing page | sam.reyes@example.test: expected 302 to be 200 |
++| AT-003 | `M5.2_AT_003 an address with no page …` | missing: FE-26 ErrorPage | expected … to match /We couldn(&#39;/')t find that page/ |
++| AT-004 | `M5.2_AT_004 a wrong-role page …` | assertion: no home link after the wrong-role message (FE-23) | expected … to match the Go to your home link |
++
++## Spec gaps and questions
++
++| Q | Question | Recommended (and why) | Answer (verbatim) | Blocks | Status |
++|---|---|---|---|---|---|
++| Q-1 | Single-test filter exits 0 on no match | count passing ids in Done-when (M5 Q-5) | STANDING approval 2026-10-10 23:09 CDT | Done-when | answered |
++| Q-2 | When does make check run M5.2? | M5.2-T001 adds test-acceptance-m5.2 | STANDING approval 2026-10-10 23:09 CDT | every AT | answered |
++
++## Change log
++
++| Date | Change | Ids | Why (approved artifact, or the human's exact words) |
++|---|---|---|---|
++| 2026-10-11 09:36 CDT (UTC-0500) | First draft | all | prd.md CQ-5: "also everytime i log in, i get 404s. i dont reroute safely to a homepage, or have any info like i dont have access or get a link to a page i should be reaching, etc. lets fix that" |
+diff --git a/specs/M5.2-safe-landing/tasks/T001.md b/specs/M5.2-safe-landing/tasks/T001.md
+new file mode 100644
+index 0000000..ad714da
+--- /dev/null
++++ b/specs/M5.2-safe-landing/tasks/T001.md
+@@ -0,0 +1,70 @@
++---
++id: M5.2-T001
++milestone: M5.2
++skill: implement-task
++covers: [FR-039, FR-058, AE-038]
++after: []
++harness: claude
++mode: workspace-write
++hitl: false
++parallel: false
++budget: 1 run, 75 min
++---
++Owns: app/utils/role-home.ts,app/pages/index.vue,app/error.vue,app/components/ProblemMessage.vue,app/pages/sign-in.vue,Makefile
++
++## Ask
++
++Safe landing after sign-in
++
++Everyone lands somewhere safe: their work page, or S15 Your home; unknown addresses and wrong-role pages link home.
++
++- Slice: `ROLE_PAGES` (per role, existing pages with titles) and `ROLE_HOME` (first listed page) in app/utils/role-home.ts → FE-25 HomePage app/pages/index.vue (redirect when the role has a page, else S15 with the screens.md S15 copy for patient, sre, data_analyst; session read failure → /sign-in) → FE-26 ErrorPage app/error.vue (404 "We couldn't find that page" / "The link may be old or mistyped." / other "Something went wrong on our side. Try again in a moment.", primary "Go to your home" link to /, status code kept, inside FE-1 AppShell, VL-2 theme classes) → FE-23 ProblemMessage adds a "Go to your home" link to / for `/problems/forbidden` → Makefile `test-acceptance-m5.2` joins `check`
++- FR-039: "When a person signs in with their own account, the system shall show only the pages their role allows: a patient their own orders, a provider their practice, platform staff the platform pages."
++- FR-058: "If an operations person opens a page or action their role does not allow, then the system shall refuse and show none of its contents."
++- The sign-in page keeps using `ROLE_HOME`; a patient, sre or data_analyst now lands on `/` (S15) instead of a missing page.
++- Colours only from theme.css var() (M5.1 AT-002 scans every .vue file, including app/error.vue).
++- HITL: none
++- Why claude: one small slice.
++
++## Done-when
++
++```sh
++make -n check | grep -q 'tests/acceptance/M5.2' && [ "$(npx vitest run tests/acceptance/M5.2 -t 'M5.2_AT_(001|002|003|004) ' --reporter=verbose 2>&1 | grep -cE '✓ .*M5.2_AT_(001|002|003|004) ')" = 4 ] && make check
++```
++
++- Turns green: AT-001, AT-003, AT-004 (AT-002 stays green)
++- Still red afterwards, expected: none
++- Needs before dispatch: the test database is up and `node_modules` exists in the worktree.
++- Why this form: AT lines count passing tests (acceptance.md Q-1).
++
++## Must not change
++
++- `tests/acceptance/**` — read-only. Never edit, skip, delete or weaken a test to get green; if one looks wrong,
++  stop and write it under Questions in result.md.
++- `specs/**`, `docs/**`, `.handoff/**` (except your own result.md), `AGENTS.md`, `CLAUDE.md`, and every dependency
++  manifest or lockfile: a new or upgraded package is an Ask-first question; write it under Questions and stop.
++- Behaviour, copy, focus order and markup roles stay exactly as built: this is a restyle (prd.md CQ-4, D75). Every M4 and M5 acceptance test stays green.
++- Colours live only in app/assets/css/theme.css as the lld.md Theme custom properties; components read them with var(); never write a hex or rgb() colour in a .vue file.
++- Database roles and migrations (lld.md §1 Database roles and migrations): plain SQL files in `db/migrations/`, applied by `npx node-pg-migrate up -m db/migrations` as `supplements_owner`; the app connects as `supplements_app`, which gets SELECT and INSERT only on history tables (`price_changes`, `stock_movements`, `ledger_entries`, `access_log`) and never DELETE on `orders` or `order_lines`. A migration that already ran is never edited.
++- Money is integer cents only, never floats (AGENTS.md); fee = 0.75 % of the order amount rounded half-up once per order (BE-6 Money, lld.md §2).
++- Accepted decisions: D33 PostgreSQL · D36 API-first, one Nuxt deployable · D39 Kysely with plain SQL migrations · D40 bigint ids, order number = id · D41 idempotency keys in a table · D42 synchronous payment with short transactions · D44 Nuxt 4 · D47 a negative payout goes to review before charging · D72 no test seam for random tokens.
++- n/a — greenfield (no change plan)
++
++## Consumes / Produces
++
++- Consumes: theme.css (M5.1), FE-1 AppShell
++- Produces: S15, the error page, the wrong-role home link
++
++## Context manifest
++
++- give: this file; `AGENTS.md`; docs/design/screens.md (Global conventions, S8 Permission denied, S15); docs/design/flows.md F7; docs/architecture/lld.md#3-frontend-components (Site root and safe landing, FE-23, FE-25, FE-26); tests/acceptance/M5.2/landing.test.ts (read-only)
++- never give: other tasks' `runs/`, any worker's self-report or result.md, `.handoff/TRACKER.md`, verifier reviews,
++  `.env` or any secret, PHI or real personal data
++
++## Return
++
++- Commit on the branch your worktree was started on (the dispatcher created it from this task's id and the title
++  line under ## Ask); never create a second branch. Every commit carries the trailer `Task: M5.2-T001`.
++- write `$HANDOFF_DIR/runs/M5.2-T001/result.md` in the WORKFLOW.md §7 result contract (status
++  done | human_review | relaunch, base/head sha, changed paths, the Done-when command with its pasted output,
++  questions). Missing evidence means `human_review`, never `done`.
+diff --git a/tests/acceptance/M5.2/landing.test.ts b/tests/acceptance/M5.2/landing.test.ts
+new file mode 100644
+index 0000000..bd8d953
+--- /dev/null
++++ b/tests/acceptance/M5.2/landing.test.ts
+@@ -0,0 +1,62 @@
++// QA-owned by define-acceptance (specs/M5.2-safe-landing/acceptance.md). Do not edit; report a wrong test in result.md ## Questions.
++//
++// M5.2 Safe landing (prd.md CQ-5; flows.md F7 steps 2, 2b, 2c, 2d; screens.md S15 and Global conventions): every person
++// lands somewhere safe after sign-in, an unknown address links home, and a wrong-role page links home.
++import { fetch } from '@nuxt/test-utils/e2e'
++import { describe, expect, it } from 'vitest'
++import { useApp } from '../support/app'
++import { call, signIn } from '../support/http'
++import { EMAIL } from '../support/people'
++
++useApp({ paymentStubMode: 'succeed' })
++
++const root = async (email: string) => call('/', { cookie: await signIn(email), redirect: 'manual' })
++const homeLink = /<a[^>]+href="\/"[^>]*>\s*Go to your home\s*<\/a>/
++
++describe('M5.2 safe landing', () => {
++  it('M5.2_AT_001 a role with no work page yet lands on its home, never a 404: Sam, Dana and Ana each see "Welcome, <name>" and what to do instead (FR-039; S15 Empty)', async () => {
++    const cases = [
++      [EMAIL.sam, 'Welcome, Sam Reyes', 'Nothing to open yet: system health and operations access will appear here when they are ready.'],
++      [EMAIL.dana, 'Welcome, Dana Ito', 'Nothing to open yet: platform health and the volume report will appear here when they are ready.'],
++      [EMAIL.ana, 'Welcome, Ana Ruiz', 'Your orders open from the message your practice sends you.'],
++    ] as const
++    for (const [email, title, copy] of cases) {
++      const r = await root(email)
++      expect(r.status, email).toBe(200)
++      expect(r.text).toContain(title)
++      expect(r.text).toContain(copy)
++    }
++  })
++
++  it('M5.2_AT_002 a role with a work page goes straight to it, and that page opens: Dr. Chen the dashboard, Omar and Fran paid orders (FR-039; flows.md F7 step 2)', async () => {
++    for (const [email, path] of [[EMAIL.drChen, '/practice/dashboard'], [EMAIL.omar, '/ops/orders'], [EMAIL.fran, '/ops/orders']] as const) {
++      const cookie = await signIn(email)
++      const r = await call('/', { cookie, redirect: 'manual' })
++      expect([302, 303, 307], email).toContain(r.status)
++      expect(r.headers.get('location')).toBe(path)
++      expect((await call(path, { cookie, redirect: 'manual' })).status, `${path} for ${email}`).toBe(200)
++    }
++  })
++
++  it('M5.2_AT_003 an address with no page answers 404 with "We couldn\'t find that page" and a "Go to your home" link; a stranger is sent to sign-in first (screens.md Page not found)', async () => {
++    // asked for as a browser does (HTML), not as the API helper does (JSON)
++    const res = await fetch('/no-such-page', { headers: { accept: 'text/html', cookie: await signIn(EMAIL.drChen) }, redirect: 'manual' })
++    const html = await res.text()
++    expect(res.status).toBe(404)
++    expect(html).toMatch(/We couldn(&#39;|')t find that page/)
++    expect(html).toMatch(homeLink)
++    const stranger = await call('/no-such-page', { redirect: 'manual' })
++    expect(stranger.status).toBe(303)
++    expect(stranger.headers.get('location')).toMatch(/^\/sign-in\?next=/)
++  })
++
++  it('M5.2_AT_004 a wrong-role page says the account can\'t open it and links home: Ana on the practice dashboard; Dr. Chen sees her dashboard with no such message (FR-039, FR-058; S8 Permission denied)', async () => {
++    const chen = await call('/practice/dashboard', { cookie: await signIn(EMAIL.drChen), redirect: 'manual' })
++    expect(chen.status).toBe(200)
++    expect(chen.text).not.toMatch(homeLink)
++    const ana = await call('/practice/dashboard', { cookie: await signIn(EMAIL.ana), redirect: 'manual' })
++    expect(ana.status).toBe(200)
++    expect(ana.text).toMatch(/Only providers/)
++    expect(ana.text).toMatch(homeLink)
++  })
++})
