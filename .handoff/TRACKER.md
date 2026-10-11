@@ -525,3 +525,4 @@ several harnesses read it and the repo is public.
 2026-10-11 11:34 CDT DISPATCH M6-T002 harness=claude-subagent why=roles and access log (parallel: false, runs alone)
 2026-10-11 11:47 CDT VERIFY M6-T002 squashed 7dd3b96: worker stopped human_review on an Owns gap (db/seed/demo.ts RESET_TABLES, caught by the M5.2 seed guard); G4 revise widened Owns; supervisor added the one line, scope-guard OK (10 paths), make check exit 0 (289/43/44/5/5), M6 AT 11/11; access_log grant select, insert only; open: no test proves the role-change row lock (verifier to read)
 2026-10-11 11:47 CDT DISPATCH M6-T003, M6-T004, M6-T006 harness=claude-subagent why=wave 3, parallel, disjoint Owns
+2026-10-11 12:01 CDT VERIFY M6-T006 squashed d5fdfbc: scope-guard OK (6 paths); supervisor make check exit 0; M6 AT-040..044 5/5; follow-up: practice/dashboard.vue:117 still guesses the cancel-refusal copy instead of reading from (D85)
