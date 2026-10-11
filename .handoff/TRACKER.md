@@ -483,3 +483,4 @@ several harnesses read it and the repo is public.
 2026-10-11 08:36 CDT CHECK browser (local dev server on the milestone head after T005): Geist and EB Garamond loaded from the app; stock form input border rgb(100,116,139) = --color-control-border; sign-in redirect to next=/ops/stock works; earlier: sign-in, prices, dashboard, 375 px no sideways scroll, stock page
 2026-10-11 08:47 CDT MERGE M5.1 MR !10 -> main c956959 (pipeline #49738 success); make check on main exit 0 (218/43/44/5)
 2026-10-11 09:18 CDT DEPLOY M5.1 c956959 → production web-v2 (deployment b3c00832 SUCCESS); /version c956959; SMOKE GREEN 7/0; fonts 200 font/woff2 same-origin; root redirects signed-out to /sign-in?next=/
+2026-10-11 09:19 CDT DISPATCH M6-LLD harness=claude-subagent why=design-lld delta for M6 + routed design catch-up; branch design/m6-lld
