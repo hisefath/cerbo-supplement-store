@@ -839,3 +839,16 @@ Copy this block for each new entry (D-ids increase by one, starting at D1):
 - Cost accepted: Q-8 stays open until an M5 task adds from and event to /problems/invalid-transition. · Reversibility: Type 2 two-way — later revise passes · Confidence: high
 - Revisit if: an M5 review finds the LLD and code disagree again. · Evidence: docs/architecture/lld.md Change log revise row; software-factory-kit FINDINGS.md F20; approval G3 2026-10-10 20:32 CDT · Interview line: "After the first slice shipped, I brought the design back in line with the code before building the next slice, so the next tests start from the truth."
 - Review: Topic Process · Weight ●●○ · One-liner: The design caught up with M4's code before M5 builds on it.
+
+### D74 Build M5 as six vertical slices, price change first  [status: accepted]
+- Date 2026-10-10 21:09 CDT · phase 9 slice-tasks (G4) · milestone M5 · Decided by: human, G4 2026-10-10 21:09 CDT: "Approve, then go M5" · Proposed by: slice-tasks (Claude Code, claude-opus-5-5) · artifact: specs/M5-prices-and-stock/tasks@5175bac
+- Context and forces: M5 has 19 FRs and 18 AEs across prices, notices, stock and the dashboard, plus regression pins for M4 (acceptance Q-1); two tasks share server/utils/db-types.ts; the stock-at-payment slice is the riskiest (money, row locks).
+- Options:
+  - Do nothing / simplest (shown as "d) Do nothing"): build M5 in one session without task files — cost: no scope-guard, no per-step pass/fail check — rejected: done would rest on one long self-report
+  - a) six vertical slices, price change as the tracer bullet, stock at payment second, four in parallel, one seam (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: 510 min of agent time and a merge per parallel slice — chosen
+  - b) the same tasks all serial — cost: about 510 min wall-clock — rejected: slower with no fewer risks
+  - c) fewer, bigger tasks — cost: larger diffs, more work lost on a failure — rejected: harder to verify
+- Choice: a · Why: In the context of a milestone with four user-visible behaviours, facing one shared type file and a risky money slice, we chose six vertical slices with the price change first and stock at payment second over serial or bigger tasks, to get early end-to-end proof and fail early on the risky part, accepting a seam task and per-slice merges.
+- Cost accepted: one seam task (M5-T006) and a merge per parallel slice; T005 may run past its 120-minute budget. · Reversibility: Type 2 two-way — re-slice before dispatch · Confidence: med
+- Revisit if: T001 takes far longer than 120 minutes, or a parallel pair conflicts. · Evidence: specs/M5-prices-and-stock/tasks/T001.md to T006.md; analyze RESULT: PASS; approval G4 2026-10-10 21:09 CDT · Interview line: "I sliced M5 by user-visible behaviour with the price change as a tracer bullet and the stock-at-payment slice second, so the riskiest work fails early."
+- Review: Topic Process · Weight ●●○ · One-liner: M5 is six vertical slices: price change first, stock at payment second.
