@@ -52,7 +52,7 @@ const emptyText = computed(() => {
 <template>
   <AppShell>
     <section class="ops-orders" aria-labelledby="ops-orders-heading">
-      <h1 id="ops-orders-heading">Paid orders</h1>
+      <div class="page-band"><h1 id="ops-orders-heading">Paid orders</h1></div>
       <nav class="tabs" aria-label="Order lists">
         <NuxtLink :to="tab('paid')" :aria-current="query.status === 'paid' ? 'page' : undefined">Paid</NuxtLink>
         <NuxtLink :to="tab('needs_review')" :aria-current="query.status === 'needs_review' ? 'page' : undefined">
@@ -62,7 +62,7 @@ const emptyText = computed(() => {
       <form class="find" @submit.prevent="find">
         <label for="order-number">Find an order by number</label>
         <input id="order-number" v-model="search" inputmode="numeric" aria-describedby="order-number-help order-number-error" />
-        <button type="submit">Find</button>
+        <button type="submit" class="btn-primary">Find</button>
         <p id="order-number-help" class="helper">Digits only, like 1042.</p>
         <p v-if="searchError" id="order-number-error" role="alert">{{ searchError }}</p>
       </form>
@@ -74,7 +74,7 @@ const emptyText = computed(() => {
         :copy="{ forbidden: 'Only platform reviewers can see paid orders.', internal: 'We couldn\'t load orders. Try again.' }"
         @retry="refresh"
       />
-      <template v-else-if="page">
+      <div v-else-if="page" class="card">
         <p v-if="page.data.length === 0">{{ emptyText }}</p>
         <template v-else>
           <p role="status">Showing {{ page.data.length }} {{ query.status === 'paid' ? 'paid orders' : 'orders that need review' }}.</p>
@@ -98,7 +98,7 @@ const emptyText = computed(() => {
           </table>
           <NuxtLink v-if="page.next_cursor" :to="{ query: { status: query.status, cursor: page.next_cursor } }">Show 25 more</NuxtLink>
         </template>
-      </template>
+      </div>
     </section>
   </AppShell>
 </template>
@@ -107,15 +107,16 @@ const emptyText = computed(() => {
 .tabs { display: flex; gap: 16px; margin: 8px 0; }
 .tabs a { min-height: 24px; padding: 4px 0; }
 .tabs a[aria-current='page'] { font-weight: 600; text-decoration: underline; }
+.find input { min-height: 44px; box-sizing: border-box; padding: 0 12px; border: 1px solid var(--color-border); border-radius: var(--radius-button); background: var(--color-card); color: var(--color-ink); font: inherit; }
 .find { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0 16px; }
 .find label { flex-basis: 100%; }
-.helper { flex-basis: 100%; margin: 0; color: #444; font-size: 14px; }
+.helper { flex-basis: 100%; margin: 0; color: var(--color-ink-muted); font-size: var(--text-detail); }
 .list { width: 100%; border-collapse: collapse; }
-.list th, .list td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #ddd; overflow-wrap: anywhere; }
+.list th, .list td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--color-border); overflow-wrap: anywhere; }
 .list a { display: inline-block; min-height: 24px; }
 @media (max-width: 600px) {
   .list thead { display: none; }
-  .list tr { display: block; border: 1px solid #ddd; margin-bottom: 8px; padding: 4px; }
+  .list tr { display: block; border: 1px solid var(--color-border); border-radius: var(--radius-button); margin-bottom: 8px; padding: 4px; }
   .list td { display: block; border: 0; padding: 2px 4px; }
 }
 </style>

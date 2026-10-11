@@ -28,7 +28,7 @@ const gap = computed(() => props.total - props.parts.reduce((s, p) => s + p.cent
 </template>
 
 <style scoped>
-.equation { font-size: 18px; margin: 16px 0; }
+.equation { font-size: 18px; margin: 0 0 var(--space-card); padding-bottom: var(--space-card); border-bottom: 1px solid var(--color-border); font-variant-numeric: tabular-nums; }
 .term { white-space: nowrap; }
 @media (max-width: 600px) {
   .equation .term { display: block; }

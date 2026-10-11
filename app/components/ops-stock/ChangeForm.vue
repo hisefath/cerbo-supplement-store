@@ -49,23 +49,22 @@ onMounted(() => root.value?.querySelector<HTMLInputElement>('input')?.focus())
       <p v-if="errors.form" class="error" role="alert">{{ errors.form }}</p>
       <p v-if="saving" role="status">{{ slow ? "Still saving. Don't close this window." : 'Saving…' }}</p>
       <div class="actions">
-        <button type="submit" :disabled="saving">Save stock change</button>
-        <button type="button" @click="emit('cancel')">Cancel</button>
+        <button type="submit" class="btn-primary" :disabled="saving">Save stock change</button>
+        <button type="button" class="btn-secondary" @click="emit('cancel')">Cancel</button>
       </div>
     </form>
   </section>
 </template>
 
 <style scoped>
-.change { border-top: 1px solid #ddd; border-bottom: 1px solid #ddd; padding: 8px 0; margin: 12px 0; }
+.change { border-top: 1px solid var(--color-border); border-bottom: 1px solid var(--color-border); padding: var(--space-card) 0; margin: 12px 0; }
 label { display: block; margin-top: 8px; }
-input { display: block; width: 100%; max-width: 360px; min-height: 24px; }
-.helper { margin: 2px 0; color: #444; font-size: 14px; }
-.error { color: #b00020; }
+input { display: block; width: 100%; max-width: 360px; min-height: 44px; box-sizing: border-box; padding: 0 12px; border: 1px solid var(--color-border); border-radius: var(--radius-button); background: var(--color-card); color: var(--color-ink); font: inherit; }
+.helper { margin: 2px 0; color: var(--color-ink-muted); font-size: var(--text-detail); }
+.error { color: var(--color-danger); }
 .actions { display: flex; gap: 8px; margin-top: 12px; }
-.actions button { min-height: 32px; }
 /* S7 Responsive: at phone width the form opens as a full-screen sheet. */
 @media (max-width: 600px) {
-  .change { position: fixed; inset: 0; z-index: 10; margin: 0; padding: 16px; background: #fff; overflow-y: auto; }
+  .change { position: fixed; inset: 0; z-index: 10; margin: 0; padding: var(--space-card); background: var(--color-card); overflow-y: auto; }
 }
 </style>

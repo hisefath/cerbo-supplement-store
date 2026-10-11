@@ -61,7 +61,7 @@ const feeNote = computed(() => {
 <template>
   <AppShell>
     <section class="breakdown" aria-labelledby="breakdown-heading">
-      <h1 id="breakdown-heading">Order {{ orderId }}</h1>
+      <div class="page-band"><h1 id="breakdown-heading">Order {{ orderId }}</h1></div>
       <template v-if="status === 'pending'">
         <p role="status">Loading order {{ orderId }}…</p>
       </template>
@@ -75,7 +75,7 @@ const feeNote = computed(() => {
         }"
         @retry="refresh"
       />
-      <template v-else-if="b">
+      <div v-else-if="b" class="card">
         <p>{{ b.practice_name }} · {{ b.provider_display_name }} · paid {{ paidAt }}</p>
         <OpsMoneyEquation :total="b.amount_paid_cents" :parts="parts" :balanced="b.adds_up" />
         <table class="lines">
@@ -93,7 +93,7 @@ const feeNote = computed(() => {
           </tbody>
         </table>
         <p class="fee">{{ feeNote }}</p>
-      </template>
+      </div>
       <NuxtLink to="/ops/orders" class="back">Back to paid orders</NuxtLink>
     </section>
   </AppShell>
@@ -101,13 +101,14 @@ const feeNote = computed(() => {
 
 <style scoped>
 .lines { width: 100%; border-collapse: collapse; }
-.lines th, .lines td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #ddd; overflow-wrap: anywhere; }
+.lines th, .lines td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--color-border); overflow-wrap: anywhere; }
 .lines td:not(:first-child), .lines th:not(:first-child) { text-align: right; }
-.fee { color: #444; }
+.fee { color: var(--color-ink-muted); }
+.card { overflow-x: auto; }
 .back { display: inline-block; min-height: 24px; margin-top: 8px; }
 @media (max-width: 600px) {
   .lines thead { display: none; }
-  .lines tr { display: block; border: 1px solid #ddd; margin-bottom: 8px; padding: 4px; }
+  .lines tr { display: block; border: 1px solid var(--color-border); border-radius: var(--radius-button); margin-bottom: 8px; padding: 4px; }
   .lines td { display: block; border: 0; padding: 2px 4px; text-align: left !important; }
 }
 </style>
