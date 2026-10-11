@@ -58,3 +58,5 @@ test output, questions). Templates: `specs/_templates/task.md`, `specs/_template
 - Stack: TypeScript 5.9 on Node 22.22+, Nuxt 4 (D44) with Vue 3, PostgreSQL 16 through Kysely with plain SQL
   migrations (D33, D39), Vitest. Acceptance tests run only against the throwaway `supplements_test` database.
 - Money, when it exists: integer cents only, never floats.
+- A task whose migration adds a table also owns `db/seed/demo.ts`: `RESET_TABLES` must name the table
+  (`tests/unit/seed-demo.test.ts` fails otherwise), so slice-tasks puts both in one `Owns:`.
