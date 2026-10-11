@@ -791,3 +791,27 @@ Copy this block for each new entry (D-ids increase by one, starting at D1):
 - Cost accepted: logged causes can happen once more before they get a fix. · Reversibility: Type 2 two-way — any row can be promoted in a later pass · Confidence: high
 - Revisit if: any logged row (F14 to F19, F23, F24) recurs. · Evidence: software-factory-kit FINDINGS.md F14-F24; .handoff/TRACKER.md Tasks M5-R01 to M5-R03; approval G-L5 (block decision: rows without a diff) 2026-10-10 18:31 CDT · Interview line: "Only recurring causes earn a factory change; product gaps go back to the owning skill, and one-offs are logged so a repeat is noticed."
 - Review: Topic Process · Weight ●○○ · One-liner: Three product fixes queued for M5; eight one-offs logged, not fixed.
+
+### D70 CI checks every push on the MacBook shell runner  [status: accepted]
+- Date 2026-10-10 19:46 CDT · phase 15 route-failure (G-L5) · milestone M4 · Decided by: human, G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) 2026-10-10 19:46 CDT: "Approve, adopt H18 and H17" · Proposed by: route-failure (Claude Code, claude-opus-5-5) · artifact: HARNESS_CHANGELOG.md H18@0ee4f6f2422d
+- Context and forces: the human asked that every code change be checked by CI on a local MacBook runner, reused for all future Gauntlet projects, and that every Railway deploy end with a review link and per-user walkthrough (FINDINGS F27). The Docker-executor runner failed because the Colima VM disk was full, and the human declined to grow the VM; a macOS shell runner (299) passed pipeline 48540.
+- Options:
+  - Do nothing / simplest (shown as "C do nothing"): keep it as an agent habit only — cost: new projects and other agents do not know the rule — rejected: the human chose to adopt
+  - A adopt H18 and H17: WORKFLOW §8 rules for CI on every push (shell runner enabled per project, merge only on green) and a review link after every deploy; a shell-runner .gitlab-ci.yml template; a pipeline line in the MR template; a walkthrough block in ship-milestone STOP A (agent's recommendation) (agent's first proposal: H16 with a Docker-executor template, superseded) — cost: two more §8 rules; merges wait on the Mac being awake — chosen
+  - B keep it as a habit, not a factory rule — cost: same as do nothing for other projects — rejected: the human wants it in every Gauntlet project
+- Choice: A · Why: In the context of a factory where "checked" meant a local run with no shared record, facing a full container VM the human will not grow, we chose CI on a macOS shell runner enabled per project over a Docker runner, to give every push a shared green or red record without a VM, accepting that merges wait for the Mac.
+- Cost accepted: a pipeline only runs while the Mac is awake; jobs run unsandboxed as the human's user. · Reversibility: Type 2 two-way — revert the kit commit and disable the runner per project · Confidence: high
+- Revisit if: pipelines sit pending often, or a project needs a service the Mac cannot run. · Evidence: software-factory-kit FINDINGS.md F27; HARNESS_CHANGELOG.md H18 (supersedes H16); kit commit d22af6b; pipeline 48540; MR !6; approval G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) 2026-10-10 19:46 CDT · Interview line: "Every push runs the same gate in CI on my own Mac's runner, enabled per project with one API call, so passing has a shared record."
+- Review: Topic Process · Weight ●●○ · One-liner: Every push runs make check on the MacBook shell runner; merge only on green.
+
+### D71 This project's MR template asks for a green pipeline  [status: accepted]
+- Date 2026-10-10 19:46 CDT · phase 15 route-failure (G-L5) · milestone M4 · Decided by: human, G-L5 (approval covers apply and project commit) 2026-10-10 19:46 CDT: "Approve, adopt H18 and H17" · Proposed by: route-failure (Claude Code, claude-opus-5-5) · artifact: HARNESS_CHANGELOG.md H17@1730d3f72cea
+- Context and forces: init-repo never overwrites, so Cerbo's MR template needs its own pipeline line (FINDINGS F27, project half of D70).
+- Options:
+  - Do nothing / simplest (shown as "C do nothing"): leave the template — cost: Cerbo MRs do not show their pipeline — rejected: the human chose to adopt
+  - A adopt H18 and H17 (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: one checklist line — chosen
+  - B habit only — cost: the template does not ask — rejected: chosen with D70
+- Choice: A · Why: In the context of Cerbo's own MR template, facing init-repo never overwriting it, we chose to add the pipeline line here too, so every MR shows its CI result, accepting one more checklist line.
+- Cost accepted: one checklist line per MR. · Reversibility: Type 2 two-way — revert the commit · Confidence: high
+- Revisit if: an MR merges without a pipeline link. · Evidence: HARNESS_CHANGELOG.md H17; .gitlab/merge_request_templates/Default.md; D70; approval G-L5 (approval covers apply and project commit) 2026-10-10 19:46 CDT · Interview line: "Each Cerbo MR shows its CI pipeline before it merges."
+- Review: Topic Process · Weight ●○○ · One-liner: Cerbo's MR template asks for the green pipeline link.
