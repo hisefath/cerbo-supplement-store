@@ -10,17 +10,28 @@ interface PracticeDashboard { month: string; attention: AttentionItem[]; sales: 
 interface PracticeOrder { order_id: number; patient_display_name: string; total_cents: number; status: string; sent_at: string; paid_at: string | null }
 interface PracticeOrderPage { data: PracticeOrder[]; next_cursor: string | null }
 
-useHead({ title: 'Practice dashboard' })
-const month = ref(new Date().toISOString().slice(0, 7)) // ST-7
+// S6 names the practice, but no EP returns its name yet (Me has only practice_id): this reads the session's
+// practice_name if EP-17 ever returns it, and falls back to the bare title until then (question in M5-T010 result).
+const viewer = useNuxtData<{ practice_name?: string } | null>('viewer').data
+const practiceName = computed(() => viewer.value?.practice_name ?? '')
+useHead({ title: computed(() => (practiceName.value ? `Practice dashboard · ${practiceName.value}` : 'Practice dashboard')) })
+
+const thisMonth = new Date().toISOString().slice(0, 7)
+const month = ref(thisMonth) // ST-7; the month input can be cleared, which the server reads as this month
+const shownMonth = computed(() => month.value || thisMonth)
 const monthName = computed(() =>
-  new Date(`${month.value}-01T00:00:00Z`).toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' }),
+  new Date(`${shownMonth.value}-01T00:00:00Z`).toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' }),
 )
 
-const dash = await useFetch<PracticeDashboard>('/api/practice/dashboard', { query: { month } }) // ST-8
-const list = await useFetch<PracticeOrderPage>('/api/practice/orders', { query: { month } })
+const dash = await useFetch<PracticeDashboard>('/api/practice/dashboard', { query: { month: shownMonth } }) // ST-8
+const list = await useFetch<PracticeOrderPage>('/api/practice/orders', { query: { month: shownMonth } })
 const more = ref<PracticeOrder[]>([])
 const nextCursor = ref<string | null>(null)
+const loadingMore = ref(false)
+let listGen = 0 // bumps when the month or the first page changes, so a late Show 25 more page is dropped
+watch(shownMonth, () => listGen++)
 watch(list.data, (p) => {
+  listGen++
   more.value = []
   nextCursor.value = p?.next_cursor ?? null
 }, { immediate: true })
@@ -28,16 +39,32 @@ const orders = computed(() => [...(list.data.value?.data ?? []), ...more.value])
 const moreProblem = ref<Problem | null>(null)
 
 async function showMore() {
-  if (!nextCursor.value) return
+  if (!nextCursor.value || loadingMore.value) return
+  const gen = listGen
+  loadingMore.value = true
   try {
-    const page = await $fetch<PracticeOrderPage>('/api/practice/orders', { query: { month: month.value, cursor: nextCursor.value } })
+    const page = await $fetch<PracticeOrderPage>('/api/practice/orders', { query: { month: shownMonth.value, cursor: nextCursor.value } })
+    if (gen !== listGen) return
     more.value.push(...page.data)
     nextCursor.value = page.next_cursor
     moreProblem.value = null
   } catch (e: unknown) {
-    moreProblem.value = (e as { data?: Problem }).data ?? { type: '/problems/internal' }
+    if (gen === listGen) moreProblem.value = (e as { data?: Problem }).data ?? { type: '/problems/internal' }
+  } finally {
+    loadingMore.value = false
   }
 }
+
+// S6 Loading: "Loading <month>…", then after 10 s "Still loading. Stock counts appear first."
+const pending = computed(() => dash.status.value === 'pending' || list.status.value === 'pending')
+const slow = ref(false)
+let slowTimer: ReturnType<typeof setTimeout> | undefined
+watch(pending, (p) => {
+  clearTimeout(slowTimer)
+  slow.value = false
+  if (p) slowTimer = setTimeout(() => (slow.value = true), 10_000)
+})
+onBeforeUnmount(() => clearTimeout(slowTimer))
 
 const dollars = (c: number) => `$${(c / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const when = (iso: string | null) =>
@@ -92,15 +119,35 @@ const cancelCopy = computed(() => {
   }
 })
 const problemOf = (e: unknown): Problem | null => (e ? ((e as { data?: Problem }).data ?? { type: '/problems/internal' }) : null)
-const forbiddenCopy = { forbidden: 'Only providers at this practice can see this dashboard.' }
+const forbiddenCopy = computed(() => ({ forbidden: `Only providers at ${practiceName.value || 'this practice'} can see this dashboard.` }))
+
+// S6 Accessibility: the confirmation dialog keeps focus until Cancel order or Keep order.
+const dialog = ref<HTMLElement | null>(null)
+const dialogButtons = () => [...(dialog.value?.querySelectorAll('button') ?? [])].filter((b) => !b.disabled)
+const focusKeep = () => dialog.value?.querySelector<HTMLButtonElement>('.keep')?.focus()
+watch(cancelling, async (o) => {
+  if (!o) return
+  await nextTick()
+  focusKeep()
+})
+function trapTab(e: KeyboardEvent) {
+  if (e.key !== 'Tab') return
+  const b = dialogButtons()
+  const at = b.indexOf(document.activeElement as HTMLButtonElement)
+  e.preventDefault()
+  b[(at + (e.shiftKey ? b.length - 1 : 1)) % b.length]?.focus()
+}
+function holdFocus(e: FocusEvent) {
+  if (cancelling.value && !dialog.value?.contains(e.relatedTarget as Node | null)) setTimeout(focusKeep)
+}
 </script>
 
 <template>
   <AppShell>
     <section class="dashboard" aria-labelledby="dashboard-heading">
-      <h1 id="dashboard-heading">Practice dashboard</h1>
+      <h1 id="dashboard-heading">{{ practiceName ? `Practice dashboard · ${practiceName}` : 'Practice dashboard' }}</h1>
       <label class="month">Month <input v-model="month" type="month" required></label>
-      <p role="status">{{ dash.status.value === 'pending' ? `Loading ${monthName}…` : `Showing ${monthName}.` }} Times in UTC.</p>
+      <p role="status">{{ pending ? (slow ? 'Still loading. Stock counts appear first.' : `Loading ${monthName}…`) : `Showing ${monthName}.` }} Times in UTC.</p>
       <p class="success" role="status">{{ success }}</p>
 
       <h2>Needs attention</h2>
@@ -120,7 +167,7 @@ const forbiddenCopy = { forbidden: 'Only providers at this practice can see this
         @retry="list.refresh()"
       />
       <template v-else-if="list.data.value">
-        <p v-if="orders.length === 0">No orders were sent in {{ monthName }}.</p>
+        <p v-if="orders.length === 0">{{ shownMonth === thisMonth ? "No orders yet. Send one from a patient's chart." : `No orders were sent in ${monthName}.` }}</p>
         <table v-else class="list">
           <thead>
             <tr><th scope="col">Patient</th><th scope="col">Total</th><th scope="col">Status</th><th scope="col">Sent</th><th scope="col">Paid</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr>
@@ -160,13 +207,13 @@ const forbiddenCopy = { forbidden: 'Only providers at this practice can see this
       </table>
       <p>Questions? Contact platform support</p>
 
-      <div v-if="cancelling" role="dialog" aria-modal="true" aria-labelledby="cancel-heading" class="dialog">
+      <div v-if="cancelling" ref="dialog" role="dialog" aria-modal="true" aria-labelledby="cancel-heading" class="dialog" @keydown="trapTab" @focusout="holdFocus">
         <p id="cancel-heading">
           Cancel {{ cancelling.patient_display_name }}'s {{ dollars(cancelling.total_cents) }} order?
           {{ cancelling.patient_display_name.split(' ')[0] }} will see that your practice cancelled it. This can't be undone.
         </p>
         <button type="button" :disabled="busy" @click="confirmCancel">{{ busy ? 'Cancelling…' : 'Cancel order' }}</button>
-        <button type="button" autofocus @click="cancelling = null">Keep order</button>
+        <button type="button" class="keep" @click="cancelling = null">Keep order</button>
       </div>
     </section>
   </AppShell>
