@@ -265,6 +265,7 @@ several harnesses read it and the repo is public.
 | 2026-10-11 16:33 CDT | Fix track: Sign out button (screens.md Global conventions; AT-006; 2 code files, no API change) | fix/sign-out-button | "theres no logout button, please make one" |
 | 2026-10-11 16:51 CDT | Fix track: sign-in error line (wrong password showed "You're offline"; 2 code files + unit test, no API change) | fix/sign-in-error-message | "hey, this alert in red doesnt make sense, i typed in the wrong password, it should be representative of the right error." |
 | 2026-10-11 17:20 CDT | deploy (pre-approved) | main@502d111 → production web-v2 | "yes, deploy it when merged" |
+| 2026-10-11 17:27 CDT | G1 clarify CQ-10 (M7 Defensibility row) + G2/G3 n/a (docs/tooling, no design change) + G4 job files M7-J01..J04 | docs/product/prd.md | "go M7" (STANDING 2026-10-10 23:09 CDT) |
 
 ## Log
 
@@ -578,3 +579,7 @@ several harnesses read it and the repo is public.
 2026-10-11 17:20 CDT MERGE fix MRs !17 (sign out) + !18 (sign-in error) -> main 502d111; make check on main OK
 2026-10-11 17:20 CDT DEPLOY 502d111 → production web-v2 (deployment eb79135e SUCCESS); SMOKE GREEN 7/0; "You signed out." live; no migrations
 2026-10-11 17:20 CDT FAIL ship script stopped on false "MIGRATIONS PRESENT": macOS wc -l pads with spaces; compare numerically
+2026-10-11 17:27 CDT DISPATCH M7-J01 harness=claude-subagent why=isolated doc/tool job, disjoint Owns
+2026-10-11 17:27 CDT DISPATCH M7-J02 harness=claude-subagent why=isolated doc/tool job, disjoint Owns
+2026-10-11 17:27 CDT DISPATCH M7-J03 harness=claude-subagent why=isolated doc/tool job, disjoint Owns
+2026-10-11 17:27 CDT DISPATCH M7-J04 harness=claude-subagent why=isolated doc/tool job, disjoint Owns
