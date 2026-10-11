@@ -198,6 +198,7 @@ several harnesses read it and the repo is public.
 | 2026-10-11 00:24 CDT | G5 security part: approve checklist (0 reachable critical/high, no new finding) | docs/security/CHECKLIST.md@77c555c | STANDING row 2026-10-10 23:09 CDT |
 | 2026-10-11 00:28 CDT | G5 Merge (report recommendation; 4 clauses yes; 0 open P0/P1; 0 unaccepted high/critical) | docs/milestones/M5.md@691b4e1 | STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
 | 2026-10-11 07:22 CDT | G-ux Revise (M5.1, D75): add a visual language to screens.md Global conventions, inspired by the cluely.com style (no Cluely name, logo or copy); layouts, states and copy unchanged | docs/design/screens.md@220a971 | "also revamp the front end to suite more of cluely's website style, make it more modern and like how this websites ui and colors and design language is: https://cluely.com/" (2026-10-10) · "go ahead with M5.1, /map-ux-flows" · STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-11 07:22 CDT | G-ux (M5.1 visual language, VL-2 chosen) | docs/design/screens.md@73063b6 | STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
 
 ## Log
 
@@ -438,3 +439,4 @@ several harnesses read it and the repo is public.
 2026-10-11 00:20 CDT NOTE DV-1: M5-T001..T006 squash commits carry `Task:` in its own paragraph, apart from Co-Authored-By, so git does not parse it as a trailer; supervisor commit-message formatting, no decision; scope-guard re-run by hand exit 0 for all six (report §4.3)
 2026-10-11 00:20 CDT NOTE DV-8: ebac30e edits two comment lines in app/pages/practice/dashboard.vue: the supervisor updated the stale EP-17 comment that M5-T011's result named as out of date (outside T011 Owns); comment only, no decision
 2026-10-11 00:24 CDT SECURITY M5 re-run at 23f3451: 0 reachable critical/high; SEC-14 fixed, SEC-10/12/13 accepted D76-D78; ALL CHECKS PASSED
+2026-10-11 07:22 CDT PHASE map-ux-flows revise (M5.1): Visual language VL-2 added to screens.md Global conventions; 14 screens x 6 sections intact; leak greps clean

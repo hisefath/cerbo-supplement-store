@@ -9,7 +9,7 @@ Weight: ●●● critical (hard to undo, or touches money, personal data or sig
 
 ## By topic
 
-### Product (11)
+### Product (12)
 
 - ●●● D25 — Money path first, HIPAA-ready, campaigns later.
 - ●●○ D27 — Live payout builder, two-step patient checkout, equation-first audit.
@@ -20,6 +20,7 @@ Weight: ●●● critical (hard to undo, or touches money, personal data or sig
 - ●○○ D43 — Broader holistic-care products parked as a future non-goal.
 - ●○○ D53 — Order quantity unbounded until stock limits exist.
 - ●○○ D75 — The cluely-inspired restyle is its own milestone, M5.1, after M5.
+- ●○○ D80 — M5.1 restyle uses light pages with a sky header band.
 - ●○○ ~~D12~~ — v1: order cancel added to scope. (replaced by D22)
 - ●○○ ~~D14~~ — v1: neutral branding on the public demo. (replaced by D22)
 
@@ -131,6 +132,7 @@ Decisions that adopted a software-factory-kit change (H) and the finding (F) beh
 
 ### 2026-10-11
 
+- D80 · Product · ●○○ — M5.1 restyle uses light pages with a sky header band.
 - D79 · Process · ●○○ — M5 adds an 11th task for review fixes, like M4.
 
 ### 2026-10-10
