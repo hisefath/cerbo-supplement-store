@@ -196,6 +196,7 @@ several harnesses read it and the repo is public.
 | 2026-10-10 23:59 CDT | G5 SEC-14 | docs/security/CHECKLIST.md@adfd6fa | fix: AT-044 stock history append-only — STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
 | 2026-10-11 00:20 CDT | G5 Revise (report-milestone recommendation): answer DV-1, DV-8 (a, Log lines); D79 for 11 tasks (DV-3); re-run check-security on the head | docs/milestones/M5.md (draft, report run 2026-10-11 00:07 CDT) | STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
 | 2026-10-11 00:24 CDT | G5 security part: approve checklist (0 reachable critical/high, no new finding) | docs/security/CHECKLIST.md@77c555c | STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-11 00:28 CDT | G5 Merge (report recommendation; 4 clauses yes; 0 open P0/P1; 0 unaccepted high/critical) | docs/milestones/M5.md@691b4e1 | STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
 
 ## Log
 
