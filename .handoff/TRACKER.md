@@ -25,6 +25,10 @@ several harnesses read it and the repo is public.
 | M5-R02 | F21: acceptance tests for review-fixed behaviours (key release, stuck attempt, parallel limits, cancel states) | Standard / define-acceptance | supervisor | done | 2026-10-10 18:31 CDT | specs/M4-tracer-bullet/acceptance.md, tests/acceptance/** | — |
 | M5-R03 | F22: M5 scope in the PRD (patient order list /orders 404, provider view of EP-4, needs-review amounts, copy gaps) | Standard / clarify-spec | supervisor | todo | 2026-10-10 18:31 CDT | docs/product/prd.md | — |
 | M5-R04 | define-acceptance re-run: review pins (pass2 R3, pass3 R1, pass4 R1-R3, pass6 R5) | Standard / define-acceptance | supervisor | done | 2026-10-10 23:05 CDT | specs/M5-prices-and-stock/acceptance.md, tests/acceptance/M5 | 44fed80 |
+| M5-T007 | abandoned payments never block; hold_ended | Standard / build | claude-subagent | todo | 2026-10-10 23:16 CDT | see task file | — |
+| M5-T008 | S2 hold-ended banner | Standard / build | claude-subagent | todo | 2026-10-10 23:16 CDT | see task file | — |
+| M5-T009 | S7 stock page fixes | Standard / build | claude-subagent | todo | 2026-10-10 23:16 CDT | see task file | — |
+| M5-T010 | S6 dashboard fixes | Standard / build | claude-subagent | todo | 2026-10-10 23:16 CDT | see task file | — |
 | M4-CI01 | CI on the MacBook runner: enable runner 245, .gitlab-ci.yml running make check | Fix / supervisor | supervisor (claude-opus-5-5) | done | 2026-10-10 19:05 CDT | .gitlab-ci.yml | — |
 | M5-T001 | Provider changes a practice price (specs/M5-prices-and-stock/tasks/T001.md) | Standard / implement-task | claude-subagent | done | 2026-10-10 21:09 CDT | see task file | 135b9ca |
 | M5-T002 | Payment reserves and releases stock (specs/M5-prices-and-stock/tasks/T002.md) | Standard / implement-task | claude-subagent | done | 2026-10-10 21:09 CDT | see task file | f5bb975 |
@@ -181,6 +185,9 @@ several harnesses read it and the repo is public.
 2026-10-10 23:05 CDT PHASE define-acceptance M5 re-run: AT-035 to AT-038 added as green pins; each failed with its rule removed in a throwaway worktree; M5 38/38; make check exit 0; committed 44fed80
 | 2026-10-10 23:09 CDT | G4 re-approval (acceptance re-run: AT-035 to AT-038, EDGE-045 to EDGE-048, SS-07; option a) | specs/M5-prices-and-stock/acceptance.md@44fed80 + tests/acceptance/M5 | "please do as many implementations tasks as you can , i approve them all, we should almost complete the project now. mark that i approve all next recommendations until project completion, and then run next skills for me like /slice-tasks" |
 | 2026-10-10 23:09 CDT | STANDING: approve every next recommendation (gates G4/G5/G-L5, review dispositions, slice-tasks, implement-task dispatch, merges of milestone MRs on green CI) until project completion; human-only exceptions kept: secrets/passwords/tokens, AGENTS.md/CLAUDE.md/skill edits stay proposals unless named, deploy still names SHA + environment in chat | all M5, M5.1, M6 artifacts | "please do as many implementations tasks as you can , i approve them all, we should almost complete the project now. mark that i approve all next recommendations until project completion, and then run next skills for me like /slice-tasks" |
+| 2026-10-10 23:16 CDT | G3 (revise: OrderView.hold_ended; FM-7 on pay and checkout start) | docs/architecture/lld.md@94ff279 + contracts/openapi.yaml | STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-10 23:16 CDT | G4 acceptance part (AT-039 to AT-041 red, Q-7 make check gating) | specs/M5-prices-and-stock/acceptance.md@94ff279 | STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-10 23:16 CDT | G4 (close-out slices T007 to T010, option a; analyze RESULT: PASS) | specs/M5-prices-and-stock/tasks/T007-T010@2738485 | STANDING row 2026-10-10 23:09 CDT |
 
 ## Log
 
