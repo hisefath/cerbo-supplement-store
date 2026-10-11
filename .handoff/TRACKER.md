@@ -264,6 +264,7 @@ several harnesses read it and the repo is public.
 | 2026-10-11 15:40 CDT | G-L5 (block decision, rows without a diff) | FINDINGS.md F32, F34, F36, F41-F46 | "A, adopt all 10" (recommended A: accept all as listed) |
 | 2026-10-11 16:33 CDT | Fix track: Sign out button (screens.md Global conventions; AT-006; 2 code files, no API change) | fix/sign-out-button | "theres no logout button, please make one" |
 | 2026-10-11 16:51 CDT | Fix track: sign-in error line (wrong password showed "You're offline"; 2 code files + unit test, no API change) | fix/sign-in-error-message | "hey, this alert in red doesnt make sense, i typed in the wrong password, it should be representative of the right error." |
+| 2026-10-11 17:20 CDT | deploy (pre-approved) | main@502d111 → production web-v2 | "yes, deploy it when merged" |
 
 ## Log
 
@@ -574,3 +575,6 @@ several harnesses read it and the repo is public.
 2026-10-11 16:33 CDT FIX sign out: AppShell shows Sign out to signed-in people (EP-16, then /sign-in?signed_out=1 "You signed out."); AT-006 red at d3bd726 then green; make check exit 0; browser check: button shown, signs out, notice shown, hidden when signed out
 2026-10-11 16:51 CDT FIX sign-in error line: production answers a wrong password with 401 sign-in-failed (checked by curl and from the live page); the page showed "You're offline" whenever a request got no answer, without checking navigator.onLine. signInErrorMessage() now says offline only when the browser is offline, else the S8 'our failure' copy; unit test red at 0cc38e5, green at 78c089e
 2026-10-11 16:51 CDT NOTE filed: the same 'no answer = offline' assumption, plus 'X is unchanged' claims that may be false when a write's answer is lost, in ProblemMessage default slug, CheckoutStep, OrderPanel, ops/access.vue:107, ops/stock.vue:158, practice/prices.vue:104 (route to a fix task; checkout copy must stay money-safe)
+2026-10-11 17:20 CDT MERGE fix MRs !17 (sign out) + !18 (sign-in error) -> main 502d111; make check on main OK
+2026-10-11 17:20 CDT DEPLOY 502d111 → production web-v2 (deployment eb79135e SUCCESS); SMOKE GREEN 7/0; "You signed out." live; no migrations
+2026-10-11 17:20 CDT FAIL ship script stopped on false "MIGRATIONS PRESENT": macOS wc -l pads with spaces; compare numerically
