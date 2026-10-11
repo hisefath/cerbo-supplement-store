@@ -219,6 +219,7 @@ several harnesses read it and the repo is public.
 | 2026-10-11 08:35 CDT | G5 Revise (M5.1 report recommendation): answer DV-5 with a Log NOTE, correct MILESTONES gate SHAs (DV-6), add the missing T004 VERIFY line, re-run report-milestone | docs/milestones/M5.1.md (draft 08:25) | STANDING row 2026-10-10 23:09 CDT |
 | 2026-10-11 08:40 CDT | G5 Merge (M5.1 report recommendation; 4 clauses yes; 0 open P0/P1; 0 unaccepted high/critical) | docs/milestones/M5.1.md@c26710a | STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
 | 2026-10-11 09:17 CDT | deploy (ship-milestone) | main@c956959 → Railway production (web-v2) | "yes, deploy c956959 to production" |
+| 2026-10-11 09:49 CDT | G3 (M6 delta: BE-22 paging, catch-up rows, D82-D86 recommendations accepted; Q-10, Q-11, Q-12 to clarify-spec) | docs/architecture/lld.md@9200719 + openapi.yaml + 9 diagrams | STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
 
 ## Log
 

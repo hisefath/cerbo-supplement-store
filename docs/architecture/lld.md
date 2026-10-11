@@ -2841,7 +2841,7 @@ stateDiagram-v2
 - **Interview line:** "I put the whole look in one theme file and shipped the fonts with the app, so the restyle never calls a third party from inside the clinician's chart."
 - **Default if you don't answer:** stays proposed; nothing downstream may build on it.
 
-### D82 Upper bounds on price and stock input  [status: proposed]
+### D82 Upper bounds on price and stock input  [status: accepted]
 
 - **Question:** should an absurd price or stock change be refused with a 422, or keep reaching the database and coming back as a 500?
 - **Forces:** journal D77 (accepted: the 500 is harmless, staff-only, rolls back); M5-pass1 R2 and M5-pass5 R1 routed it to design twice; `integer` columns stop at 2,147,483,647; a 99.99% margin multiplies cost by 10,000 (S5 already warns at 99%); S7 asks to confirm +10,000 units
@@ -2861,7 +2861,7 @@ stateDiagram-v2
 - **Interview line:** "The database would have refused it anyway; the bound just turns a confusing 500 into a 422 that points at the field."
 - **Default if you don't answer:** stays proposed; D77 stands and the 500 stays.
 
-### D83 How strongly a payment locks product rows  [status: proposed]
+### D83 How strongly a payment locks product rows  [status: accepted]
 
 - **Question:** which row lock should stock changes take on `products`: `FOR UPDATE` (as built) or `FOR NO KEY UPDATE`?
 - **Forces:** M5-pass3 R6: `FOR UPDATE` also blocks the key-share lock every foreign-key insert takes on the product (sending an order's lines, writing a stock movement), so those wait behind payment transaction 1; the update only changes `units_in_stock`, never the key; INV-5 needs two writers of one count to serialise
@@ -2881,7 +2881,7 @@ stateDiagram-v2
 - **Interview line:** "I took the weakest lock that still serialises the stock count, so foreign-key inserts don't queue behind payments."
 - **Default if you don't answer:** stays proposed; the code keeps `FOR UPDATE`.
 
-### D84 What a refused order transition tells the screen  [status: proposed]
+### D84 What a refused order transition tells the screen  [status: accepted]
 
 - **Question:** should 409 `/problems/invalid-transition` carry the order's current status and the attempted event (Q-8), or should screens keep re-reading the order to find out why?
 - **Forces:** the registry has promised `from` and `event` since the first G3, and the code sends neither; M5-pass7 R2 (P1): the checkout step told a patient "This order is already paid." when it was `payment_failed`, because the problem could not say why; M5-T011 fixed that one screen by going back and refetching EP-21; S6 still picks its copy from the row it loaded, which can be stale
@@ -2901,7 +2901,7 @@ stateDiagram-v2
 - **Interview line:** "The bug came from the client guessing a reason the server knew; the fix was to put the reason in the problem body."
 - **Default if you don't answer:** stays proposed; Q-8 stays open and screens keep refetching.
 
-### D85 Where out-of-stock refusals are counted  [status: proposed]
+### D85 Where out-of-stock refusals are counted  [status: accepted]
 
 - **Question:** where does the platform health count "Out-of-stock refusals" (FR-048) come from, now that a sold-out payment leaves no attempt row?
 - **Forces:** as built (and per SEQ-2), a sold-out Pay rolls transaction 1 back, so `payment_attempts` holds no trace and BE-16's first design (count failed attempts with reason no stock) would always show 0; the count is a total only (FR-053); it is a health signal, not money
@@ -2921,7 +2921,7 @@ stateDiagram-v2
 - **Interview line:** "The refusal rolls back by design, so I counted it where the request is observed instead of inventing a payment row."
 - **Default if you don't answer:** stays proposed; the measure shows 0.
 
-### D86 How finely availability is measured  [status: proposed]
+### D86 How finely availability is measured  [status: accepted]
 
 - **Question:** what time slice does one uptime ping stand for: one minute (first draft) or five minutes?
 - **Forces:** `docs/ops/HEALTH.md` §4 sets the probe at every 5 minutes; with one-minute slices a healthy month would read about 20%; AE-062 expects a figure like 99.7%; S14's target is 99.5%
