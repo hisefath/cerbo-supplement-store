@@ -34,7 +34,7 @@ several harnesses read it and the repo is public.
 | M5.1-T002 | provider screens | Standard / build | claude-subagent | done | 2026-10-11 07:31 CDT | see task file | 3880298 |
 | M5.1-T003 | patient screens | Standard / build | claude-subagent | done | 2026-10-11 07:31 CDT | see task file | caabf90 |
 | M5.1-T004 | staff screens + suite join | Standard / build | claude-subagent | done | 2026-10-11 07:31 CDT | see task file | 7367c5d |
-| M5.1-T005 | review fixes R5, R7, R8 | Standard / build | claude-subagent | working | 2026-10-11 08:12 CDT | see task file | — |
+| M5.1-T005 | review fixes R5, R7, R8 | Standard / build | claude-subagent | done | 2026-10-11 08:12 CDT | see task file | a6ebc86 |
 | M4-CI01 | CI on the MacBook runner: enable runner 245, .gitlab-ci.yml running make check | Fix / supervisor | supervisor (claude-opus-5-5) | done | 2026-10-10 19:05 CDT | .gitlab-ci.yml | — |
 | M5-T001 | Provider changes a practice price (specs/M5-prices-and-stock/tasks/T001.md) | Standard / implement-task | claude-subagent | done | 2026-10-10 21:09 CDT | see task file | 135b9ca |
 | M5-T002 | Payment reserves and releases stock (specs/M5-prices-and-stock/tasks/T002.md) | Standard / implement-task | claude-subagent | done | 2026-10-10 21:09 CDT | see task file | f5bb975 |
@@ -471,3 +471,4 @@ several harnesses read it and the repo is public.
 2026-10-11 08:12 CDT REVIEW M5.1 pass 1: 0 P0, 1 P1, 5 P2, 5 P3
 2026-10-11 08:12 CDT DISPATCH M5.1-T005 harness=claude-subagent why=pass 1 review fixes
 2026-10-11 08:18 CDT SECURITY M5.1: 0 reachable critical/high; font packages clean; NFR-016 holds; re-run due after T005
+2026-10-11 08:20 CDT VERIFY M5.1-T005 squashed a6ebc86: scope-guard OK (5 paths); supervisor make check on the milestone exit 0 (218/43/44/5)
