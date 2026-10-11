@@ -586,3 +586,5 @@ several harnesses read it and the repo is public.
 2026-10-11 17:31 CDT RESULT M7-J03 status=done harness=claude-subagent timeout=no tree=clean
 2026-10-11 17:31 CDT FINDING LINV-1: lld.md names ct_order_lines_fee_shares_sum but no migration builds it (allocateFee enforces in code) -> M7-J05
 2026-10-11 17:31 CDT NOTE records push: GitHub mirror leg blocked by pre-push; GitLab branch pushed, MR !19
+2026-10-11 17:33 CDT RESULT M7-J01 status=done harness=claude-subagent timeout=no tree=clean
+2026-10-11 17:33 CDT FINDING SEC-5 residual wrong for EP-22 checkout (no body, no Idempotency-Key): safe today under SameSite=Lax; reachable cross-site once embedded (SameSite=None) -> embedding-plan E1 Origin check
