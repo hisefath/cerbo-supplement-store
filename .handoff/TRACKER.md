@@ -456,3 +456,4 @@ several harnesses read it and the repo is public.
 2026-10-11 00:34 CDT MERGE M5 MR !9 -> main 220a971 (pipeline #49100 success); make check on main exit 0 (unit 217, M4 43, M5 44)
 2026-10-11 06:59 CDT DEPLOY M5 220a971 → production web-v2 (deployment 373e2d7d SUCCESS); migrations 12000, 13000 applied by human-run railway-setup.sh --skip-seed; /version 220a971; SMOKE GREEN 7/0
 2026-10-11 06:59 CDT BUG filed: db/seed/demo.ts reset list lacks price_changes and stock_movements, so a full re-seed now fails (FK); fix in M5.1 via fix-bug
+2026-10-11 07:31 CDT DISPATCH M5.1-T001 harness=claude-subagent why=tracer bullet (theme, fonts, sign-in band); worktree .claude/worktrees/m51-t001
