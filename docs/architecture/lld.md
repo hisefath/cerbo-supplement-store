@@ -1335,7 +1335,7 @@ FE-12, FE-22 and FE-23 are shared, stateless components; each appears under ever
 
 | Id | Component | Screen | Props in | Events out | Owns state | Screen states rendered |
 |---|---|---|---|---|---|---|
-| **FE-1** | AppShell | all | none | signedOut | ST-1 (fetches), ST-2 | permission denied (signed out after 15 idle minutes), help footer |
+| **FE-1** | AppShell | all | none | signedOut | ST-1 (fetches), ST-2 | permission denied (signed out after 15 idle minutes), help footer; (changed M5.1) the VL-2 page frame: pale page, centred content, help footer styled by the theme (D81) |
 | **FE-2** | SignInPage | S8 | next?: string | signedIn(next) | none (stateless; form fields are local inputs) | empty, loading, error, success, permission denied, edge data |
 | **FE-3** | NoticePage | S9 | token: string | none | ST-8 (fetches EP-24) | success, edge data; others n/a per screens.md |
 | **FE-4** | OrderBuilderPage | S1 | patientId: number | orderSent(orderId) | ST-3, ST-9, ST-8 (fetches EP-18) | empty, loading, error, success, permission denied, edge data |
@@ -1359,6 +1359,18 @@ FE-12, FE-22 and FE-23 are shared, stateless components; each appears under ever
 | **FE-22** | MonthPicker | S6, S10, S11, S13, S14 | value: string | change(month) | none (stateless) | — |
 | **FE-23** | ProblemMessage | all | problem: Problem | retry() | none (stateless) | error (maps each problem type to the screen's exact copy) |
 | **FE-24** | OrderFunnel | S10 | funnel: Funnel | none | none (stateless) | edge data (few orders: "read the counts, not the bars") |
+
+**Theme (new, M5.1, D81).** One global stylesheet, `app/assets/css/theme.css`, registered in `nuxt.config.ts` `css`, holds
+the screens.md VL-2 visual language as CSS custom properties (colours, radii, shadows, spacing, type sizes) plus a
+small set of shared classes every screen uses: `page-band` (the sky header band around a page's title and
+subtitle), `card`, `btn-primary`, `btn-secondary`, `btn-danger`, `status-pill` (one modifier per order status),
+`focus ring` styling on `:focus-visible`, and the reduced-motion rule. Fonts are self-hosted from the npm packages
+`@fontsource-variable/geist` 5.3.0 and `@fontsource/eb-garamond` 5.3.0 (OFL-1.1; checked with `npm view` on
+2026-10-11), imported by theme.css so Vite bundles the font files under `/_nuxt/`: same origin, so the CSP stays
+`default-src 'self'` / `style-src 'self'` unchanged (NFR-016). Components keep their scoped styles for layout only
+and read colours, radii and type from the custom properties; no colour value is written outside theme.css. NFR-015
+is proven by an acceptance check that reads the colour custom properties from theme.css and computes each listed
+text/background pair's WCAG contrast ratio.
 
 ### State ownership
 
@@ -2723,6 +2735,27 @@ stateDiagram-v2
 - **Interview line:** "Tokens are random and only compared by hash, so I dropped the planned test seam instead of building code no test needed."
 - **Default if you don't answer:** stays proposed; nothing downstream may build on it.
 
+### D81 How the M5.1 visual language reaches every screen  [status: proposed]
+
+- **Question:** where do the VL-2 colours, fonts and shared styles live, and how are the fonts served?
+- **Forces:** 18 files each carry their own scoped styles with hard-coded colours; the CSP allows styles and fonts from the app's own origin only; NFR-016 forbids third-party requests inside the EHR; adding packages is Ask-first (AGENTS.md).
+- **Reversibility:** Type 2 two-way · **Confidence:** high
+
+| Option | Pros | Cons | Cost (build + run) | Basis |
+|---|---|---|---|---|
+| Do nothing / simplest: restyle each file's scoped styles with system fonts | no new package | colours copied into 18 files drift apart; no serif or Geist | about 3 hours, ongoing drift | current code |
+| One theme.css of custom properties and shared classes; fonts self-hosted from two fontsource packages (first proposal) | one place to change the look; fonts same-origin, CSP unchanged | two small font packages added | about 3-4 agent runs | NFR-016; screens.md VL-2 |
+| Google Fonts stylesheet link | no package | a third-party request from inside the EHR; CSP must open `fonts.googleapis.com` | 1 hour | rejected by NFR-016 |
+| A utility CSS framework (Tailwind) | fast styling | a large new toolchain dependency for a restyle | about 1 day | — |
+
+- **Recommendation:** one theme.css with self-hosted fontsource fonts
+- **Why (Y-statement):** In the context of a restyle across 18 files under a same-origin CSP, facing drift and third-party font requests, we choose one theme stylesheet with self-hosted fonts over per-file styles, Google Fonts or a utility framework, to change the look in one place without opening the CSP, accepting two small font packages.
+- **In plain words:** all the colours and fonts live in one file, and the font files ship with the app, so nothing is fetched from anyone else.
+- **First proposal (instead of):** none recorded.
+- **Revisit if:** a design system package is adopted, or the EHR host supplies its own fonts.
+- **Interview line:** "I put the whole look in one theme file and shipped the fonts with the app, so the restyle never calls a third party from inside the clinician's chart."
+- **Default if you don't answer:** stays proposed; nothing downstream may build on it.
+
 ## Open questions
 
 | Id | ⚠ Question | Blocks | Recommended answer | Who answers |
@@ -2748,3 +2781,4 @@ stateDiagram-v2
 | 2026-10-10 20:10 CDT | Revise (M5-R01 catch-up, F20; Approvals 2026-10-10 18:31 CDT "Approve, accept all as listed" and 20:01 CDT "go ahead with check-security then M5-R01"): match the shipped M4 code and the routed review rows — users.email and password_hash (Q-1), sessions absolute limit (SEC-6), payment_attempts.failure_reason meaning (FM-3), new sign_in_attempts and pay_rate_attempts tables, database roles and migrations (Q-2 to Q-4), BE-3 clientAddress, BE-6 belowFloorProductIds and unitCostFromLowestAllowedPrice, BE-10 countPayAttempt, D47 guard and FM-3 close, new BE-21 PruneAttempts, EP-23 429, EP-25 order, EP-40 /healthz, new EP-41 /version, rate-limited row, SM-1 guard, FM-3, SEAM-2 (D72), Q-8 | users, sessions, payment_attempts, sign_in_attempts, pay_rate_attempts, INV-4, BE-3, BE-6, BE-10, BE-21, EP-23, EP-25, EP-40, EP-41, SM-1, FM-3, SEAM-2, D72, Q-8 | pending G3 |
 | 2026-10-10 23:10 CDT | Revise (M5 close-out; M5-pass2 R4, M5-pass4 R4; Approvals 2026-10-10 23:10 CDT STANDING): OrderView gains `hold_ended` (EP-21, BE-9.getOrderForViewer); FM-7 reconcile also runs at the start of pay and checkout start | BE-9, EP-21, FM-7, openapi OrderView | G3 by STANDING approval 2026-10-10 23:10 CDT |
 | 2026-10-10 23:57 CDT | Revise (M5 review pass 7 R4, pass 6 R9 a/b, pass 1 R3; Approvals STANDING 2026-10-10 23:09 CDT): EP-17 `Me` gains `practice_name` (string or null), read with the session's user; S5 and S6 titles use it | EP-17, BE-3, openapi Me | G3 by STANDING approval 2026-10-10 23:57 CDT |
+| 2026-10-11 07:24 CDT | Delta (M5.1, D75, D80): FE-1 page frame (changed); Theme paragraph (theme.css custom properties, shared classes, self-hosted fonts); D81 proposed | FE-1, D81 | G3 by STANDING approval 2026-10-11 07:24 CDT |
