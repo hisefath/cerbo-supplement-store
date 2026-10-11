@@ -117,8 +117,8 @@
 <!-- diagram: erd -->
 ```mermaid
 %% diagram: erd
-%% source: docs/architecture/lld.md#1-data-model @ 4d0903b
-%% drawn: 2026-10-11T01:23:45Z by draw-diagrams (claude, claude-opus-5-5)
+%% source: docs/architecture/lld.md#1-data-model @ ef9f129
+%% drawn: 2026-10-11T14:40:51Z by draw-diagrams (claude, claude-opus-5-5)
 %% render: unverified
 %% render-check: mmdc not on PATH
 %% missing: 0
@@ -293,9 +293,10 @@ erDiagram
         integer requests "not null"
         integer errors "not null"
         integer slow "not null"
+        integer stock_refusals "not null"
     }
     health_pings {
-        timestamptz minute PK "not null"
+        timestamptz slot PK "not null"
         timestamptz first_seen_at "not null"
     }
     sign_in_attempts {
@@ -743,19 +744,21 @@ All money columns are whole US cents in `integer` (max about $21 million per val
 <!-- diagram: be-class -->
 ```mermaid
 %% diagram: be-class
-%% source: docs/architecture/lld.md#2-backend-components @ 42461ba
-%% drawn: 2026-10-11T01:26:07Z by draw-diagrams (claude, claude-opus-5-5)
+%% source: docs/architecture/lld.md#2-backend-components @ ef9f129
+%% drawn: 2026-10-11T14:41:14Z by draw-diagrams (claude, claude-opus-5-5)
 %% render: unverified
 %% render-check: mmdc not on PATH
-%% missing: 0
+%% missing: 1
 %% Generated from the source section. Do not edit by hand: fix the section, then re-run `draw-diagrams be-class`.
 classDiagram
     class BE1["BE-1 ApiHandlers"]
     <<route handlers>> BE1
-    BE1 : +handle~Operation~(event: H3Event) Promise~T~
+    BE1 : +defineApiHandler~T~(fn: (event: H3Event) => Promise~T~)
+    %% ⚠ missing: signature of sendProblem — docs/architecture/lld.md#2-backend-components does not state it
     class BE2["BE-2 PageGuards"]
     <<route middleware>> BE2
-    BE2 : +requirePageRole(event: H3Event, roles: Role[]) Promise~Viewer~
+    BE2 : +defineNuxtRouteMiddleware(to => …)
+    BE2 : +safeNext(next: unknown) string | null
     class BE3["BE-3 SessionService"]
     <<service>> BE3
     BE3 : +signIn(email: string, password: string, ip: string) Promise~{ viewer: Viewer#59; cookieToken: string }~
@@ -764,7 +767,12 @@ classDiagram
     BE3 : +signOut(cookieToken: string) Promise~void~
     class BE4["BE-4 AccessPolicy"]
     <<policy>> BE4
-    BE4 : +assertRole(viewer: Viewer, allowed: Role[]) void
+    BE4 : +assertRole(viewer: Viewer | null, allowed: Role[]) asserts viewer is Viewer
+    BE4 : +assertIsOrderPatient(viewer: Viewer, order: OrderOwnership) void
+    BE4 : +ORDER_REVIEWER_ROLES Role[]
+    BE4 : +PLATFORM_HEALTH_ROLES Role[]
+    BE4 : +FINANCE_ROLES Role[]
+    BE4 : +SRE_ROLES Role[]
     BE4 : +assertCanViewOrder(viewer: Viewer, order: OrderOwnership) void
     BE4 : +assertCanActOnPatient(viewer: Viewer, patient: PatientRef) void
     BE4 : +assertCanChangeRole(actor: Viewer, target: StaffRef) void
@@ -813,8 +821,8 @@ classDiagram
     class BE13["BE-13 StockService"]
     <<service>> BE13
     BE13 : +adjust(viewer: Viewer, productId: bigint, input: StockAdjustmentInput) Promise~StockMovement~
-    BE13 : +reserveForOrder(tx: Transaction, orderId: bigint, lines: SaleLine[]) Promise~void~
-    BE13 : +releaseForOrder(tx: Transaction, orderId: bigint) Promise~void~
+    BE13 : +reserveForOrder(tx: Transaction~Database~, orderId: bigint) Promise~void~
+    BE13 : +releaseForOrder(tx: Transaction~Database~, orderId: bigint) Promise~void~
     BE13 : +listStock(viewer: Viewer, historyCursor?: string) Promise~StockList~
     class BE14["BE-14 OpsOrderQueries"]
     <<read model>> BE14
@@ -838,8 +846,9 @@ classDiagram
     BE18 : +accessLog(viewer: Viewer, month: YearMonth, cursor?: string, limit?: number) Promise~AccessLogPage~
     class BE19["BE-19 RequestMetrics"]
     <<middleware + read model>> BE19
-    BE19 : +record(routeGroup: string, status: number, durationMs: number) Promise~void~
-    BE19 : +recordPing() Promise~Health~
+    BE19 : +routeGroup(path: string) string | null
+    BE19 : +record(routeGroup: string, status: number, durationMs: number, stockRefusal: boolean) Promise~void~
+    BE19 : +recordPing() Promise~void~
     BE19 : +systemHealth(viewer: Viewer, month: YearMonth) Promise~SystemHealth~
     class BE20["BE-20 Clock"]
     <<seam>> BE20
@@ -847,6 +856,13 @@ classDiagram
     class BE21["BE-21 PruneAttempts"]
     <<scheduled task>> BE21
     BE21 : +run() Promise~{ result: 'ok' }~
+    class BE22["BE-22 Paging"]
+    <<pure module>> BE22
+    BE22 : +encodeCursor(key: string | null, id: string) string
+    BE22 : +decodeCursor(cursor: string, pointer: string, keyed: boolean) { key: string | null#59; id: string }
+    BE22 : +parseLimit(raw: unknown, pointer: string) number
+    BE22 : +parseMonth(raw: unknown, pointer: string) YearMonth
+    BE22 : +parsePeriod(query: { month?: unknown#59; from?: unknown#59; to?: unknown }) Period
     BE1 ..> BE3 : depends on
     BE1 ..> BE4 : depends on
     BE1 ..> BE5 : depends on
@@ -872,6 +888,7 @@ classDiagram
     BE8 ..> BE6 : depends on
     BE8 ..> BE7 : depends on
     BE8 ..> BE20 : depends on
+    BE8 ..> BE22 : depends on
     BE9 ..> BE4 : depends on
     BE9 ..> BE6 : depends on
     BE9 ..> BE7 : depends on
@@ -886,18 +903,28 @@ classDiagram
     note for BE12 "depends on: SEAM-2 random tokens"
     BE13 ..> BE4 : depends on
     BE13 ..> BE20 : depends on
+    BE13 ..> BE22 : depends on
     BE14 ..> BE4 : depends on
+    BE14 ..> BE22 : depends on
     BE15 ..> BE4 : depends on
     BE15 ..> BE20 : depends on
+    BE15 ..> BE22 : depends on
     BE16 ..> BE4 : depends on
     BE16 ..> BE20 : depends on
+    BE16 ..> BE22 : depends on
     BE17 ..> BE4 : depends on
     BE17 ..> BE20 : depends on
+    BE17 ..> BE22 : depends on
     BE18 ..> BE4 : depends on
     BE18 ..> BE20 : depends on
+    BE18 ..> BE22 : depends on
+    BE19 ..> BE4 : depends on
     BE19 ..> BE20 : depends on
+    BE19 ..> BE22 : depends on
     BE21 ..> BE20 : depends on
     note for BE21 "depends on: the Nitro task scheduler (cron */15 * * * *, in the same process#59; no new container)"
+    BE22 ..> BE20 : depends on
+    note for BE22 "depends on: Zod (installed)"
 ```
 <!-- /diagram -->
 
@@ -1225,8 +1252,8 @@ classDiagram
 <!-- diagram: fe-components -->
 ```mermaid
 %% diagram: fe-components
-%% source: docs/architecture/lld.md#3-frontend-components @ 36d7dad
-%% drawn: 2026-10-10T16:13:33Z by draw-diagrams (claude, claude-opus-5-5)
+%% source: docs/architecture/lld.md#3-frontend-components @ ef9f129
+%% drawn: 2026-10-11T14:42:17Z by draw-diagrams (claude, claude-opus-5-5)
 %% render: unverified
 %% render-check: mmdc not on PATH
 %% missing: 0
@@ -1248,20 +1275,20 @@ flowchart TD
     FE14["FE-14 PriceChangeDialog<br/>owns: none (stateless#59; the draft is lifted to FE-13)<br/>reads: ST-6, ST-8"]
     FE15["FE-15 PracticeDashboardPage<br/>owns: ST-7, ST-12, ST-8 (fetches EP-29, EP-30#59; calls EP-20) (changed)<br/>reads: ST-1"]
     FE16["FE-16 StockAdjustmentsPage<br/>owns: ST-10, ST-8 (fetches EP-31)<br/>reads: ST-1"]
-    FE17["FE-17 PlatformHealthPage<br/>owns: ST-7, ST-8 (fetches EP-33)<br/>reads: ST-1"]
-    FE18["FE-18 FinancialReportPage<br/>owns: ST-7, ST-8 (fetches EP-34)<br/>reads: ST-1"]
-    FE19["FE-19 OperationsAccessPage<br/>owns: ST-11, ST-8 (fetches EP-36)<br/>reads: ST-1"]
-    FE20["FE-20 AccessLogPage<br/>owns: ST-7, ST-8 (fetches EP-38)<br/>reads: ST-1"]
+    FE17["FE-17 PlatformHealthPage (changed)<br/>owns: ST-7, ST-8 (fetches EP-33)#59; local UI: how many practice rows are shown (25, then + 25 per #quot;Show 25 more#quot;)<br/>reads: ST-1"]
+    FE18["FE-18 FinancialReportPage (changed)<br/>owns: ST-7 (month or from/to), ST-8 (fetches EP-34#59; Export is a plain link to EP-35 with the same query, so the browser downloads it)#59; local UI: provider rows shown (25, then + 25)<br/>reads: ST-1"]
+    FE19["FE-19 OperationsAccessPage (changed)<br/>owns: ST-11, ST-8 (fetches EP-36#59; calls EP-37)<br/>reads: ST-1"]
+    FE20["FE-20 AccessLogPage (changed)<br/>owns: ST-7, ST-8 (fetches EP-38#59; #quot;Show 25 more#quot; fetches the next cursor and appends, as FE-15 does)<br/>reads: ST-1"]
     FE21["FE-21 SystemHealthPage<br/>owns: ST-7, ST-8 (fetches EP-39)<br/>reads: ST-1"]
-    FE22["FE-22 MonthPicker<br/>owns: none (stateless)<br/>reads: ST-7"]
-    FE23["FE-23 ProblemMessage<br/>owns: none (stateless)"]
+    FE22["FE-22 MonthPicker (changed)<br/>owns: none (stateless)<br/>reads: ST-7"]
+    FE23["FE-23 ProblemMessage (changed, as built)<br/>owns: none (stateless)"]
     FE24["FE-24 OrderFunnel<br/>owns: none (stateless)<br/>reads: ST-8"]
     FE1 -->|"next?: string"| FE2
     FE2 -.->|"signedIn(next)"| FE1
-    FE2 -->|"problem: Problem"| FE23
+    FE2 -->|"problem: Problem #124; null#59; copy?: Record#lt;slug, string#gt; (the screen's own copy per problem type)#59; names?: Record#lt;productId, string#gt;"| FE23
     FE23 -.->|"retry()"| FE2
     FE1 -->|"token: string"| FE3
-    FE3 -->|"problem: Problem"| FE23
+    FE3 -->|"problem: Problem #124; null#59; copy?: Record#lt;slug, string#gt; (the screen's own copy per problem type)#59; names?: Record#lt;productId, string#gt;"| FE23
     FE23 -.->|"retry()"| FE3
     FE1 -->|"patientId: number"| FE4
     FE4 -.->|"orderSent(orderId)"| FE1
@@ -1269,58 +1296,58 @@ flowchart TD
     FE5 -.->|"add(productId, quantity)"| FE4
     FE4 -->|"lines: DraftLine[]#59; totals: Totals#59; problem?: Problem"| FE6
     FE6 -.->|"remove(productId), send()"| FE4
-    FE4 -->|"problem: Problem"| FE23
+    FE4 -->|"problem: Problem #124; null#59; copy?: Record#lt;slug, string#gt; (the screen's own copy per problem type)#59; names?: Record#lt;productId, string#gt;"| FE23
     FE23 -.->|"retry()"| FE4
     FE1 -->|"orderId: number"| FE7
     FE7 -->|"order: OrderView"| FE8
     FE8 -.->|"paid(receipt), back()"| FE7
     FE7 -->|"receipt: Receipt"| FE9
-    FE7 -->|"problem: Problem"| FE23
+    FE7 -->|"problem: Problem #124; null#59; copy?: Record#lt;slug, string#gt; (the screen's own copy per problem type)#59; names?: Record#lt;productId, string#gt;"| FE23
     FE23 -.->|"retry()"| FE7
     FE1 --> FE10
-    FE10 -->|"problem: Problem"| FE23
+    FE10 -->|"problem: Problem #124; null#59; copy?: Record#lt;slug, string#gt; (the screen's own copy per problem type)#59; names?: Record#lt;productId, string#gt;"| FE23
     FE23 -.->|"retry()"| FE10
     FE1 -->|"orderId: number"| FE11
     FE11 -->|"total: number#59; parts: Part[]#59; balanced: boolean"| FE12
-    FE11 -->|"problem: Problem"| FE23
+    FE11 -->|"problem: Problem #124; null#59; copy?: Record#lt;slug, string#gt; (the screen's own copy per problem type)#59; names?: Record#lt;productId, string#gt;"| FE23
     FE23 -.->|"retry()"| FE11
     FE1 --> FE13
     FE13 -->|"price: PracticePrice#59; draft: PriceDraft#59; problem?: Problem"| FE14
     FE14 -.->|"change(draft), save(), cancel()"| FE13
-    FE13 -->|"problem: Problem"| FE23
+    FE13 -->|"problem: Problem #124; null#59; copy?: Record#lt;slug, string#gt; (the screen's own copy per problem type)#59; names?: Record#lt;productId, string#gt;"| FE23
     FE23 -.->|"retry()"| FE13
     FE1 --> FE15
-    FE15 -->|"value: string"| FE22
+    FE15 -->|"value: string (YYYY-MM)"| FE22
     FE22 -.->|"change(month)"| FE15
-    FE15 -->|"problem: Problem"| FE23
+    FE15 -->|"problem: Problem #124; null#59; copy?: Record#lt;slug, string#gt; (the screen's own copy per problem type)#59; names?: Record#lt;productId, string#gt;"| FE23
     FE23 -.->|"retry()"| FE15
     FE1 --> FE16
-    FE16 -->|"problem: Problem"| FE23
+    FE16 -->|"problem: Problem #124; null#59; copy?: Record#lt;slug, string#gt; (the screen's own copy per problem type)#59; names?: Record#lt;productId, string#gt;"| FE23
     FE23 -.->|"retry()"| FE16
     FE1 --> FE17
-    FE17 -->|"value: string"| FE22
+    FE17 -->|"value: string (YYYY-MM)"| FE22
     FE22 -.->|"change(month)"| FE17
     FE17 -->|"funnel: Funnel"| FE24
-    FE17 -->|"problem: Problem"| FE23
+    FE17 -->|"problem: Problem #124; null#59; copy?: Record#lt;slug, string#gt; (the screen's own copy per problem type)#59; names?: Record#lt;productId, string#gt;"| FE23
     FE23 -.->|"retry()"| FE17
     FE1 --> FE18
-    FE18 -->|"value: string"| FE22
+    FE18 -->|"value: string (YYYY-MM)"| FE22
     FE22 -.->|"change(month)"| FE18
     FE18 -->|"total: number#59; parts: Part[]#59; balanced: boolean"| FE12
-    FE18 -->|"problem: Problem"| FE23
+    FE18 -->|"problem: Problem #124; null#59; copy?: Record#lt;slug, string#gt; (the screen's own copy per problem type)#59; names?: Record#lt;productId, string#gt;"| FE23
     FE23 -.->|"retry()"| FE18
     FE1 --> FE19
-    FE19 -->|"problem: Problem"| FE23
+    FE19 -->|"problem: Problem #124; null#59; copy?: Record#lt;slug, string#gt; (the screen's own copy per problem type)#59; names?: Record#lt;productId, string#gt;"| FE23
     FE23 -.->|"retry()"| FE19
     FE1 --> FE20
-    FE20 -->|"value: string"| FE22
+    FE20 -->|"value: string (YYYY-MM)"| FE22
     FE22 -.->|"change(month)"| FE20
-    FE20 -->|"problem: Problem"| FE23
+    FE20 -->|"problem: Problem #124; null#59; copy?: Record#lt;slug, string#gt; (the screen's own copy per problem type)#59; names?: Record#lt;productId, string#gt;"| FE23
     FE23 -.->|"retry()"| FE20
     FE1 --> FE21
-    FE21 -->|"value: string"| FE22
+    FE21 -->|"value: string (YYYY-MM)"| FE22
     FE22 -.->|"change(month)"| FE21
-    FE21 -->|"problem: Problem"| FE23
+    FE21 -->|"problem: Problem #124; null#59; copy?: Record#lt;slug, string#gt; (the screen's own copy per problem type)#59; names?: Record#lt;productId, string#gt;"| FE23
     FE23 -.->|"retry()"| FE21
 ```
 <!-- /diagram -->
@@ -1675,8 +1702,8 @@ sequenceDiagram
 <!-- diagram: sequence-pay-order -->
 ```mermaid
 %% diagram: sequence-pay-order
-%% source: docs/architecture/lld.md#seq-2-review-and-pay-an-order-sequence-pay-order-covers-us-2-us-8-f2-fr-005-to-fr-013-fr-022-fr-023-fr-026-fr-027-fr-035-to-fr-037-fr-042-ae-005-to-ae-012-ae-020-ae-021-ae-023-ae-031 @ 2e4e445
-%% drawn: 2026-10-10T05:06:05Z by draw-diagrams (claude, claude-opus-5-5)
+%% source: docs/architecture/lld.md#seq-2-review-and-pay-an-order-sequence-pay-order-covers-us-2-us-8-f2-fr-005-to-fr-013-fr-022-fr-023-fr-026-fr-027-fr-035-to-fr-037-fr-042-ae-005-to-ae-012-ae-020-ae-021-ae-023-ae-031 @ ef9f129
+%% drawn: 2026-10-11T14:42:55Z by draw-diagrams (claude, claude-opus-5-5)
 %% render: unverified
 %% render-check: mmdc not on PATH
 %% missing: 0
@@ -1707,7 +1734,7 @@ sequenceDiagram
     alt main path (steps 9-15)
         BE1->>BE10: pay(viewer, order, key)
         alt main path (steps 10-15)
-            BE10->>DB: [tx begin] lock the order#59; check in_checkout and hold live#59; compute the split with BE-6 and check it balances#59; lock products in id order#59; BE-13.reserveForOrder lowers stock and appends sale movements#59; insert attempt processing [tx commit]
+            BE10->>DB: (changed, as built, M5-pass3 R3) [tx begin] lock the order#59; check in_checkout and hold live#59; compute the split with BE-6 and check it balances#59; insert attempt processing (LINV-6: a second Pay already in flight loses here with 409 /problems/invalid-transition before touching stock)#59; BE-13.reserveForOrder locks products in id order, lowers stock and appends sale movements [tx commit]
             BE10->>BE11: charge(amount, order, key) — outside any transaction
             alt main path (steps 12-15)
                 BE11-->>BE10: succeeded
@@ -1722,7 +1749,7 @@ sequenceDiagram
                 FE8-->>Patient: #quot;Your payment didn't go through. No money was taken. Try again.#quot;
             end
         else an item sold out before Ana paid
-            BE13->>BE10: InsufficientStock inside transaction 1 → [tx rollback]#59; no attempt row, no charge#59; the order stays in_checkout
+            BE13->>BE10: (changed) insufficient-stock from reserveForOrder, after the attempt insert, inside transaction 1 → [tx rollback] removes the attempt too#59; no attempt row, no charge#59; the order stays in_checkout#59; BE-19 counts the refusal (D85)
             BE1->>BE5: release(user, key)
             BE1-->>FE8: 422 /problems/insufficient-stock
             FE8-->>Patient: #quot;Omega-3 Fish Oil sold out before you paid. Nothing was charged. Contact your practice to change your order.#quot;
@@ -2144,8 +2171,8 @@ sequenceDiagram
 <!-- diagram: sequence-platform-health -->
 ```mermaid
 %% diagram: sequence-platform-health
-%% source: docs/architecture/lld.md#seq-8-find-where-orders-get-stuck-sequence-platform-health-covers-us-6-us-10-f8-fr-032-fr-048-fr-049-fr-053-ae-029-ae-045-ae-046-ae-050 @ 2e4e445
-%% drawn: 2026-10-10T05:06:11Z by draw-diagrams (claude, claude-opus-5-5)
+%% source: docs/architecture/lld.md#seq-8-find-where-orders-get-stuck-sequence-platform-health-covers-us-6-us-10-f8-fr-032-fr-048-fr-049-fr-053-ae-029-ae-045-ae-046-ae-050 @ ef9f129
+%% drawn: 2026-10-11T14:43:16Z by draw-diagrams (claude, claude-opus-5-5)
 %% render: unverified
 %% render-check: mmdc not on PATH
 %% missing: 0
@@ -2161,9 +2188,9 @@ sequenceDiagram
     participant BE16 as BE-16 PlatformHealthQueries
     participant DB
     FE17->>BE1: GET health for the month (EP-33) → BE-4.assertRole → BE-16.health
-    BE16->>DB: counts of orders sent, checkout started, paid, payment failed and checkout expired in the month#59; median minutes from sent to paid#59; out-of-stock refusals (failed attempts with reason no stock)#59; review count#59; paid amounts and fees per practice from ledger entries
+    BE16->>DB: (changed) funnel counts of the month's sent orders by their current state (BE-16 Definitions)#59; median minutes from sent to paid#59; out-of-stock refusals summed from request_stats.stock_refusals (D85)#59; review count#59; paid amounts and fees per practice from ledger entries, and sent and paid order counts per practice
     BE16->>BE16: compares each measure with its alert line (A-11: review count line 1#59; others #quot;set after 30 days#quot;)
-    FE17->>FE24: funnel counts → #quot;Sent 10 · Checkout started 9 · Paid 8#quot;
+    FE17->>FE24: funnel counts → #quot;Sent 10 · Checkout started 9 · Paid 8#quot;#59; the practice list shows its first 25 rows (changed)
     alt main path (steps 5)
         FE17->>P1: #quot;1 measure needs attention: orders needing review (1)#quot; on top
     else the analyst tries to open a single order from a total
@@ -2268,8 +2295,8 @@ sequenceDiagram
 <!-- diagram: sequence-change-role -->
 ```mermaid
 %% diagram: sequence-change-role
-%% source: docs/architecture/lld.md#seq-10-grant-or-remove-an-operations-role-sequence-change-role-covers-us-10-f10-fr-054-to-fr-056-ae-051-to-ae-053 @ 2e4e445
-%% drawn: 2026-10-10T05:04:50Z by draw-diagrams (claude, claude-opus-5-5)
+%% source: docs/architecture/lld.md#seq-10-grant-or-remove-an-operations-role-sequence-change-role-covers-us-10-f10-fr-054-to-fr-056-ae-051-to-ae-053 @ ef9f129
+%% drawn: 2026-10-11T14:43:28Z by draw-diagrams (claude, claude-opus-5-5)
 %% render: unverified
 %% render-check: mmdc not on PATH
 %% missing: 0
@@ -2285,16 +2312,16 @@ sequenceDiagram
     participant BE18 as BE-18 StaffAccessService
     participant DB
     alt main path (steps 1-7)
-        FE19->>BE1: GET staff (EP-36) → BE-18.listStaff
+        FE19->>BE1: (changed) GET staff (EP-36) → BE-4.assertRole(sre) → BE-18.listStaff
         SRE->>FE19: Change role on Dana → Data analyst, reason #quot;new hire#quot;#59; presses Save role
         FE19->>BE1: PUT role with Idempotency-Key (EP-37)#59; BE-5.begin → proceed
         BE1->>BE18: changeRole(actor, Dana, {role data_analyst, reason, expected none})
-        BE18->>BE4: assertCanChangeRole(actor, Dana) — actor is SRE and not Dana
+        BE18->>DB: (changed) load Dana (an operations person: no practice)#59; BE-18 → BE-4: assertCanChangeRole(actor, Dana) — actor is SRE and not Dana
         alt main path (steps 6-7)
             BE18->>DB: [tx begin] lock Dana's row#59; check expected role#59; check the last-finance-lead rule#59; update role and role_changed_at#59; insert access log (granted) [tx commit]
             BE1-->>FE19: 200 StaffMember → #quot;Saved. Dana Ito is now Data analyst. The finance lead will see this in the access log.#quot;
         else the SRE targets their own account
-            BE4-->>BE18: self-role-change
+            BE4->>BE18: self-role-change
             BE18->>DB: [tx begin] insert access log (refused) [tx commit]
             BE18-->>BE1: SelfRoleChange
             BE1->>BE5: release(user, key)
@@ -2303,11 +2330,11 @@ sequenceDiagram
         end
     else someone other than the SRE tries
         P1->>FE19: opens Operations access and saves a role
-        FE19->>BE1: PUT role (EP-37)
+        FE19->>BE1: PUT role with Idempotency-Key (EP-37)#59; BE-5.begin → proceed#59; (changed) BE-1 does not pre-check the role, so the refusal reaches BE-18 and is logged
         BE1->>BE18: changeRole(actor, target, input)
         BE18->>BE4: assertCanChangeRole → forbidden
         BE18->>DB: [tx begin] insert access log (refused) [tx commit]
-        BE1-->>FE19: 403 /problems/forbidden
+        BE1->>BE5: release(user, key)#59; BE-1 → FE-19: 403 /problems/forbidden
         FE19-->>P1: #quot;Only the SRE can change operations roles.#quot;
     end
 ```
@@ -2415,8 +2442,8 @@ sequenceDiagram
 <!-- diagram: sequence-system-health -->
 ```mermaid
 %% diagram: sequence-system-health
-%% source: docs/architecture/lld.md#seq-12-check-system-health-sequence-system-health-covers-us-10-f12-fr-058-fr-059-ae-061-ae-062 @ e885abc
-%% drawn: 2026-10-10T04:59:37Z by draw-diagrams (claude, claude-opus-5-5)
+%% source: docs/architecture/lld.md#seq-12-check-system-health-sequence-system-health-covers-us-10-f12-fr-058-fr-059-ae-061-ae-062 @ ef9f129
+%% drawn: 2026-10-11T14:43:56Z by draw-diagrams (claude, claude-opus-5-5)
 %% render: unverified
 %% render-check: mmdc not on PATH
 %% missing: 0
@@ -2431,10 +2458,10 @@ sequenceDiagram
     participant BE19 as BE-19 RequestMetrics
     participant DB
     participant BE2 as BE-2
-    X1->>BE1: GET /health (EP-40) every minute → BE-19.recordPing → DB: insert the minute (ignored if present)
+    X1->>BE1: (changed) GET /healthz (EP-40) every 5 minutes → DB: select 1 → BE-19.recordPing → DB: insert the 5-minute slot (ignored if present) → 200 ok
     alt main path (steps 2-4)
         FE21->>BE1: GET system health (EP-39) → BE-4.assertRole(sre) → BE-19.systemHealth
-        BE19->>DB: availability = pinged minutes ÷ minutes so far in the month#59; errors and slow responses from request stats
+        BE19->>DB: (changed) availability = pinged slots ÷ 5-minute slots elapsed in the month since the first ping (D86)#59; error rate and slow page share from request stats
         FE21->>SRE: #quot;Availability 99.7%, target 99.5%: met#quot; and the other measures
     else the SRE follows a link to an order breakdown
         BE2->>BE4: assertRole fails for EP-6 → 403 /problems/forbidden → #quot;Your role can't open order breakdowns.#quot;
@@ -2465,8 +2492,8 @@ sequenceDiagram
 <!-- diagram: state-order -->
 ```mermaid
 %% diagram: state-order
-%% source: docs/architecture/lld.md#sm-1-order-lifecycle-ordersstatus-state-order @ e885abc
-%% drawn: 2026-10-10T04:56:28Z by draw-diagrams (claude, claude-opus-5-5)
+%% source: docs/architecture/lld.md#sm-1-order-lifecycle-ordersstatus-state-order @ ef9f129
+%% drawn: 2026-10-11T14:44:09Z by draw-diagrams (claude, claude-opus-5-5)
 %% render: unverified
 %% render-check: mmdc not on PATH
 %% missing: 0
@@ -2479,7 +2506,7 @@ stateDiagram-v2
     in_checkout --> sent : hold ends (BE-9.expireHoldIfDue, on any read or action after prices_held_until) [now ≥ prices_held_until]
     in_checkout --> paid : payment succeeds (EP-23 → BE-10.pay) [hold live#59; stock enough#59; split balances]
     in_checkout --> payment_failed : payment fails (BE-11 declined or no answer)
-    in_checkout --> needs_review : split mismatch (BE-10.pay, before charging) [split doesn't balance]
+    in_checkout --> needs_review : split mismatch (BE-10.pay, before charging) [split doesn't balance, or (changed, D47) it balances but the payout would be below $0.00]
     sent --> cancelled : cancel (EP-20 → BE-9.cancelOrder) [viewer is a provider of the practice]
     payment_failed --> cancelled : cancel (EP-20) [viewer is a provider of the practice]
     paid --> [*]
@@ -2518,14 +2545,14 @@ stateDiagram-v2
 <!-- diagram: state-payment-attempt -->
 ```mermaid
 %% diagram: state-payment-attempt
-%% source: docs/architecture/lld.md#sm-2-payment-attempt-payment_attemptsstatus-state-payment-attempt @ e885abc
-%% drawn: 2026-10-10T04:58:02Z by draw-diagrams (claude, claude-opus-5-5)
+%% source: docs/architecture/lld.md#sm-2-payment-attempt-payment_attemptsstatus-state-payment-attempt @ ef9f129
+%% drawn: 2026-10-11T14:44:25Z by draw-diagrams (claude, claude-opus-5-5)
 %% render: unverified
 %% render-check: mmdc not on PATH
 %% missing: 0
 %% Generated from the source section. Do not edit by hand: fix the section, then re-run `draw-diagrams state-payment-attempt`.
 stateDiagram-v2
-    [*] --> processing : pay (EP-23 → BE-10.pay) [order in_checkout, hold live, split balances, stock reserved, no other processing attempt]
+    [*] --> processing : pay (EP-23 → BE-10.pay) [order in_checkout, hold live, split balances, no other processing attempt#59; (changed) then stock reserved in the same transaction]
     processing --> succeeded : gateway succeeded (BE-11)
     processing --> failed : gateway failed or no answer (BE-11)
     processing --> failed : abandoned: the process died between the two transactions (FM-7 reconcile on the next read of the order) [created_at + 2 min ≤ now]

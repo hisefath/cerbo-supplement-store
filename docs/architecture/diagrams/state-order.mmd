@@ -1,6 +1,6 @@
 %% diagram: state-order
-%% source: docs/architecture/lld.md#sm-1-order-lifecycle-ordersstatus-state-order @ e885abc
-%% drawn: 2026-10-10T04:56:28Z by draw-diagrams (claude, claude-opus-5-5)
+%% source: docs/architecture/lld.md#sm-1-order-lifecycle-ordersstatus-state-order @ ef9f129
+%% drawn: 2026-10-11T14:44:09Z by draw-diagrams (claude, claude-opus-5-5)
 %% render: unverified
 %% render-check: mmdc not on PATH
 %% missing: 0
@@ -13,7 +13,7 @@ stateDiagram-v2
     in_checkout --> sent : hold ends (BE-9.expireHoldIfDue, on any read or action after prices_held_until) [now ≥ prices_held_until]
     in_checkout --> paid : payment succeeds (EP-23 → BE-10.pay) [hold live#59; stock enough#59; split balances]
     in_checkout --> payment_failed : payment fails (BE-11 declined or no answer)
-    in_checkout --> needs_review : split mismatch (BE-10.pay, before charging) [split doesn't balance]
+    in_checkout --> needs_review : split mismatch (BE-10.pay, before charging) [split doesn't balance, or (changed, D47) it balances but the payout would be below $0.00]
     sent --> cancelled : cancel (EP-20 → BE-9.cancelOrder) [viewer is a provider of the practice]
     payment_failed --> cancelled : cancel (EP-20) [viewer is a provider of the practice]
     paid --> [*]

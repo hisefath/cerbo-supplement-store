@@ -1,6 +1,6 @@
 %% diagram: sequence-platform-health
-%% source: docs/architecture/lld.md#seq-8-find-where-orders-get-stuck-sequence-platform-health-covers-us-6-us-10-f8-fr-032-fr-048-fr-049-fr-053-ae-029-ae-045-ae-046-ae-050 @ 2e4e445
-%% drawn: 2026-10-10T05:06:11Z by draw-diagrams (claude, claude-opus-5-5)
+%% source: docs/architecture/lld.md#seq-8-find-where-orders-get-stuck-sequence-platform-health-covers-us-6-us-10-f8-fr-032-fr-048-fr-049-fr-053-ae-029-ae-045-ae-046-ae-050 @ ef9f129
+%% drawn: 2026-10-11T14:43:16Z by draw-diagrams (claude, claude-opus-5-5)
 %% render: unverified
 %% render-check: mmdc not on PATH
 %% missing: 0
@@ -16,9 +16,9 @@ sequenceDiagram
     participant BE16 as BE-16 PlatformHealthQueries
     participant DB
     FE17->>BE1: GET health for the month (EP-33) → BE-4.assertRole → BE-16.health
-    BE16->>DB: counts of orders sent, checkout started, paid, payment failed and checkout expired in the month#59; median minutes from sent to paid#59; out-of-stock refusals (failed attempts with reason no stock)#59; review count#59; paid amounts and fees per practice from ledger entries
+    BE16->>DB: (changed) funnel counts of the month's sent orders by their current state (BE-16 Definitions)#59; median minutes from sent to paid#59; out-of-stock refusals summed from request_stats.stock_refusals (D85)#59; review count#59; paid amounts and fees per practice from ledger entries, and sent and paid order counts per practice
     BE16->>BE16: compares each measure with its alert line (A-11: review count line 1#59; others #quot;set after 30 days#quot;)
-    FE17->>FE24: funnel counts → #quot;Sent 10 · Checkout started 9 · Paid 8#quot;
+    FE17->>FE24: funnel counts → #quot;Sent 10 · Checkout started 9 · Paid 8#quot;#59; the practice list shows its first 25 rows (changed)
     alt main path (steps 5)
         FE17->>P1: #quot;1 measure needs attention: orders needing review (1)#quot; on top
     else the analyst tries to open a single order from a total

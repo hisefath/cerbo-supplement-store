@@ -1,12 +1,12 @@
 %% diagram: state-payment-attempt
-%% source: docs/architecture/lld.md#sm-2-payment-attempt-payment_attemptsstatus-state-payment-attempt @ e885abc
-%% drawn: 2026-10-10T04:58:02Z by draw-diagrams (claude, claude-opus-5-5)
+%% source: docs/architecture/lld.md#sm-2-payment-attempt-payment_attemptsstatus-state-payment-attempt @ ef9f129
+%% drawn: 2026-10-11T14:44:25Z by draw-diagrams (claude, claude-opus-5-5)
 %% render: unverified
 %% render-check: mmdc not on PATH
 %% missing: 0
 %% Generated from the source section. Do not edit by hand: fix the section, then re-run `draw-diagrams state-payment-attempt`.
 stateDiagram-v2
-    [*] --> processing : pay (EP-23 → BE-10.pay) [order in_checkout, hold live, split balances, stock reserved, no other processing attempt]
+    [*] --> processing : pay (EP-23 → BE-10.pay) [order in_checkout, hold live, split balances, no other processing attempt#59; (changed) then stock reserved in the same transaction]
     processing --> succeeded : gateway succeeded (BE-11)
     processing --> failed : gateway failed or no answer (BE-11)
     processing --> failed : abandoned: the process died between the two transactions (FM-7 reconcile on the next read of the order) [created_at + 2 min ≤ now]

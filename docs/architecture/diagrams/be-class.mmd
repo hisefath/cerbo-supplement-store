@@ -1,17 +1,19 @@
 %% diagram: be-class
-%% source: docs/architecture/lld.md#2-backend-components @ 42461ba
-%% drawn: 2026-10-11T01:26:07Z by draw-diagrams (claude, claude-opus-5-5)
+%% source: docs/architecture/lld.md#2-backend-components @ ef9f129
+%% drawn: 2026-10-11T14:41:14Z by draw-diagrams (claude, claude-opus-5-5)
 %% render: unverified
 %% render-check: mmdc not on PATH
-%% missing: 0
+%% missing: 1
 %% Generated from the source section. Do not edit by hand: fix the section, then re-run `draw-diagrams be-class`.
 classDiagram
     class BE1["BE-1 ApiHandlers"]
     <<route handlers>> BE1
-    BE1 : +handle~Operation~(event: H3Event) Promise~T~
+    BE1 : +defineApiHandler~T~(fn: (event: H3Event) => Promise~T~)
+    %% ⚠ missing: signature of sendProblem — docs/architecture/lld.md#2-backend-components does not state it
     class BE2["BE-2 PageGuards"]
     <<route middleware>> BE2
-    BE2 : +requirePageRole(event: H3Event, roles: Role[]) Promise~Viewer~
+    BE2 : +defineNuxtRouteMiddleware(to => …)
+    BE2 : +safeNext(next: unknown) string | null
     class BE3["BE-3 SessionService"]
     <<service>> BE3
     BE3 : +signIn(email: string, password: string, ip: string) Promise~{ viewer: Viewer#59; cookieToken: string }~
@@ -20,7 +22,12 @@ classDiagram
     BE3 : +signOut(cookieToken: string) Promise~void~
     class BE4["BE-4 AccessPolicy"]
     <<policy>> BE4
-    BE4 : +assertRole(viewer: Viewer, allowed: Role[]) void
+    BE4 : +assertRole(viewer: Viewer | null, allowed: Role[]) asserts viewer is Viewer
+    BE4 : +assertIsOrderPatient(viewer: Viewer, order: OrderOwnership) void
+    BE4 : +ORDER_REVIEWER_ROLES Role[]
+    BE4 : +PLATFORM_HEALTH_ROLES Role[]
+    BE4 : +FINANCE_ROLES Role[]
+    BE4 : +SRE_ROLES Role[]
     BE4 : +assertCanViewOrder(viewer: Viewer, order: OrderOwnership) void
     BE4 : +assertCanActOnPatient(viewer: Viewer, patient: PatientRef) void
     BE4 : +assertCanChangeRole(actor: Viewer, target: StaffRef) void
@@ -69,8 +76,8 @@ classDiagram
     class BE13["BE-13 StockService"]
     <<service>> BE13
     BE13 : +adjust(viewer: Viewer, productId: bigint, input: StockAdjustmentInput) Promise~StockMovement~
-    BE13 : +reserveForOrder(tx: Transaction, orderId: bigint, lines: SaleLine[]) Promise~void~
-    BE13 : +releaseForOrder(tx: Transaction, orderId: bigint) Promise~void~
+    BE13 : +reserveForOrder(tx: Transaction~Database~, orderId: bigint) Promise~void~
+    BE13 : +releaseForOrder(tx: Transaction~Database~, orderId: bigint) Promise~void~
     BE13 : +listStock(viewer: Viewer, historyCursor?: string) Promise~StockList~
     class BE14["BE-14 OpsOrderQueries"]
     <<read model>> BE14
@@ -94,8 +101,9 @@ classDiagram
     BE18 : +accessLog(viewer: Viewer, month: YearMonth, cursor?: string, limit?: number) Promise~AccessLogPage~
     class BE19["BE-19 RequestMetrics"]
     <<middleware + read model>> BE19
-    BE19 : +record(routeGroup: string, status: number, durationMs: number) Promise~void~
-    BE19 : +recordPing() Promise~Health~
+    BE19 : +routeGroup(path: string) string | null
+    BE19 : +record(routeGroup: string, status: number, durationMs: number, stockRefusal: boolean) Promise~void~
+    BE19 : +recordPing() Promise~void~
     BE19 : +systemHealth(viewer: Viewer, month: YearMonth) Promise~SystemHealth~
     class BE20["BE-20 Clock"]
     <<seam>> BE20
@@ -103,6 +111,13 @@ classDiagram
     class BE21["BE-21 PruneAttempts"]
     <<scheduled task>> BE21
     BE21 : +run() Promise~{ result: 'ok' }~
+    class BE22["BE-22 Paging"]
+    <<pure module>> BE22
+    BE22 : +encodeCursor(key: string | null, id: string) string
+    BE22 : +decodeCursor(cursor: string, pointer: string, keyed: boolean) { key: string | null#59; id: string }
+    BE22 : +parseLimit(raw: unknown, pointer: string) number
+    BE22 : +parseMonth(raw: unknown, pointer: string) YearMonth
+    BE22 : +parsePeriod(query: { month?: unknown#59; from?: unknown#59; to?: unknown }) Period
     BE1 ..> BE3 : depends on
     BE1 ..> BE4 : depends on
     BE1 ..> BE5 : depends on
@@ -128,6 +143,7 @@ classDiagram
     BE8 ..> BE6 : depends on
     BE8 ..> BE7 : depends on
     BE8 ..> BE20 : depends on
+    BE8 ..> BE22 : depends on
     BE9 ..> BE4 : depends on
     BE9 ..> BE6 : depends on
     BE9 ..> BE7 : depends on
@@ -142,15 +158,25 @@ classDiagram
     note for BE12 "depends on: SEAM-2 random tokens"
     BE13 ..> BE4 : depends on
     BE13 ..> BE20 : depends on
+    BE13 ..> BE22 : depends on
     BE14 ..> BE4 : depends on
+    BE14 ..> BE22 : depends on
     BE15 ..> BE4 : depends on
     BE15 ..> BE20 : depends on
+    BE15 ..> BE22 : depends on
     BE16 ..> BE4 : depends on
     BE16 ..> BE20 : depends on
+    BE16 ..> BE22 : depends on
     BE17 ..> BE4 : depends on
     BE17 ..> BE20 : depends on
+    BE17 ..> BE22 : depends on
     BE18 ..> BE4 : depends on
     BE18 ..> BE20 : depends on
+    BE18 ..> BE22 : depends on
+    BE19 ..> BE4 : depends on
     BE19 ..> BE20 : depends on
+    BE19 ..> BE22 : depends on
     BE21 ..> BE20 : depends on
     note for BE21 "depends on: the Nitro task scheduler (cron */15 * * * *, in the same process#59; no new container)"
+    BE22 ..> BE20 : depends on
+    note for BE22 "depends on: Zod (installed)"
