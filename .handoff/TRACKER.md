@@ -590,3 +590,6 @@ several harnesses read it and the repo is public.
 2026-10-11 17:33 CDT FINDING SEC-5 residual wrong for EP-22 checkout (no body, no Idempotency-Key): safe today under SameSite=Lax; reachable cross-site once embedded (SameSite=None) -> embedding-plan E1 Origin check
 2026-10-11 17:44 CDT RESULT M7-J02 status=done harness=claude-subagent timeout=no tree=clean
 2026-10-11 17:44 CDT NOTE T-16 corrected on squash (EP-22 has no Idempotency-Key); CHECKLIST N7 cites D55 wrongly (D55 = deploy from M4 branch) -> fix in review
+2026-10-11 17:51 CDT RESULT M7-J04 status=done harness=claude-subagent timeout=no tree=clean
+2026-10-11 17:51 CDT FINDING MUT-1: pay() row lock (payments.ts:107) removable with no failing test; uq_payment_attempts_one_processing covers double pay; parallel cancel/hold-expiry during pay untested -> define-acceptance follow-up
+2026-10-11 17:51 CDT FLAKE M4_AT_028 paid_at 33 ms before a Node timestamp (DB clock vs app clock), passed on rerun
