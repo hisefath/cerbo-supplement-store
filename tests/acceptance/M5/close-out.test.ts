@@ -95,4 +95,18 @@ describe('M5 close-out: an abandoned payment never blocks the patient', () => {
     expect(ended.body.status).toBe('sent')
     expect(ended.body.hold_ended).toBe(true)
   })
+
+  it('M5_AT_042 Pay pressed after the 30-minute hold ended answers 409 checkout-expired, not invalid-transition; nothing is charged or reserved (lld.md /problems/checkout-expired, SM-1, FR-037)', async () => {
+    const w = app.world()
+    const ana = await inCheckoutForTwo()
+    await q("update orders set prices_held_until = now() - interval '1 minute' where id = $1", [ana.id])
+    const r = await call(`/api/orders/${ana.id}/payments`, { method: 'POST', cookie: ana.cookie, key: newKey() })
+    expectProblem(r, 409, 'checkout-expired')
+    expect((await q('select count(*)::int as n from payment_attempts where order_id = $1', [ana.id]))[0].n).toBe(0)
+    expect(await moves(ana.id)).toEqual([])
+    expect(await stock(w.vitaminD3)).toBe(10)
+    // live twin: starting checkout again and paying succeeds
+    expect((await call(`/api/orders/${ana.id}/checkout`, { method: 'POST', cookie: ana.cookie })).status).toBe(200)
+    expect((await call(`/api/orders/${ana.id}/payments`, { method: 'POST', cookie: ana.cookie, key: newKey() })).status).toBe(201)
+  })
 })

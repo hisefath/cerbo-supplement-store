@@ -94,12 +94,22 @@ export async function pay(viewer: Viewer, orderId: bigint, idempotencyKey: strin
   const prepared = await db.transaction().execute(async (trx) => {
     const o = await trx
       .selectFrom('orders')
-      .select(['id', 'patient_id', 'practice_id', 'provider_id', 'status', sql<boolean>`prices_held_until > now()`.as('hold_live')])
+      .select([
+        'id',
+        'patient_id',
+        'practice_id',
+        'provider_id',
+        'status',
+        sql<boolean>`prices_held_until > now()`.as('hold_live'),
+        sql<boolean>`checkout_started_at is not null`.as('checkout_started'),
+      ])
       .where('id', '=', orderId.toString())
       .forUpdate()
       .executeTakeFirst()
     if (!o) throw new ProblemError('not-found')
     assertIsOrderPatient(viewer, { patientId: BigInt(o.patient_id), practiceId: BigInt(o.practice_id) })
+    // The reconcile above already sent an ended hold back to sent: Pay still answers that the hold ended (FR-037).
+    if (o.status === 'sent' && o.checkout_started) throw new ProblemError('checkout-expired')
     if (o.status !== 'in_checkout') throw new ProblemError('invalid-transition')
     if (!o.hold_live) throw new ProblemError('checkout-expired')
 

@@ -114,6 +114,7 @@ Out of scope this milestone: FR-032, FR-048, FR-049, FR-051 to FR-064 (M6 measur
 | AT-039 | FR-027, FR-006, INV-5 | FR-027 (as above), with lld.md FM-7 (changed 2026-10-10 23:12 CDT): the reconcile also runs at the start of BE-10.pay | **Given** Ana in checkout and a payment processing for 2 minutes 10 seconds with 2 Vitamin D3 reserved **When** she presses Pay, starts checkout again and pays **Then** first 409 invalid-transition with the attempt failed no_answer, payment_failed and stock 10; then 201; movements sale, sale_release, sale; stock 8 | error-guessing | integration | `tests/acceptance/M5/close-out.test.ts::M5_AT_039` | red @ cd2ea75 |
 | AT-040 | FR-023, FR-027 | FR-023 (M4 checkout start), with lld.md FM-7 (changed 2026-10-10 23:12 CDT): the reconcile also runs at the start of BE-9.startCheckout | **Given** Ana's ended hold over a payment processing for 2 minutes 10 seconds **When** she starts checkout and pays **Then** 200; the attempt failed no_answer; 201; movements sale, sale_release, sale; stock 8 | error-guessing | integration | `tests/acceptance/M5/close-out.test.ts::M5_AT_040` | red @ cd2ea75 |
 | AT-041 | FR-037, FR-022 | FR-037 (as above), with screens.md S2 Edge data "Your 30-minute price hold ended. These are the current prices." and OrderView.hold_ended (lld.md EP-21, changed 2026-10-10 23:12 CDT) | **Given** Ben's order never checked out and Ana's order in checkout **When** each reads it, then Ana's hold ends and she reads again **Then** Ben false; Ana live false; Ana ended: sent and hold_ended true | state-transition | integration | `tests/acceptance/M5/close-out.test.ts::M5_AT_041` | red @ cd2ea75 |
+| AT-042 | FR-037, FR-006 | FR-037 (as above), with lld.md /problems/checkout-expired (409, "Pay pressed after the 30-minute hold ended") | **Given** Ana's hold ended a minute ago **When** she presses Pay **Then** 409 checkout-expired; no attempt, no movement, stock 10; starting checkout again then paying gives 201 | state-transition | integration | `tests/acceptance/M5/close-out.test.ts::M5_AT_042` | red @ 0b79027 (bug repro, specs/bugs/pay-after-hold-ended-says-already-paid.md) |
 
 ## Edge cases
 
@@ -149,6 +150,7 @@ Out of scope this milestone: FR-032, FR-048, FR-049, FR-051 to FR-064 (M6 measur
 | EDGE-019 | FR-030 | a stock form that loaded at 8 after stock became 9 | 409 stale-stock with 9 (lld.md /problems/stale-stock) | AT-019 |
 | EDGE-045 | FR-037 | Ana's hold ends while her payment has been processing for 1 minute 50 seconds | she stays in checkout at the held prices; the units stay reserved (lld.md SM-2; FR-024 charges the held price) | AT-035 |
 | EDGE-051 | FR-037 | Ana's hold ends unpaid, compared with Ben's order that never had one | Ana's order says hold_ended true and S2 shows the hold-ended banner; Ben's says false (screens.md S2; lld.md EP-21) | AT-041 |
+| EDGE-052 | FR-037 | Ana presses Pay a minute after her hold ended | 409 checkout-expired, nothing charged (lld.md problem registry) | AT-042 |
 
 ### Decision tables
 
@@ -232,7 +234,7 @@ Every in-scope FR against every group: EDGE ids, or `n/a: <why>`. No blank cell.
 | FR-028 | EDGE-018 | n/a: whole month | n/a: read only | EDGE-020 | EDGE-024 | n/a: read only | EDGE-034 | EDGE-038 | EDGE-041 |
 | FR-029 | n/a: one value per product | n/a: covered by FR-047 | n/a: read only | n/a: one rule | n/a: read only | n/a: read only | n/a: covered by EDGE-034 | n/a: units, not money | n/a: covered by EDGE-041 |
 | FR-030 | n/a: covered by EDGE-025 | EDGE-019 | EDGE-019 | n/a: one rule | EDGE-025 | EDGE-028 | EDGE-033 | n/a: units, not money | EDGE-025 |
-| FR-037 | n/a: one rule | EDGE-010 | EDGE-010, EDGE-045, EDGE-051 | EDGE-015 | n/a: no outbound call | n/a: on read | n/a: tested in M4 | n/a: covered by EDGE-015 | EDGE-044 |
+| FR-037 | n/a: one rule | EDGE-010 | EDGE-010, EDGE-045, EDGE-051, EDGE-052 | EDGE-015 | n/a: no outbound call | n/a: on read | n/a: tested in M4 | n/a: covered by EDGE-015 | EDGE-044 |
 | FR-038 | n/a: one rule | n/a: no limit | n/a: no state | n/a: one rule | n/a: no outbound call | n/a: refusal only | EDGE-033 | n/a: units, not money | n/a: no input |
 | FR-045 | n/a: one list | n/a: covered by pagination (lld.md) | n/a: read only | n/a: one rule | n/a: read only | n/a: read only | EDGE-035 | n/a: totals only | EDGE-042 |
 | FR-046 | n/a: one rule | EDGE-008 | n/a: derived flag | n/a: one rule | n/a: read only | n/a: read only | EDGE-047 | EDGE-040 | n/a: no input |
@@ -329,6 +331,7 @@ builds on it.
 | AT-039 | `M5_AT_039 Pay over a payment abandoned …` | assertion: Pay does not run the FM-7 reconcile | expected 'in_checkout' to be 'payment_failed' |
 | AT-040 | `M5_AT_040 starting checkout over a payment abandoned …` | assertion: checkout start does not run the FM-7 reconcile | expected [ { status: 'processing', … } ] to deeply equal [ { status: 'failed', … } ] |
 | AT-041 | `M5_AT_041 after Ana's hold ends unpaid …` | missing: OrderView.hold_ended (lld.md EP-21, openapi.yaml) | expected undefined to be false |
+| AT-042 | `M5_AT_042 Pay pressed after the 30-minute hold ended …` | assertion: Pay answers invalid-transition (M5-T007 regression) | expected /problems/checkout-expired, got 409 /problems/invalid-transition |
 
 ```text
  FAIL  tests/acceptance/M5/prices.test.ts > M5_AT_001 … AssertionError: expected 404 to be 200
@@ -370,3 +373,4 @@ of a wrong guess first. Unasked gaps stay here as ⚠.
 | 2026-10-10 20:46 CDT | First draft | all | G1 prd.md@998ed94, G2 hld.md@fea2e18, G-ux screens.md@bff1dd4, G3 lld.md@9708841; Q-1 answered "yes" |
 | 2026-10-10 23:02 CDT | Re-run: added review pins; M5-pass4 R3 needs no new test, since AT-007 already has Ana's own read end her hold and runs in make check | AT-035 to AT-038, EDGE-045 to EDGE-048, SS-06, SS-07 | 21:51 "a, relaunch T002 with R2, R3" (pass 3 R1 to define-acceptance); 22:19 "a, squash T003 and add the acceptance tests" (pass 4 R1, R2, R3); 22:31 "a, relaunch T005 with R2, R1, R3" (pass 6 R5 to the define-acceptance re-run) |
 | 2026-10-10 23:12 CDT | Close-out re-run: FM-7 on pay and checkout start, hold_ended (lld.md and openapi.yaml revised the same minute) | AT-039 to AT-041, EDGE-049 to EDGE-051, Q-7 | STANDING approval 2026-10-10 23:12 CDT: "i approve all next recommendations until project completion"; routed rows M5-pass4 R4 (22:19 "a, squash T003 and add the acceptance tests") and M5-pass2 R4 |
+| 2026-10-10 23:37 CDT | Bug repro: Pay after an ended hold | AT-042, EDGE-052 | STANDING approval 2026-10-10 23:09 CDT; M5-T008 result.md Q2 |

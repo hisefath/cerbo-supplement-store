@@ -26,7 +26,7 @@ several harnesses read it and the repo is public.
 | M5-R03 | F22: M5 scope in the PRD (patient order list /orders 404, provider view of EP-4, needs-review amounts, copy gaps) | Standard / clarify-spec | supervisor | todo | 2026-10-10 18:31 CDT | docs/product/prd.md | — |
 | M5-R04 | define-acceptance re-run: review pins (pass2 R3, pass3 R1, pass4 R1-R3, pass6 R5) | Standard / define-acceptance | supervisor | done | 2026-10-10 23:05 CDT | specs/M5-prices-and-stock/acceptance.md, tests/acceptance/M5 | 44fed80 |
 | M5-T007 | abandoned payments never block; hold_ended | Standard / build | claude-subagent | done | 2026-10-10 23:16 CDT | see task file | 3d759da |
-| M5-T008 | S2 hold-ended banner | Standard / build | claude-subagent | working | 2026-10-10 23:16 CDT | see task file | — |
+| M5-T008 | S2 hold-ended banner | Standard / build | claude-subagent | done | 2026-10-10 23:16 CDT | see task file | 0b79027 |
 | M5-T009 | S7 stock page fixes | Standard / build | claude-subagent | todo | 2026-10-10 23:16 CDT | see task file | — |
 | M5-T010 | S6 dashboard fixes | Standard / build | claude-subagent | todo | 2026-10-10 23:16 CDT | see task file | — |
 | M4-CI01 | CI on the MacBook runner: enable runner 245, .gitlab-ci.yml running make check | Fix / supervisor | supervisor (claude-opus-5-5) | done | 2026-10-10 19:05 CDT | .gitlab-ci.yml | — |
@@ -412,3 +412,6 @@ several harnesses read it and the repo is public.
 2026-10-10 23:17 CDT DISPATCH M5-T007 harness=claude-subagent why=wave 5 close-out backend (FM-7 on pay/checkout, hold_ended); worktree .claude/worktrees/m5-t007
 2026-10-10 23:26 CDT VERIFY M5-T007 squashed 3d759da: result done; scope-guard OK (4 paths); supervisor make check exit 0 (unit 216, M4 43, M5 41 incl. AT-039..041); diff read by supervisor; verifier deferred to the M5 milestone review
 2026-10-10 23:26 CDT DISPATCH M5-T008 harness=claude-subagent why=S2 hold-ended banner after T007; worktree .claude/worktrees/m5-t008
+2026-10-10 23:37 CDT FAIL M5-T008 scope-guard exit 1: Owns path app/pages/orders/[orderId].vue read as a glob class (scripts/scope-guard.sh case $f in $p); worker did not commit
+2026-10-10 23:37 CDT VERIFY M5-T008 squashed 0b79027: manual scope check (2 files, both exact Owns paths); worker make check exit 0; diff read by supervisor
+2026-10-10 23:37 CDT FIX pay after an ended hold answered invalid-transition (T007 regression, T008 Q2): AT-042 repro then payments.ts fix; make check exit 0 (M5 42); specs/bugs/pay-after-hold-ended-says-already-paid.md
