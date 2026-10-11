@@ -31,9 +31,9 @@ several harnesses read it and the repo is public.
 | M5-T010 | S6 dashboard fixes | Standard / build | claude-subagent | done | 2026-10-10 23:16 CDT | see task file | 635d015 |
 | M5-T011 | review fixes: checkout answers (R2, R3), practice name (R4) | Standard / build | claude-subagent | done | 2026-10-10 23:57 CDT | see task file | 0c4510a |
 | M5.1-T001 | theme, fonts, sign-in band | Standard / build | claude-subagent | done | 2026-10-11 07:31 CDT | see task file | 9987db7 |
-| M5.1-T002 | provider screens | Standard / build | claude-subagent | working | 2026-10-11 07:31 CDT | see task file | — |
-| M5.1-T003 | patient screens | Standard / build | claude-subagent | working | 2026-10-11 07:31 CDT | see task file | — |
-| M5.1-T004 | staff screens + suite join | Standard / build | claude-subagent | todo | 2026-10-11 07:31 CDT | see task file | — |
+| M5.1-T002 | provider screens | Standard / build | claude-subagent | done | 2026-10-11 07:31 CDT | see task file | 3880298 |
+| M5.1-T003 | patient screens | Standard / build | claude-subagent | done | 2026-10-11 07:31 CDT | see task file | caabf90 |
+| M5.1-T004 | staff screens + suite join | Standard / build | claude-subagent | working | 2026-10-11 07:31 CDT | see task file | — |
 | M4-CI01 | CI on the MacBook runner: enable runner 245, .gitlab-ci.yml running make check | Fix / supervisor | supervisor (claude-opus-5-5) | done | 2026-10-10 19:05 CDT | .gitlab-ci.yml | — |
 | M5-T001 | Provider changes a practice price (specs/M5-prices-and-stock/tasks/T001.md) | Standard / implement-task | claude-subagent | done | 2026-10-10 21:09 CDT | see task file | 135b9ca |
 | M5-T002 | Payment reserves and releases stock (specs/M5-prices-and-stock/tasks/T002.md) | Standard / implement-task | claude-subagent | done | 2026-10-10 21:09 CDT | see task file | f5bb975 |
@@ -459,3 +459,5 @@ several harnesses read it and the repo is public.
 2026-10-11 07:31 CDT DISPATCH M5.1-T001 harness=claude-subagent why=tracer bullet (theme, fonts, sign-in band); worktree .claude/worktrees/m51-t001
 2026-10-11 07:43 CDT VERIFY M5.1-T001 squashed 9987db7: scope-guard OK (5 paths); supervisor make check exit 0 (217/43/44); M5.1 AT-001, AT-003 green, AT-002, AT-004 red as planned
 2026-10-11 07:43 CDT DISPATCH M5.1-T002 and M5.1-T003 harness=claude-subagent why=parallel restyles (disjoint Owns)
+2026-10-11 07:54 CDT VERIFY M5.1-T002 squashed 3880298 and M5.1-T003 squashed caabf90: scope-guard OK (6 and 4 paths); supervisor make check exit 0 in each worktree; T003 wrote a placeholder result.md before its worktree existed (supervisor setup slip), since replaced
+2026-10-11 07:54 CDT DISPATCH M5.1-T004 harness=claude-subagent why=last task: staff screens + M5.1 suite join
