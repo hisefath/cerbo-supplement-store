@@ -149,6 +149,7 @@ Never add `-y`, `--yes` or `--new` to `railway up`, and never deploy without `--
 | 2026-10-10 16:18 CDT | production (web-v2) | M4 demo | 13a816a | not deployed | n/a: no /version route (GAP-2) | not run | not deployed: blocking GAP-1, GAP-2 |
 | 2026-10-10 16:52 CDT | production (web-v2) | M4 demo | 1130822 | pending deploy ask | — | — | GAP-1 to GAP-3 done (M4-T901 to T903); setup FS-2 to FS-8 done |
 | 2026-10-10 16:56 CDT | production (web-v2) | M4 demo | 1130822 | 2026-10-10 16:54 CDT | 11308222f1ea5f74dbe4f2595cce23205b14988b | SMOKE GREEN: 7 passed, 0 failed against https://web-v2-production-6640.up.railway.app at 11308222f1ea5f74dbe4f2595cce23205b14988b (TLS verified) | live (deployment 59c086de SUCCESS) |
+| 2026-10-10 19:55 CDT | production (web-v2) | M4 from main | 158fb11 | 2026-10-10 19:53 CDT | 158fb11f36a3d86d8374a2bb97c4d29a9437038b | SMOKE GREEN: 7 passed, 0 failed against https://web-v2-production-6640.up.railway.app at 158fb11f36a3d86d8374a2bb97c4d29a9437038b (TLS verified) | live (deployment 21e295fd SUCCESS); rollback target 1130822 |
 
 ## 9. Open questions
 
