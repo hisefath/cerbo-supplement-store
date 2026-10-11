@@ -202,6 +202,7 @@ several harnesses read it and the repo is public.
 | 2026-10-11 07:23 CDT | G1 re-approval (clarify-spec pass 2, CQ-4: M5.1 row, NFR-015, NFR-016) | docs/product/prd.md@92d4a5f | STANDING row 2026-10-10 23:09 CDT |
 | 2026-10-11 07:24 CDT | G3 (M5.1 delta: theme.css, self-hosted fonts; D81 recommendation) | docs/architecture/lld.md@4c4479e | STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
 | 2026-10-11 07:24 CDT | new dependencies (Ask-first, AGENTS.md): @fontsource-variable/geist 5.3.0 and @fontsource/eb-garamond 5.3.0 (OFL-1.1), exact pins, for D81 | package.json, package-lock.json | STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
+| 2026-10-11 07:25 CDT | G-ux + G3 re-approval (band gradient #1D4ED8→#2563EB and focus #3B82F6 so white text passes contrast; colour token names fixed in LLD) | docs/design/screens.md@6faccb4 + docs/architecture/lld.md@6faccb4 | STANDING row 2026-10-10 23:09 CDT |
 
 ## Log
 
