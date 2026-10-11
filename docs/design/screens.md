@@ -1,8 +1,8 @@
 # Screens — In-EHR supplement orders
 
 status: complete
-Milestones: M4, M5, M5.1 (visual language), M5.2 (safe landing), M6 · Flows: docs/design/flows.md · PRD: docs/product/prd.md@998ed94
-Updated: 2026-10-11 09:34 CDT (M5.2: S15 Your home, page-not-found and wrong-role conventions)
+Milestones: M4, M5, M5.1 (visual language), M5.2 (safe landing), M6, M6.1 (patient orders) · Flows: docs/design/flows.md · PRD: docs/product/prd.md@998ed94
+Updated: 2026-10-11 13:47 CDT (M6.1: S16 Your orders)
 
 ## Global conventions
 
@@ -1539,6 +1539,71 @@ WCAG 2.2 AA — planned, not verified.
 |---|---|---|
 | 375 px | One column | The band wraps the name; the card fills the width; nothing scrolls sideways |
 | 1280 px | Band and one card | As drawn |
+
+## S16 Your orders
+
+Stories: US-2, US-8 · Flows: F7 step 2e · Key screen: no
+
+### Variants
+
+n/a — not a key screen
+
+### Layout
+
+```text
+1280 px
++--------------------------------------------------------------+
+|~~ Your orders ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
+| +----------------------------------------------------------+ |
+| | Order 1002 · Willow Creek Wellness    $60.00   [Sent]    | |
+| |   Sent Oct 11                                   Open >   | |
+| | Order 1001 · Willow Creek Wellness    $30.00   [Paid]    | |
+| |   Sent Oct 10 · Paid Oct 10                     Open >   | |
+| +----------------------------------------------------------+ |
+| [Show 25 more]                                               |
+| Questions? Contact your practice                              |
++--------------------------------------------------------------+
+```
+
+### States
+
+| State | When it happens | What the user sees | Microcopy (exact) | What they can do |
+|---|---|---|---|---|
+| Empty | First use: the patient has no orders yet / Filtered: n/a — no filter / Cleared: n/a — nothing to clear | The band and one card with a message | First use: "No orders yet. Your practice will send you a message when they order supplements for you." / Filtered: n/a — no filter / Cleared: n/a — nothing to clear | Wait for the practice's message |
+| Loading | The list is loading | The band stays; progress after 1 s | "Loading your orders…" / after 10 s: "Still loading. Try again in a moment." | Wait |
+| Error | Their mistake: n/a — nothing to type / Our failure: the list could not load / No connection: offline | A message in place of the list | Their mistake: n/a — nothing to type / Our failure: "We couldn't load your orders. Try again." / No connection: "You're offline. Try again when you're back online." | Retry |
+| Success | The list loaded | Each order as a row, newest sent first | n/a — the list is the confirmation | Open an order |
+| Permission denied | Signed out / not a patient | Signed out: the sign-in page; others: a message and the home link | Signed out: "You were signed out after 15 minutes without activity." / Others: "Only patients have an orders list here." | Sign in; go home |
+| Edge data | 200 orders / a 60-character practice name / an order that needs review or was cancelled | 25 at a time; long names wrap; every status is a word on a pill | "Show 25 more" | Show more |
+
+### Microcopy
+
+| Element | Text |
+|---|---|
+| Page title | "Your orders" |
+| Primary action | Each row's "Open" (to that order) |
+| Secondary action | "Show 25 more" |
+| Field labels and helper text | n/a — nothing to type |
+| Confirmation | n/a — nothing changes on this screen |
+
+### Accessibility
+
+WCAG 2.2 AA — planned, not verified.
+
+- Focus order: 1. Page title 2. Each order row's Open link, newest first 3. Show 25 more 4. Help link
+- Labels: each row reads as one sentence ("Order 1002 from Willow Creek Wellness, $60.00, Sent on October 11")
+- Keyboard: every row's link reachable with Tab and opened with Enter
+- Contrast and color: VL-2 tokens; status is a word, never colour alone
+- Targets: links and Show 25 more at least 24 px tall
+- Errors and status: the loading line is a status message; errors are announced
+- Focus not hidden: no sticky bars
+
+### Responsive
+
+| Width | Layout | What changes |
+|---|---|---|
+| 375 px | One column | Each order is a card: number and status first, then practice, total and dates; nothing scrolls sideways |
+| 1280 px | A list of rows | As drawn |
 
 ## Demo layout (90 seconds)
 

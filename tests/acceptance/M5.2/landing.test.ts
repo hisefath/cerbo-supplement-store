@@ -15,16 +15,16 @@ const root = async (email: string) => call('/', { cookie: await signIn(email), r
 const homeLink = /<a[^>]+href="\/"[^>]*>\s*Go to your home\s*<\/a>/
 
 describe('M5.2 safe landing', () => {
-  it('M5.2_AT_001 a role with no work page lands on its home, never a 404: Ana sees "Welcome, Ana Ruiz" and what to do instead (FR-039; S15 Empty; Sam and Dana gain work pages in M6, checked by M6 AT-030)', async () => {
-    const cases = [
-      [EMAIL.ana, 'Welcome, Ana Ruiz', 'Your orders open from the message your practice sends you.'],
-    ] as const
-    for (const [email, title, copy] of cases) {
-      const r = await root(email)
-      expect(r.status, email).toBe(200)
-      expect(r.text).toContain(title)
-      expect(r.text).toContain(copy)
-    }
+  it('M5.2_AT_001 a patient signing in lands on a page that opens, never a 404 (FR-039; S15 before M6.1, S16 Your orders after; Sam and Dana are checked by M6 AT-030)', async () => {
+    // Either the root is her home (S15) or it sends her to her work page (S16 Your orders, M6.1); never a 404.
+    const cookie = await signIn(EMAIL.ana)
+    const r = await call('/', { cookie, redirect: 'manual' })
+    const landed = [302, 303, 307].includes(r.status) ? await call(r.headers.get('location') ?? '/missing', { cookie, redirect: 'manual' }) : r
+    expect(landed.status).toBe(200)
+    expect(landed.text).not.toMatch(/We couldn(&#39;|')t find that page/)
+    // not bounced back to sign-in, and not a refusal (M6.1-pass1 R1)
+    expect(r.headers.get('location') ?? '').not.toMatch(/^\/sign-in/)
+    expect(landed.text).not.toMatch(homeLink)
   })
 
   it('M5.2_AT_002 a role with a work page goes straight to it, and that page opens: Dr. Chen the dashboard, Omar and Fran paid orders (FR-039; flows.md F7 step 2)', async () => {

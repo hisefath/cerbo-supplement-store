@@ -1,12 +1,12 @@
 // Each role's pages that exist today, in order (lld.md Site root and safe landing; flows.md F7 step 2): a provider the
 // practice dashboard, a reviewer Paid orders, an operations specialist also Stock adjustments; (M6) site reliability
-// System health, the data analyst Platform health, the finance lead also the financial report and access log. A patient
-// and an account with role `none` (ck_users_role) have none; they land on S15 Your home. Used by the sign-in page
-// (FE-2) and the site root (FE-25).
+// System health, the data analyst Platform health, the finance lead also the financial report and access log; (M6.1) a
+// patient S16 Your orders. An account with role `none` (ck_users_role) has none; it lands on S15 Your home. Used by
+// the sign-in page (FE-2) and the site root (FE-25).
 export interface RolePage { path: string; title: string }
 
 export const ROLE_PAGES: Record<string, RolePage[]> = {
-  patient: [],
+  patient: [{ path: '/orders', title: 'Your orders' }],
   provider: [
     { path: '/practice/dashboard', title: 'Practice dashboard' },
     { path: '/practice/prices', title: 'Practice prices' },

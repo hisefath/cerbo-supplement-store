@@ -1,0 +1,1087 @@
+diff --git a/MILESTONES.md b/MILESTONES.md
+index 126100d..53dcdba 100644
+--- a/MILESTONES.md
++++ b/MILESTONES.md
+@@ -21,3 +21,4 @@ LLD); `slice-tasks` adds each implementation milestone's row at G4; the supervis
+ | M5.1 | Visual refresh: every screen in the VL-2 look, no behaviour change | 5 tasks: T001–T005 (T005 review fixes) | D75, D80, D81 | !10 | done | G1@92d4a5f G3@6faccb4 G4@6bc24f6 G5@c26710a | c956959 | c956959 | — |
+ | M5.2 | Safe landing: every person lands on their work page or S15 Your home; not-found and wrong-role pages link home | 2 tasks: T001–T002 (T002 review fixes) | D82 | !11 | done | G1 (CQ-5) G4@34fc144 G5@8f18a05 | c9b890d | c9b890d | — |
+ | M6 | Platform health dashboard, volume report, financial report, operations roles, access log and system health | 7 tasks: T001–T007 | D33, D36, D39, D40, D41, D42, D44, D47, D81, D82, D83, D84, D85, D86, D87, D88, D89 | !12 | done | G1@97e8186 G2@fea2e18 G3@97e8186 G4@45ff317 G5@d4e0da1 | 18da349 | 18da349 | — |
++| M6.1 | Patient orders: a patient signs in to her own orders list (FR-039, AE-067; M5-R03) | 1 task: T001 | — | — | planned | G1 (CQ-9) | — | — | — |
+diff --git a/Makefile b/Makefile
+index 29cf5f8..0d658b7 100644
+--- a/Makefile
++++ b/Makefile
+@@ -6,10 +6,10 @@
+ # Commands table in AGENTS.md). Until then they fail on purpose, so an unconfigured repo can never look green.
+ # Keep the target names: skills and hooks call `make check`, not the tools directly.
+ 
+-.PHONY: check lint types test setup db-test-up test-acceptance test-acceptance-m4 test-acceptance-m5 test-acceptance-m5.1 test-acceptance-m5.2 test-acceptance-m6 decisions
++.PHONY: check lint types test setup db-test-up test-acceptance test-acceptance-m4 test-acceptance-m5 test-acceptance-m5.1 test-acceptance-m5.2 test-acceptance-m6 test-acceptance-m6.1 decisions
+ 
+-## check: lint + types + tests + M4, M5, M5.1, M5.2 and M6 acceptance suites + decision review in sync — the gate
+-check: lint types test test-acceptance-m4 test-acceptance-m5 test-acceptance-m5.1 test-acceptance-m5.2 test-acceptance-m6 decisions
++## check: lint + types + tests + M4, M5, M5.1, M5.2, M6 and M6.1 acceptance suites + decision review in sync — the gate
++check: lint types test test-acceptance-m4 test-acceptance-m5 test-acceptance-m5.1 test-acceptance-m5.2 test-acceptance-m6 test-acceptance-m6.1 decisions
+ 	@echo "make check: OK"
+ 
+ ## lint: workflow scripts must parse (docs-only phase: no product code yet; stack tools are added at M3 design)
+@@ -37,7 +37,7 @@ setup:
+ db-test-up:
+ 	docker compose up -d db-test
+ 
+-## test-acceptance: every milestone's QA-owned acceptance tests (check runs the M4, M5, M5.1, M5.2 and M6 parts via test-acceptance-m4, -m5, -m5.1, -m5.2 and -m6; needs `make db-test-up`)
++## test-acceptance: every milestone's QA-owned acceptance tests (check runs the M4, M5, M5.1, M5.2, M6 and M6.1 parts via test-acceptance-m4, -m5, -m5.1, -m5.2, -m6 and -m6.1; needs `make db-test-up`)
+ test-acceptance:
+ 	npx vitest run --dir tests/acceptance
+ 
+@@ -61,6 +61,10 @@ test-acceptance-m5.2:
+ test-acceptance-m6:
+ 	npx vitest run --dir tests/acceptance/M6
+ 
++## test-acceptance-m6.1: the M6.1 acceptance suite, part of check (needs `make db-test-up`)
++test-acceptance-m6.1:
++	npx vitest run --dir tests/acceptance/M6.1
++
+ # --- Example: Laravel 13 / PHP 8.5 (Pint + Larastan/PHPStan + Pest or PHPUnit) -------------------------------
+ # Replace the three recipes above with these (recipe lines must start with a TAB):
+ #
+diff --git a/app/pages/orders/index.vue b/app/pages/orders/index.vue
+new file mode 100644
+index 0000000..e24f32b
+--- /dev/null
++++ b/app/pages/orders/index.vue
+@@ -0,0 +1,142 @@
++<!-- FE-27 PatientOrdersPage (S16, EP-42): the patient's own orders, newest sent first, 25 at a time; each row opens
++     its order page (FE-7). "Show 25 more" fetches the next cursor and appends, as FE-20 does. Anyone but a patient
++     gets the Permission denied copy and none of it (FR-039). -->
++<script setup lang="ts">
++import type { Problem } from '~/components/ProblemMessage.vue'
++
++interface PatientOrderSummary {
++  order_id: number
++  status: string
++  practice_name: string
++  total_cents: number
++  sent_at: string
++  paid_at: string | null
++}
++interface PatientOrderPage { data: PatientOrderSummary[]; next_cursor: string | null }
++
++const COPY = {
++  forbidden: 'Only patients have an orders list here.',
++  internal: "We couldn't load your orders. Try again.",
++}
++const STATUS: Record<string, string> = {
++  sent: 'Sent',
++  in_checkout: 'In checkout',
++  payment_failed: 'Payment failed',
++  paid: 'Paid',
++  needs_review: 'Needs review',
++  cancelled: 'Cancelled',
++}
++
++useHead({ title: 'Your orders' })
++const route = useRoute()
++const { data: first, error, refresh, status } = await useFetch<PatientOrderPage>('/api/orders')
++
++const problemOf = (e: unknown): Problem => (e as { data?: Problem })?.data ?? { type: '/problems/internal' }
++const problem = computed<Problem | null>(() => (error.value ? problemOf(error.value) : null))
++// S16 Permission denied, signed out: the sign-in page with the idle message.
++if (problem.value?.type === '/problems/unauthenticated') await navigateTo({ path: '/sign-in', query: { next: route.fullPath, idle: '1' } })
++
++const more = ref<PatientOrderSummary[]>([])
++const nextCursor = ref<string | null>(null)
++const loadingMore = ref(false)
++const moreProblem = ref<Problem | null>(null)
++let gen = 0 // bumps when the first page reloads, so a late Show 25 more page is dropped
++watch(first, (p) => {
++  gen++
++  more.value = []
++  moreProblem.value = null
++  nextCursor.value = p?.next_cursor ?? null
++}, { immediate: true })
++const orders = computed(() => [...(first.value?.data ?? []), ...more.value])
++
++async function showMore() {
++  if (!nextCursor.value || loadingMore.value) return
++  const g = gen
++  loadingMore.value = true
++  try {
++    const page = await $fetch<PatientOrderPage>('/api/orders', { query: { cursor: nextCursor.value } })
++    if (g !== gen) return
++    more.value.push(...page.data)
++    nextCursor.value = page.next_cursor
++    moreProblem.value = null
++  } catch (e: unknown) {
++    if (g === gen) moreProblem.value = problemOf(e)
++  } finally {
++    loadingMore.value = false
++  }
++}
++
++// S16 Loading: "Loading your orders…", then after 10 s "Still loading. Try again in a moment."
++const slow = ref(false)
++let slowTimer: ReturnType<typeof setTimeout> | undefined
++watch(status, (s) => {
++  clearTimeout(slowTimer)
++  slow.value = false
++  if (s === 'pending') slowTimer = setTimeout(() => (slow.value = true), 10_000)
++})
++onBeforeUnmount(() => clearTimeout(slowTimer))
++
++const dollars = (c: number) => `$${(c / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
++// UTC on server and browser alike, so the SSR text and the hydrated text match.
++const short = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
++const long = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: 'UTC' })
++const word = (s: string) => STATUS[s] ?? s
++// S16 Accessibility: "Order 1002 from Willow Creek Wellness, $60.00, Sent on October 11"
++const sentence = (o: PatientOrderSummary) => `Order ${o.order_id} from ${o.practice_name}, ${dollars(o.total_cents)}, ${word(o.status)} on ${long(o.paid_at ?? o.sent_at)}`
++</script>
++
++<template>
++  <AppShell>
++    <section class="patient-orders" aria-labelledby="orders-heading">
++      <div class="page-band"><h1 id="orders-heading">Your orders</h1></div>
++      <ProblemMessage v-if="problem?.type === '/problems/forbidden'" :problem="problem" :copy="COPY" />
++      <p v-else-if="status === 'pending'" role="status">{{ slow ? 'Still loading. Try again in a moment.' : 'Loading your orders…' }}</p>
++      <ProblemMessage v-else-if="problem" :problem="problem" :copy="COPY" @retry="refresh()" />
++      <template v-else-if="first">
++        <div class="card">
++          <p v-if="orders.length === 0">No orders yet. Your practice will send you a message when they order supplements for you.</p>
++          <ul v-else class="list">
++            <li v-for="o in orders" :key="o.order_id">
++              <NuxtLink :to="`/orders/${o.order_id}`" class="row" :aria-label="sentence(o)">
++                <span class="what">Order {{ o.order_id }} · {{ o.practice_name }}</span>
++                <span class="total">{{ dollars(o.total_cents) }}</span>
++                <span :class="['status-pill', `status-pill--${o.status}`]">{{ word(o.status) }}</span>
++                <span class="when">Sent {{ short(o.sent_at) }}<template v-if="o.paid_at"> · Paid {{ short(o.paid_at) }}</template></span>
++                <span class="open">Open ›</span>
++              </NuxtLink>
++            </li>
++          </ul>
++        </div>
++        <ProblemMessage v-if="moreProblem" :problem="moreProblem" :copy="COPY" @retry="showMore" />
++        <button v-if="nextCursor" type="button" class="btn-secondary" :disabled="loadingMore" @click="showMore">Show 25 more</button>
++      </template>
++    </section>
++  </AppShell>
++</template>
++
++<style scoped>
++.list { list-style: none; margin: 0; padding: 0; }
++.list li { border-bottom: 1px solid var(--color-border); }
++.list li:last-child { border-bottom: 0; }
++.row {
++  display: grid;
++  grid-template-columns: 1fr auto auto;
++  gap: 4px 16px;
++  align-items: center;
++  padding: 8px 4px;
++  min-height: 24px;
++  color: var(--color-ink);
++  text-decoration: none;
++}
++.what { overflow-wrap: anywhere; font-weight: 600; }
++.total { text-align: right; }
++.when { grid-column: 1 / 3; color: var(--color-ink-muted); }
++.open { grid-column: 3; text-align: right; color: var(--color-primary); text-decoration: underline; }
++.btn-secondary { min-height: 24px; margin-top: 8px; }
++@media (max-width: 600px) {
++  .row { grid-template-columns: 1fr auto; }
++  .what { grid-column: 1 / -1; }
++  .when { grid-column: 1 / -1; }
++  .open { grid-column: 1 / -1; text-align: left; }
++}
++</style>
+diff --git a/app/utils/role-home.ts b/app/utils/role-home.ts
+index a11688b..2cc0c5e 100644
+--- a/app/utils/role-home.ts
++++ b/app/utils/role-home.ts
+@@ -1,12 +1,12 @@
+ // Each role's pages that exist today, in order (lld.md Site root and safe landing; flows.md F7 step 2): a provider the
+ // practice dashboard, a reviewer Paid orders, an operations specialist also Stock adjustments; (M6) site reliability
+-// System health, the data analyst Platform health, the finance lead also the financial report and access log. A patient
+-// and an account with role `none` (ck_users_role) have none; they land on S15 Your home. Used by the sign-in page
+-// (FE-2) and the site root (FE-25).
++// System health, the data analyst Platform health, the finance lead also the financial report and access log; (M6.1) a
++// patient S16 Your orders. An account with role `none` (ck_users_role) has none; it lands on S15 Your home. Used by
++// the sign-in page (FE-2) and the site root (FE-25).
+ export interface RolePage { path: string; title: string }
+ 
+ export const ROLE_PAGES: Record<string, RolePage[]> = {
+-  patient: [],
++  patient: [{ path: '/orders', title: 'Your orders' }],
+   provider: [
+     { path: '/practice/dashboard', title: 'Practice dashboard' },
+     { path: '/practice/prices', title: 'Practice prices' },
+diff --git a/docs/architecture/contracts/openapi.yaml b/docs/architecture/contracts/openapi.yaml
+index 9b8ed5e..40d238d 100644
+--- a/docs/architecture/contracts/openapi.yaml
++++ b/docs/architecture/contracts/openapi.yaml
+@@ -497,6 +497,49 @@ paths:
+               schema:
+                 $ref: "#/components/schemas/Problem"
+   "/api/orders":
++    get:
++      x-lld-id: "EP-42"
++      operationId: listMyOrders
++      summary: "The signed-in patient's own orders, newest sent first"
++      tags: [orders]
++      parameters:
++        - name: cursor
++          in: query
++          required: false
++          schema:
++            type: string
++        - name: limit
++          in: query
++          required: false
++          schema:
++            type: integer
++            minimum: 1
++            maximum: 100
++      responses:
++        "200":
++          description: "One page of the patient's orders"
++          content:
++            application/json:
++              schema:
++                $ref: "#/components/schemas/PatientOrderPage"
++        "401":
++          description: "/problems/unauthenticated"
++          content:
++            application/problem+json:
++              schema:
++                $ref: "#/components/schemas/Problem"
++        "403":
++          description: "/problems/forbidden"
++          content:
++            application/problem+json:
++              schema:
++                $ref: "#/components/schemas/Problem"
++        "422":
++          description: "/problems/validation"
++          content:
++            application/problem+json:
++              schema:
++                $ref: "#/components/schemas/Problem"
+     post:
+       x-lld-id: "EP-19"
+       operationId: sendOrder
+@@ -1632,6 +1675,34 @@ components:
+                 minimum: 1
+             required: [product_id, quantity]
+       required: [patient_id, lines]
++    PatientOrderSummary:
++      type: object
++      properties:
++        order_id:
++          type: integer
++        status:
++          $ref: "#/components/schemas/OrderStatus"
++        practice_name:
++          type: string
++        total_cents:
++          $ref: "#/components/schemas/Cents"
++        sent_at:
++          type: string
++          format: date-time
++        paid_at:
++          type: ["string", "null"]
++          format: date-time
++      required: [order_id, status, practice_name, total_cents, sent_at, paid_at]
++    PatientOrderPage:
++      type: object
++      properties:
++        data:
++          type: array
++          items:
++            $ref: "#/components/schemas/PatientOrderSummary"
++        next_cursor:
++          type: ["string", "null"]
++      required: [data, next_cursor]
+     OrderStatus:
+       type: string
+       enum: [sent, in_checkout, payment_failed, paid, needs_review, cancelled]
+diff --git a/docs/architecture/lld.md b/docs/architecture/lld.md
+index c1e497c..6c3094f 100644
+--- a/docs/architecture/lld.md
++++ b/docs/architecture/lld.md
+@@ -1058,6 +1058,7 @@ classDiagram
+ | Public method (signature only) | Called by | Returns | Raises (problem type) | Covers |
+ |---|---|---|---|---|
+ | `sendOrder(viewer: Viewer, input: SendOrderInput): Promise<Order>` | BE-1 via EP-19 | the sent order | `/problems/validation`, `/problems/below-price-floor`, `/problems/insufficient-stock`, `/problems/not-found` | FR-002 to FR-005, FR-025, FR-031, FR-043 |
++| (new, M6.1) `listOrdersForPatient(viewer: Viewer, page: PageRequest): Promise<PatientOrderPage>` | BE-1 via EP-42 after `assertRole(['patient'])` | the viewer's own orders, newest sent first, each total computed as `getOrderForViewer` would show it | `/problems/validation` | FR-039, AE-067 |
+ | `getOrderForViewer(viewer: Viewer, orderId: bigint): Promise<OrderView>` | BE-1 via EP-21 | lines at current or held prices, price-change notices, hold time, `hold_ended` (changed: true when the order is `sent` and `checkout_started_at` is set, i.e. a hold ended unpaid; S2 "Your 30-minute price hold ended") | `/problems/not-found` | FR-005, FR-009, FR-022, FR-037 |
+ | `startCheckout(viewer: Viewer, orderId: bigint): Promise<Checkout>` | BE-1 via EP-22 | the hold (same hold when repeated while live) | `/problems/invalid-transition`, `/problems/not-found` | FR-023, FR-024, FR-037 |
+ | `cancelOrder(viewer: Viewer, orderId: bigint): Promise<Order>` | BE-1 via EP-20 | the cancelled order | `/problems/invalid-transition`, `/problems/not-found` | FR-066, FR-067 (changed) |
+@@ -1359,6 +1360,7 @@ flowchart TD
+ - FE-1 AppShell (every screen)
+   - FE-25 HomePage (S15, new M5.2)
+   - FE-26 ErrorPage (every page error, new M5.2)
++  - FE-27 PatientOrdersPage (S16, new M6.1)
+   - FE-2 SignInPage (S8)
+     - FE-23 ProblemMessage
+   - FE-3 NoticePage (S9)
+@@ -1433,6 +1435,7 @@ FE-12, FE-22 and FE-23 are shared, stateless components; each appears under ever
+ | **FE-24** | OrderFunnel | S10 | funnel: Funnel | none | none (stateless) | edge data (few orders: "read the counts, not the bars") |
+ | **FE-25** (new, M5.2) | HomePage | S15 | none | none | none (reads ST-1) | empty (role has no page yet), loading, permission denied (signed out: sign-in) |
+ | **FE-26** (new, M5.2) | ErrorPage | all | error: { statusCode, message } | none | none (stateless) | error (404: "We couldn't find that page"; other: "Something went wrong on our side"), with "Go to your home" |
++| **FE-27** (new, M6.1) | PatientOrdersPage | S16 | none | none | none (reads EP-42) | empty, loading, error, success, permission denied, edge data (Show 25 more appends) |
+ 
+ **Theme (new, M5.1, D81).** One global stylesheet, `app/assets/css/theme.css`, registered in `nuxt.config.ts` `css`, holds
+ the screens.md VL-2 visual language as CSS custom properties (colours, radii, shadows, spacing, type sizes; the colour
+@@ -1455,6 +1458,8 @@ text/background pair's WCAG contrast ratio.
+ 
+ **M6 pages and the theme (new).** FE-17 to FE-21 and FE-24 follow the Theme paragraph: each page opens with the `page-band` title, its sections are `card`s, buttons use `btn-primary` / `btn-secondary`, status and "Refused" or "Needs attention" marks use `status-pill` modifiers, and no colour is written outside theme.css. FE-24's bars are CSS widths on `--color-primary`, with the counts printed beside them ("read the counts, not the bars").
+ 
++**(changed, M6.1)** `ROLE_PAGES.patient` is `[{ path: '/orders', title: 'Your orders' }]`, so a patient lands on S16 (FE-27) instead of S15.
++
+ **Site root and safe landing (changed, M5.2; FE-25, FE-26).** One table, `ROLE_PAGES` in `app/utils/role-home.ts`, lists
+ for each role the pages that exist today (path and title, in order); `ROLE_HOME` is a role's first listed page. `app/pages/index.vue`
+ (FE-25 HomePage, S15) sends a signed-in person to `ROLE_HOME` when their role has a page, otherwise renders S15 with the
+@@ -1538,6 +1543,7 @@ side. Try again in a moment." with the same link; the response keeps its status
+ | **EP-16** | DELETE | `/api/session` | session | none | 204 | 401 `/problems/unauthenticated` | idempotent (DELETE) | — | FR-041 |
+ | **EP-17** | GET | `/api/session` | session (idle limit 15 min) | none | 200 `Me` | 401 `/problems/unauthenticated` | n/a (safe) | — | FR-039, FR-041 |
+ | **EP-18** | GET | `/api/patients/{patientId}/catalog` | session + provider of the patient's practice | path: patientId | 200 `Catalog` | 401 `/problems/unauthenticated`; 403 `/problems/forbidden`; 404 `/problems/not-found` | n/a (safe) | — (seeded list, under 100 products) | FR-001, FR-017, FR-025, FR-029 |
++| **EP-42** (new, M6.1) | GET | `/api/orders` | session + role patient (her own orders only) | query: cursor, limit (BE-22) | 200 `PatientOrderPage` (newest sent first; each: order_id, status, practice_name, total_cents as EP-21 shows it, sent_at, paid_at; next_cursor) | 401 `/problems/unauthenticated`; 403 `/problems/forbidden`; 422 `/problems/validation` (bad cursor or limit) | n/a (safe) | keyset on (sent_at DESC, id DESC), 25 per page | FR-039, AE-037, AE-067 |
+ | **EP-19** | POST | `/api/orders` | session + provider of the patient's practice | `SendOrderRequest` | 201 `Order` | 400 `/problems/idempotency-key-missing`; 401 `/problems/unauthenticated`; 403 `/problems/forbidden`; 404 `/problems/not-found`; 409 `/problems/idempotency-in-flight`; 422 `/problems/validation`; 422 `/problems/below-price-floor`; 422 `/problems/insufficient-stock`; 422 `/problems/idempotency-mismatch` | `Idempotency-Key` required | — | FR-002, FR-003, FR-004, FR-005, FR-025, FR-031, FR-043, FR-044 |
+ | **EP-20** | POST | `/api/orders/{orderId}/cancel` | session + provider of the order's practice | path: orderId | 200 `Order` | 401 `/problems/unauthenticated`; 404 `/problems/not-found`; 409 `/problems/invalid-transition` | natural: cancelling a cancelled order returns it unchanged | — | FR-066, FR-067 (changed) |
+ | **EP-21** | GET | `/api/orders/{orderId}` | session + the order's patient, or a provider of its practice | path: orderId | 200 `OrderView` | 401 `/problems/unauthenticated`; 404 `/problems/not-found` | n/a (safe) | — | FR-005, FR-009, FR-022, FR-037 |
+@@ -2984,3 +2990,4 @@ stateDiagram-v2
+ | 2026-10-11 09:35 CDT | Delta (M5.2 safe landing, CQ-5): ROLE_PAGES; FE-25 HomePage (S15); FE-26 ErrorPage; FE-23 forbidden link | FE-23, FE-25, FE-26 | G3 by STANDING approval 2026-10-11 09:35 CDT |
+ | 2026-10-11 09:25 CDT | Delta (M6-measurement-and-operations, job M6-LLD): M6 rows reconciled with the code M4, M5 and M5.1 shipped (route-file handlers, page guard, role lists, `reserveForOrder` as built, SEQ-2 attempt-before-stock order); routed M5 catch-up: attention items carry patient name and total (M5-pass6 R4), 422 for every bad cursor in the contract and one shared paging helper BE-22 (M5-pass1 R5, pass5 R5, R7, pass6 R8), price and stock bounds proposed (D83, against D77), `FOR NO KEY UPDATE` proposed (D84), invalid-transition members proposed (D85, Q-8, M5-pass7 R2); M6 design gaps closed: out-of-stock refusals counted in `request_stats` (D86), availability over 5-minute slots matching the probe (D87), EP-37 refusals reach BE-18, M6 grants; decision statuses synced with the journal (D38 superseded by D44; D39 to D42, D72 accepted); Q-9 to Q-12 | users, access_log, request_stats, health_pings, Database roles, BE-1, BE-2, BE-4, BE-8, BE-10, BE-13 to BE-19, BE-22, FE-15, FE-17 to FE-20, FE-22, FE-23, ST-7, EP-10 to EP-15, EP-25, EP-27 to EP-34, EP-37 to EP-40, Problem types, Pagination, SEQ-2, SEQ-8, SEQ-10, SEQ-12, SM-1, SM-2, FM-8, SEAM-7, D38 to D42, D72, D83 to D87, Q-8 to Q-12 | pending G3 |
+ | 2026-10-11 10:36 CDT | Revise (clarify-spec pass 4, CQ-6 to CQ-8): Q-10 and Q-12 answered as recommended; Q-11 answered by keeping M5.2 (role none signs in to S15, pages refuse) — EP-15, BE-3.signIn, the role-none note, FE-2 and the problem registry no longer refuse its sign-in | EP-15, BE-3, FE-2, Q-10, Q-11, Q-12 | G3 by STANDING approval 2026-10-11 10:36 CDT |
++| 2026-10-11 13:47 CDT | Delta (M6.1 patient orders, CQ-9): EP-42, BE-9.listOrdersForPatient, FE-27 (S16), ROLE_PAGES.patient | EP-42, BE-9, FE-27 | G3 by STANDING approval 2026-10-11 13:47 CDT |
+diff --git a/docs/design/flows.md b/docs/design/flows.md
+index 46e84bf..e3e5a3c 100644
+--- a/docs/design/flows.md
++++ b/docs/design/flows.md
+@@ -33,6 +33,7 @@ Updated: 2026-10-10 11:05 CDT
+ | S13 | Access log | Review every role grant and removal in a period | US-10 | no |
+ | S14 | System health | See availability, errors and slow pages for a period | US-10 | no |
+ | S15 | Your home | Land somewhere safe after sign-in and see which pages the role can open | US-8 | no |
++| S16 | Your orders | See every order sent to me, newest first, and open one | US-2, US-8 | no |
+ 
+ ## Flows
+ 
+@@ -125,6 +126,7 @@ Actor: any person (patient, provider, reviewer, platform staff) · Trigger: they
+ 2. [S8] Signs in as herself → lands on the page she asked for, or her role's home: a patient her orders, a provider the practice dashboard, a reviewer Paid orders, staff Stock adjustments
+    - 2c. [S15] her role has no work page yet (patient, site reliability, data analyst) → sees her home with what to do instead, never a missing page
+    - 2d. [S15] she opens an address with no page → sees "We couldn't find that page" and "Go to your home"
++   - 2e. [S16] she is a patient → lands on Your orders, her orders newest first, each opening its order page (M6.1)
+    - 2a. [S8 · Error] sign-in details not recognised → sees what to check, and her typed name is kept
+    - 2b. [S8 · Permission denied] she asked for a page her role does not allow → sees that her account can't open it and where her own work is
+ 3. [S8] Is inactive for 15 minutes → is signed out and sees the sign-in page with "You were signed out after 15 minutes without activity."
+@@ -193,7 +195,7 @@ Ends when: he knows whether October met its targets.
+ | US-1 | P1 | F1, F2, F5 | S1, S2, S6, S9 |
+ | US-2 | P1 | F2 | S2 |
+ | US-3 | P1 | F3 | S3, S4 |
+-| US-8 | P1 | F1, F2, F3, F7 | S3, S4, S8, S9, S15 |
++| US-8 | P1 | F1, F2, F3, F7 | S3, S4, S8, S9, S15, S16 |
+ | US-6 | P3 | F8 | S10 |
+ | US-9 | P3 | F9 | S11 |
+ | US-10 | P3 | F8, F10, F11, F12 | S10, S12, S13, S14 |
+diff --git a/docs/design/screens.md b/docs/design/screens.md
+index abf6e78..239705f 100644
+--- a/docs/design/screens.md
++++ b/docs/design/screens.md
+@@ -1,8 +1,8 @@
+ # Screens — In-EHR supplement orders
+ 
+ status: complete
+-Milestones: M4, M5, M5.1 (visual language), M5.2 (safe landing), M6 · Flows: docs/design/flows.md · PRD: docs/product/prd.md@998ed94
+-Updated: 2026-10-11 09:34 CDT (M5.2: S15 Your home, page-not-found and wrong-role conventions)
++Milestones: M4, M5, M5.1 (visual language), M5.2 (safe landing), M6, M6.1 (patient orders) · Flows: docs/design/flows.md · PRD: docs/product/prd.md@998ed94
++Updated: 2026-10-11 13:47 CDT (M6.1: S16 Your orders)
+ 
+ ## Global conventions
+ 
+@@ -1540,6 +1540,71 @@ WCAG 2.2 AA — planned, not verified.
+ | 375 px | One column | The band wraps the name; the card fills the width; nothing scrolls sideways |
+ | 1280 px | Band and one card | As drawn |
+ 
++## S16 Your orders
++
++Stories: US-2, US-8 · Flows: F7 step 2e · Key screen: no
++
++### Variants
++
++n/a — not a key screen
++
++### Layout
++
++```text
++1280 px
+++--------------------------------------------------------------+
++|~~ Your orders ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
++| +----------------------------------------------------------+ |
++| | Order 1002 · Willow Creek Wellness    $60.00   [Sent]    | |
++| |   Sent Oct 11                                   Open >   | |
++| | Order 1001 · Willow Creek Wellness    $30.00   [Paid]    | |
++| |   Sent Oct 10 · Paid Oct 10                     Open >   | |
++| +----------------------------------------------------------+ |
++| [Show 25 more]                                               |
++| Questions? Contact your practice                              |
+++--------------------------------------------------------------+
++```
++
++### States
++
++| State | When it happens | What the user sees | Microcopy (exact) | What they can do |
++|---|---|---|---|---|
++| Empty | First use: the patient has no orders yet / Filtered: n/a — no filter / Cleared: n/a — nothing to clear | The band and one card with a message | First use: "No orders yet. Your practice will send you a message when they order supplements for you." / Filtered: n/a — no filter / Cleared: n/a — nothing to clear | Wait for the practice's message |
++| Loading | The list is loading | The band stays; progress after 1 s | "Loading your orders…" / after 10 s: "Still loading. Try again in a moment." | Wait |
++| Error | Their mistake: n/a — nothing to type / Our failure: the list could not load / No connection: offline | A message in place of the list | Their mistake: n/a — nothing to type / Our failure: "We couldn't load your orders. Try again." / No connection: "You're offline. Try again when you're back online." | Retry |
++| Success | The list loaded | Each order as a row, newest sent first | n/a — the list is the confirmation | Open an order |
++| Permission denied | Signed out / not a patient | Signed out: the sign-in page; others: a message and the home link | Signed out: "You were signed out after 15 minutes without activity." / Others: "Only patients have an orders list here." | Sign in; go home |
++| Edge data | 200 orders / a 60-character practice name / an order that needs review or was cancelled | 25 at a time; long names wrap; every status is a word on a pill | "Show 25 more" | Show more |
++
++### Microcopy
++
++| Element | Text |
++|---|---|
++| Page title | "Your orders" |
++| Primary action | Each row's "Open" (to that order) |
++| Secondary action | "Show 25 more" |
++| Field labels and helper text | n/a — nothing to type |
++| Confirmation | n/a — nothing changes on this screen |
++
++### Accessibility
++
++WCAG 2.2 AA — planned, not verified.
++
++- Focus order: 1. Page title 2. Each order row's Open link, newest first 3. Show 25 more 4. Help link
++- Labels: each row reads as one sentence ("Order 1002 from Willow Creek Wellness, $60.00, Sent on October 11")
++- Keyboard: every row's link reachable with Tab and opened with Enter
++- Contrast and color: VL-2 tokens; status is a word, never colour alone
++- Targets: links and Show 25 more at least 24 px tall
++- Errors and status: the loading line is a status message; errors are announced
++- Focus not hidden: no sticky bars
++
++### Responsive
++
++| Width | Layout | What changes |
++|---|---|---|
++| 375 px | One column | Each order is a card: number and status first, then practice, total and dates; nothing scrolls sideways |
++| 1280 px | A list of rows | As drawn |
++
+ ## Demo layout (90 seconds)
+ 
+ | Beat | Time | Screen · state | What the viewer sees | Action |
+diff --git a/docs/product/prd.md b/docs/product/prd.md
+index 8056b15..444c470 100644
+--- a/docs/product/prd.md
++++ b/docs/product/prd.md
+@@ -346,6 +346,7 @@ cost → default patient price): Vitamin D3 $9.00 → $18.00; Magnesium Glycinat
+ - **AE-064** (FR-067) Given Ana Ruiz has started checkout on her $60.00 order, When Dr. Chen tries to cancel it, Then the cancel is refused and Ana's checkout continues. (CQ-1)
+ - **AE-065** (FR-068) Given Ana's order was sent with 2 Vitamin D3, When anyone tries to change the quantity to 3, Then it is refused and the order still holds 2. (CQ-1)
+ - **AE-066** (FR-069) Given a paid $3.00 order of three $1.00 items whose platform fee is $0.02, When the fee is shared across the lines, Then the shares are $0.01, $0.01 and $0.00 and add up to $0.02. (CQ-2)
++- **AE-067** (FR-039) Given Ana Ruiz has a sent $60.00 order and a paid $30.00 order, and Ben Ortiz has his own order, When Ana signs in, Then she lands on Your orders and sees her two orders, newest first, each with its practice, total and status, and none of Ben's. (CQ-9)
+ 
+ ## Edge cases
+ 
+@@ -428,6 +429,7 @@ Answered from sources: Problem → brief Problem, REQ-01, R02, R08, R10 · Users
+ | M5.1 Visual refresh | Every screen restyled to the M5.1 visual language (screens.md, D75, D80) with no change in behaviour | FR-005, FR-018, FR-028, FR-030, FR-045, NFR-015, NFR-016 (restyle only: every existing acceptance test stays green) | NFR-015, NFR-016 | A reviewer opens the prices page and the dashboard and sees the sky header band, serif titles and glowing buttons, with every number still readable. |
+ | M5.2 Safe landing | Every person lands somewhere safe after sign-in: their work page, or a home that says what to do; unknown addresses and wrong-role pages link home | FR-039, FR-058 (flows.md F7 steps 2 and 2b, already approved; no new behaviour beyond them) | AE-038 | A reviewer signs in as Sam and sees his home instead of a 404, opens a wrong address and gets back home in one click. |
+ | M6 Measurement and operations | Platform health dashboard, volume report, financial report, operations roles, access log and system health | FR-032, FR-048, FR-049, FR-051, FR-052, FR-053, FR-054, FR-055, FR-056, FR-057, FR-058, FR-059, FR-060, FR-061, FR-062, FR-063, FR-064, FR-065 | AE-029, AE-045, AE-046, AE-048 to AE-062, SC-001, SC-002, SC-003 | Fran runs October's report and sees $90.00 = $45.00 + $44.32 + $0.68, balanced; Sam grants Dana a role and Fran sees it in the access log. |
++| M6.1 Patient orders | A patient signs in to a list of her own orders and opens any of them | FR-039, AE-037 (already approved; M5-R03) | AE-067 | Ana signs in and sees her orders, newest first, and opens one in a click. |
+ | Later | Not in this appetite: pricing campaigns and corrections; broader holistic-care products were considered for the future of the product and parked (NG-12, CQ-3) | FR-016, FR-033, FR-034 | — | — |
+ 
+ ## Constraints
+@@ -475,6 +477,7 @@ Answered from sources: Problem → brief Problem, REQ-01, R02, R08, R10 · Users
+ | 2026-10-11 07:23 CDT | Clarify pass 2 (CQ-4): M5.1 visual refresh row; NFR-015 contrast, NFR-016 own-origin assets | M5.1, NFR-015, NFR-016 | G1 (STANDING) |
+ | 2026-10-11 09:34 CDT | Clarify (CQ-5): M5.2 Safe landing row | M5.2 | G1 (human words in CQ-5) |
+ | 2026-10-11 10:36 CDT | Clarify pass 4 (CQ-6 to CQ-8): NFR-014 export review note; AE-049 reworded | NFR-014, AE-049 | G1 (STANDING) |
++| 2026-10-11 13:47 CDT | Clarify pass 5 (CQ-9): M6.1 Patient orders row; AE-067 | M6.1, AE-067 | G1 (human words in CQ-9) |
+ 
+ ## Clarifications
+ 
+@@ -561,3 +564,14 @@ Parked for a later phase: none
+ - Applied: AE-049 reworded
+ - Decision candidate: no
+ - Scope change: none
++
++### Pass 5 · 2026-10-11 13:47 CDT · clarify-spec (Claude Code, claude-opus-5-5)
++
++#### CQ-9 · [Scope] · FR-039, AE-037, Milestone cut › M6.1
++- Question: FR-039 and AE-037 promise "a patient their own orders", but no page lists them (M5-R03; a patient lands on S15). Add M6.1 Patient orders with a list page and AE-067?
++- Options: A milestone M6.1 with S16 Your orders, newest first, each order's practice, total and status, opening the order page · B keep S15 and the message link only (FR-039 stays unmet) · do nothing · recommendation: A
++- Answer (verbatim): "go ahead with M5-R03, the patient order list"
++- Status: resolved
++- Applied: AE-067; Milestone cut row M6.1
++- Decision candidate: no — it meets the approved FR-039 and AE-037
++- Scope change: none
+diff --git a/server/api/orders/index.get.ts b/server/api/orders/index.get.ts
+new file mode 100644
+index 0000000..6f67cdf
+--- /dev/null
++++ b/server/api/orders/index.get.ts
+@@ -0,0 +1,14 @@
++// EP-42 GET /api/orders (listMyOrders): the signed-in patient's own orders, newest sent first (FR-039, AE-067);
++// anyone else gets 403, a stranger 401.
++import { getQuery } from 'h3'
++import { assertRole } from '../../services/access-policy'
++import { listOrdersForPatient } from '../../services/orders'
++import { requireViewer } from '../../services/session'
++import { defineApiHandler } from '../../utils/problem'
++
++export default defineApiHandler(async (event) => {
++  const viewer = await requireViewer(event)
++  assertRole(viewer, ['patient'])
++  const { cursor, limit } = getQuery(event)
++  return listOrdersForPatient(viewer, { cursor, limit })
++})
+diff --git a/server/services/orders.ts b/server/services/orders.ts
+index f333cc4..1f85b6d 100644
+--- a/server/services/orders.ts
++++ b/server/services/orders.ts
+@@ -2,6 +2,7 @@
+ // No method changes a sent order's lines (FR-068).
+ import { sql } from 'kysely'
+ import { useDb } from '../utils/db'
++import { decodeCursor, encodeCursor, parseLimit } from '../utils/paging'
+ import { ProblemError } from '../utils/problem'
+ import { assertCanActOnPatient, assertCanViewOrder, assertIsOrderPatient } from './access-policy'
+ import { currentPrices, loadPatient } from './catalog'
+@@ -395,3 +396,53 @@ export async function cancelOrder(viewer: Viewer, orderId: bigint): Promise<Orde
+     sent_at: o.sent_at.toISOString(),
+   }
+ }
++
++/** EP-42 query, raw: BE-22 reads both, so a bad cursor or limit is 422 /problems/validation. */
++export interface PageRequest {
++  cursor?: unknown
++  limit?: unknown
++}
++
++export interface PatientOrderSummary {
++  order_id: number
++  status: string
++  practice_name: string
++  total_cents: number
++  sent_at: string
++  paid_at: string | null
++}
++
++export interface PatientOrderPage {
++  data: PatientOrderSummary[]
++  next_cursor: string | null
++}
++
++/** EP-42 (FR-039, AE-067): the viewer's own orders, keyset (sent_at DESC, id DESC) through BE-22. Each row is read
++ *  through getOrderForViewer, so its status and total are exactly what the order page shows (a moved price, an ended
++ *  hold). The caller has already checked the viewer is a patient. */
++export async function listOrdersForPatient(viewer: Viewer, page: PageRequest): Promise<PatientOrderPage> {
++  if (page.cursor !== undefined && typeof page.cursor !== 'string') {
++    throw new ProblemError('validation', { errors: [{ pointer: '#/cursor', detail: 'Not a cursor from this list.' }] })
++  }
++  const n = parseLimit(page.limit, '#/limit')
++  const after = page.cursor ? decodeCursor(page.cursor, '#/cursor', true) : undefined
++  let q = useDb()
++    .selectFrom('orders')
++    // The cursor key in BE-22's form, in UTC whatever the session time zone.
++    .select(['id', sql<string>`to_char(sent_at at time zone 'UTC', 'YYYY-MM-DD HH24:MI:SS.US"+00"')`.as('key')])
++    .where('patient_id', '=', viewer.userId.toString())
++  if (after) q = q.where(sql<boolean>`("sent_at", "id") < (${after.key}::timestamptz, ${after.id}::bigint)`)
++  const rows = await q.orderBy('sent_at', 'desc').orderBy('id', 'desc').limit(n + 1).execute()
++  const shown = rows.slice(0, n)
++  // ponytail: one getOrderForViewer per row (about 3 queries each, 25 a page); batch it if the page gets slow.
++  const data = await Promise.all(
++    shown.map(async (r) => {
++      const o = await getOrderForViewer(viewer, BigInt(r.id))
++      return { order_id: o.order_id, status: o.status, practice_name: o.practice_name, total_cents: o.total_cents, sent_at: keyToIso(r.key), paid_at: o.paid_at }
++    }),
++  )
++  const last = shown[shown.length - 1]
++  return { data, next_cursor: rows.length > n && last ? encodeCursor(last.key, last.id) : null }
++}
++
++const keyToIso = (key: string) => new Date(key.replace(' ', 'T').replace(/\+00$/, 'Z')).toISOString()
+diff --git a/specs/M6.1-patient-orders/acceptance.md b/specs/M6.1-patient-orders/acceptance.md
+new file mode 100644
+index 0000000..5ba719e
+--- /dev/null
++++ b/specs/M6.1-patient-orders/acceptance.md
+@@ -0,0 +1,164 @@
++---
++milestone: M6.1
++slug: patient-orders
++artifact: acceptance
++status: draft
++written_by: define-acceptance (software-factory-kit 0.1)
++written_at: 2026-10-11 13:52 CDT (UTC-0500)
++base_sha: f66c9e6
++inputs: "docs/product/prd.md (CQ-9, G1), docs/architecture/lld.md (EP-42, BE-9, FE-27, G3), docs/design/screens.md S16 (G-ux), docs/design/flows.md F7 2e"
++tests: tests/acceptance/M6.1/
++gate: G4
++---
++
++# M6.1 acceptance: patient orders
++
++## Scope
++
++| Id | Kind | Text (short) | Source |
++|---|---|---|---|
++| FR-039 | FR | a signed-in patient sees her own orders | prd.md M6.1 row |
++| AE-037 | AE | Ana sees only her own orders | prd.md M6.1 row |
++| AE-067 | AE | Ana lands on Your orders: two orders newest first, practice, total, status; none of Ben's | prd.md CQ-9 |
++
++Counts: `grep -E '^\| M6\.1 ' docs/product/prd.md | grep -oE '(FR|AE)-[0-9]{3}' | sort -u | wc -l` → 3.
++Out of scope this milestone: filtering or searching orders; reminders.
++
++## How these tests run
++
++| Item | Value | Source |
++|---|---|---|
++| Framework | Vitest 5 with @nuxt/test-utils | tests/acceptance/support/app.ts |
++| Run all | `npx vitest run --dir tests/acceptance/M6.1` | AGENTS.md acceptance command; --dir so copies under .claude/worktrees are not picked up |
++| Run one test (for a task's Done-when) | `npx vitest run --dir tests/acceptance/M6.1 -t 'M6.1_AT_001 '` (exits 0 when no test matches: Q-1) | Red run |
++| Test database (safe to reset?) | yes: `supplements_test` on the throwaway container | tests/acceptance/support/db.ts:10-19 |
++| Suites | make check runs M6.1 only after M6.1-T001 adds it (Q-2) | Makefile |
++
++## Traceability
++
++| AT | Covers | Requirement (EARS, verbatim) | Given / When / Then (concrete values) | Technique | Level | Test (path::name) | Status |
++|---|---|---|---|---|---|---|---|
++| AT-001 | AE-067, AE-037, FR-039 | FR-039: When a person signs in with their own account, the system shall show only the pages their role allows: a patient their own orders, a provider their practice, platform staff the platform pages. | **Given** Ana's paid $30.00 order, Ben's order, then Ana's sent $60.00 order **When** Ana signs in **Then** the root sends her to /orders (title in the band) and the list is [$60.00 sent, $30.00 paid], Willow Creek Wellness, none of Ben's | example | integration | `tests/acceptance/M6.1/patient-orders.test.ts::M6.1_AT_001` | red @ f66c9e6 |
++| AT-002 | FR-039 | FR-039 (as above), lld.md EP-42 auth | **Given** Ana, Dr. Chen, Omar and a stranger **When** each asks for the orders list **Then** 200, 403, 403, 401 | decision-table | integration | `tests/acceptance/M6.1/patient-orders.test.ts::M6.1_AT_002` | red @ f66c9e6 |
++| AT-003 | FR-039 | screens.md S16 Empty | **Given** Carla with no orders **When** she opens Your orders **Then** an empty list and "No orders yet. Your practice will send you a message when they order supplements for you." | partition | integration | `tests/acceptance/M6.1/patient-orders.test.ts::M6.1_AT_003` | red @ f66c9e6 |
++| AT-004 | FR-039 | lld.md EP-42 paging (BE-22, 25 per page) | **Given** 26 orders for Ana **When** she pages **Then** 25 then 1, newest first, no repeats; a made-up cursor is 422 | boundary | integration | `tests/acceptance/M6.1/patient-orders.test.ts::M6.1_AT_004` | red @ f66c9e6 |
++| AT-005 | AE-067 | lld.md EP-42 "total_cents as EP-21 shows it" | **Given** Ana's $60.00 order and Magnesium raised to $26.00 **When** she reads the list and the order **Then** both say $62.00 | error-guessing | integration | `tests/acceptance/M6.1/patient-orders.test.ts::M6.1_AT_005` | red @ f66c9e6 |
++
++## Edge cases
++
++### Equivalence partitions
++
++| EDGE | FR | Case (concrete) | Expected (source) | Disposition |
++|---|---|---|---|---|
++| EDGE-001 | FR-039 | a patient with orders, and one with none | the list; the S16 empty message | AT-001, AT-003 |
++
++### Boundary values
++
++| EDGE | FR | Case (concrete) | Expected (source) | Disposition |
++|---|---|---|---|---|
++| EDGE-002 | FR-039 | 25 and 26 orders | one page, then a second page of 1 | AT-004 |
++
++### State transitions
++
++| EDGE | FR | Case (concrete) | Expected (source) | Disposition |
++|---|---|---|---|---|
++| EDGE-003 | FR-039 | sent, paid, and a price change after send | each row's status and the EP-21 total | AT-001, AT-005 |
++
++### Decision tables
++
++| EDGE | FR | Case (concrete) | Expected (source) | Disposition |
++|---|---|---|---|---|
++| EDGE-004 | FR-039 | patient, provider, staff, stranger | 200, 403, 403, 401 (EP-42) | AT-002 |
++
++### Error guessing
++
++| EDGE | FR | Case (concrete) | Expected (source) | Disposition |
++|---|---|---|---|---|
++| EDGE-005 | FR-039 | a made-up cursor | 422 validation (BE-22) | AT-004 |
++
++### Concurrency, idempotency, double-submit
++
++| EDGE | FR | Case (concrete) | Expected (source) | Disposition |
++|---|---|---|---|---|
++| EDGE-006 | FR-039 | n/a | n/a | not tested: read-only list |
++
++### Authorization and abuse
++
++| EDGE | FR | Case (concrete) | Expected (source) | Disposition |
++|---|---|---|---|---|
++| EDGE-007 | FR-039 | another patient's orders in Ana's list | never (AE-037, AE-067) | AT-001 |
++
++### Money, rounding, time zones
++
++| EDGE | FR | Case (concrete) | Expected (source) | Disposition |
++|---|---|---|---|---|
++| EDGE-008 | FR-039 | the list total after a price change | equals the order page (EP-21) | AT-005 |
++
++### Empty, huge and unicode data
++
++| EDGE | FR | Case (concrete) | Expected (source) | Disposition |
++|---|---|---|---|---|
++| EDGE-009 | FR-039 | a 60-character practice name | wraps (S16 Edge data) | not tested: needs a browser |
++
++## Edge-case coverage matrix
++
++Every in-scope FR against every group: EDGE ids, or `n/a: <why>`. No blank cell.
++
++| FR | partition | boundary | state | decision-table | error-guess | concurrency | authz | money-time | data-shape |
++|---|---|---|---|---|---|---|---|---|---|
++| FR-039 | EDGE-001 | EDGE-002 | EDGE-003 | EDGE-004 | EDGE-005 | EDGE-006 | EDGE-007 | EDGE-008 | EDGE-009 |
++
++## Silent-success guards
++
++Ways a test could pass while the feature is wrong (`references/silent-success.md`), and how these tests stop it.
++
++| SS | How a test could pass while the feature is wrong | Tests at risk | Guard used in those tests |
++|---|---|---|---|
++| SS-01 | an endpoint returning every order passes "Ana sees her orders" | AT-001 | Ben's order exists and must be absent |
++| SS-02 | a 403 for everyone passes the refusals | AT-002 | Ana's 200 is the live twin |
++| SS-03 | a total from sent prices passes when nothing changed | AT-005 | a price change after send must show in the list |
++
++## NFR and SC checks
++
++| Id | Threshold (verbatim) | How measured | When |
++|---|---|---|---|
++| n/a | none: no NFR in M6.1 scope | n/a: earlier suites in make check | n/a |
++
++## Demo smoke
++
++| Step | What the person does | What they see | Re-checks |
++|---|---|---|---|
++| 1 | Ana signs in | Your orders, newest first | AT-001 |
++| 2 | Ana opens an order | the order page | AT-001 |
++| 3 | Carla signs in | the empty message | AT-003 |
++| 4 | Dr. Chen opens /orders (unhappy) | the wrong-role message and Go to your home | AT-002 |
++| 5 | Ana with many orders presses Show 25 more | the next orders below | AT-004 |
++
++## Red run
++
++- Command: `npx vitest run --dir tests/acceptance/M6.1 --reporter=verbose`
++- Run at: 2026-10-11 13:52 CDT (UTC-0500) on f66c9e6 (plus the uncommitted test file) · exit code: 1
++- Output file: `/var/folders/hy/jdyfzw1d74j_zxvpgy4bysm80000gp/T/M6.1-acceptance-red.txt`
++- Runner summary: Tests 5 failed (5)
++- Single-test proof: `-t 'M6.1_AT_001 '` runs one test; `-t 'M6.1_AT_999 '` exits 0 (Q-1)
++
++| AT | Test | Why it fails (assertion, or missing: <name from an approved artifact>) | First failing line |
++|---|---|---|---|
++| AT-001 | `M6.1_AT_001 Ana signs in to Your orders …` | assertion: the root shows S15 instead of sending her to /orders | expected [ 302, 303, 307 ] to include 200 |
++| AT-002 | `M6.1_AT_002 only a patient has an orders list …` | missing: EP-42 GET /api/orders | expected 404 to be 200 |
++| AT-003 | `M6.1_AT_003 Carla, with no orders …` | missing: EP-42 | expected 404 to be 200 |
++| AT-004 | `M6.1_AT_004 26 orders come 25 then 1 …` | missing: EP-42 | expected 404 to be 200 |
++| AT-005 | `M6.1_AT_005 each listed total …` | missing: EP-42 (no list body) | list.body.data.find is not a function |
++
++## Spec gaps and questions
++
++| Q | Question | Recommended (and why) | Answer (verbatim) | Blocks | Status |
++|---|---|---|---|---|---|
++| Q-1 | Single-test filter exits 0 on no match | count passing ids in Done-when (M5 Q-5) | STANDING approval 2026-10-10 23:09 CDT | Done-when | answered |
++| Q-2 | When does make check run M6.1? | M6.1-T001 adds test-acceptance-m6.1 | STANDING approval 2026-10-10 23:09 CDT | every AT | answered |
++
++## Change log
++
++| Date | Change | Ids | Why (approved artifact, or the human's exact words) |
++|---|---|---|---|
++| 2026-10-11 13:52 CDT (UTC-0500) | First draft; M5.2 AT-001 accepts S15 or the S16 redirect, never a 404 | all; M5.2 AT-001 | prd.md CQ-9: "go ahead with M5-R03, the patient order list"; STANDING approval 2026-10-10 23:09 CDT |
+diff --git a/specs/M6.1-patient-orders/tasks/T001.md b/specs/M6.1-patient-orders/tasks/T001.md
+new file mode 100644
+index 0000000..8313b68
+--- /dev/null
++++ b/specs/M6.1-patient-orders/tasks/T001.md
+@@ -0,0 +1,69 @@
++---
++id: M6.1-T001
++milestone: M6.1
++skill: implement-task
++covers: [FR-039, AE-037, AE-067]
++after: []
++harness: claude
++mode: workspace-write
++hitl: false
++parallel: false
++budget: 1 run, 90 min
++---
++Owns: server/services/orders.ts,server/api/orders/index.get.ts,app/pages/orders/index.vue,app/utils/role-home.ts,tests/unit/patient-orders.test.ts,Makefile
++
++## Ask
++
++Patient sees her orders list
++
++Ana signs in to S16 Your orders: her own orders, newest sent first, each with its practice, total and status, opening its order page.
++
++- Slice: EP-42 `GET /api/orders` (server/api/orders/index.get.ts; requireViewer, then `assertRole(['patient'])`) → BE-9 `listOrdersForPatient(viewer, page)` in server/services/orders.ts (her orders only; keyset (sent_at DESC, id DESC) through BE-22 Paging, 25 per page, a bad cursor or limit 422; each `total_cents` computed exactly as `getOrderForViewer` would show it, so reuse that logic) → FE-27 app/pages/orders/index.vue (S16: title "Your orders" in `page-band`, rows in a `card`, status as a word on a `status-pill--<status>`, each row links to /orders/<id>, "Show 25 more" appends, the S16 empty, loading, error and wrong-role copy) → `ROLE_PAGES.patient = [{ path: '/orders', title: 'Your orders' }]` → Makefile `test-acceptance-m6.1` (`npx vitest run --dir tests/acceptance/M6.1`) joins `check`
++- FR-039: "When a person signs in with their own account, the system shall show only the pages their role allows: a patient their own orders, a provider their practice, platform staff the platform pages."
++- AE-067: "Given Ana Ruiz has a sent $60.00 order and a paid $30.00 order, and Ben Ortiz has his own order, When Ana signs in, Then she lands on Your orders and sees her two orders, newest first, each with its practice, total and status, and none of Ben's."
++- Colours only from theme.css var() (M5.1 AT-002 scans every .vue file).
++- HITL: none
++- Why claude: one small slice.
++
++## Done-when
++
++```sh
++make -n check | grep -q 'tests/acceptance/M6.1' && [ "$(npx vitest run --dir tests/acceptance/M6.1 -t 'M6.1_AT_00[1-5] ' --reporter=verbose 2>&1 | grep -cE '✓ .*M6.1_AT_00[1-5] ')" = 5 ] && make check
++```
++
++- Turns green: AT-001 to AT-005
++- Still red afterwards, expected: none
++- Needs before dispatch: the test database is up and `node_modules` exists in the worktree.
++- Why this form: AT lines count passing tests (acceptance.md Q-1); --dir keeps other worktrees' copies out.
++
++## Must not change
++
++- `tests/acceptance/**` — read-only. Never edit, skip, delete or weaken a test to get green; if one looks wrong,
++  stop and write it under Questions in result.md.
++- `specs/**`, `docs/**`, `.handoff/**` (except your own result.md), `AGENTS.md`, `CLAUDE.md`, and every dependency
++  manifest or lockfile: a new or upgraded package is an Ask-first question; write it under Questions and stop.
++- Every M4, M5, M5.1, M5.2 and M6 acceptance test stays green.
++- Colours live only in app/assets/css/theme.css as the lld.md Theme custom properties; components read them with var(); never write a hex or rgb() colour in a .vue file.
++- Database roles and migrations (lld.md §1 Database roles and migrations): plain SQL files in `db/migrations/`, applied by `npx node-pg-migrate up -m db/migrations` as `supplements_owner`; the app connects as `supplements_app`, which gets SELECT and INSERT only on history tables (`price_changes`, `stock_movements`, `ledger_entries`, `access_log`) and never DELETE on `orders` or `order_lines`. A migration that already ran is never edited.
++- Money is integer cents only, never floats (AGENTS.md); fee = 0.75 % of the order amount rounded half-up once per order (BE-6 Money, lld.md §2).
++- Accepted decisions: D33 PostgreSQL · D36 API-first, one Nuxt deployable · D39 Kysely with plain SQL migrations · D40 bigint ids, order number = id · D41 idempotency keys in a table · D42 synchronous payment with short transactions · D44 Nuxt 4 · D47 a negative payout goes to review before charging · D72 no test seam for random tokens.
++- n/a — greenfield (no change plan)
++
++## Consumes / Produces
++
++- Consumes: BE-9 getOrderForViewer, BE-22 Paging, theme.css, ROLE_PAGES
++- Produces: EP-42, S16 Your orders
++
++## Context manifest
++
++- give: this file; `AGENTS.md`; docs/design/screens.md S16 and Global conventions; docs/architecture/lld.md (EP-42, BE-9, BE-22, FE-27, Site root paragraph); docs/architecture/contracts/openapi.yaml (listMyOrders, PatientOrderPage); tests/acceptance/M6.1/patient-orders.test.ts (read-only)
++- never give: other tasks' `runs/`, any worker's self-report or result.md, `.handoff/TRACKER.md`, verifier reviews,
++  `.env` or any secret, PHI or real personal data
++
++## Return
++
++- Commit on the branch your worktree was started on (the dispatcher created it from this task's id and the title
++  line under ## Ask); never create a second branch. Every commit carries the trailer `Task: M6.1-T001`.
++- write `$HANDOFF_DIR/runs/M6.1-T001/result.md` in the WORKFLOW.md §7 result contract (status
++  done | human_review | relaunch, base/head sha, changed paths, the Done-when command with its pasted output,
++  questions). Missing evidence means `human_review`, never `done`.
+diff --git a/tests/acceptance/M5.2/landing.test.ts b/tests/acceptance/M5.2/landing.test.ts
+index e01747e..b8f4f79 100644
+--- a/tests/acceptance/M5.2/landing.test.ts
++++ b/tests/acceptance/M5.2/landing.test.ts
+@@ -15,16 +15,13 @@ const root = async (email: string) => call('/', { cookie: await signIn(email), r
+ const homeLink = /<a[^>]+href="\/"[^>]*>\s*Go to your home\s*<\/a>/
+ 
+ describe('M5.2 safe landing', () => {
+-  it('M5.2_AT_001 a role with no work page lands on its home, never a 404: Ana sees "Welcome, Ana Ruiz" and what to do instead (FR-039; S15 Empty; Sam and Dana gain work pages in M6, checked by M6 AT-030)', async () => {
+-    const cases = [
+-      [EMAIL.ana, 'Welcome, Ana Ruiz', 'Your orders open from the message your practice sends you.'],
+-    ] as const
+-    for (const [email, title, copy] of cases) {
+-      const r = await root(email)
+-      expect(r.status, email).toBe(200)
+-      expect(r.text).toContain(title)
+-      expect(r.text).toContain(copy)
+-    }
++  it('M5.2_AT_001 a patient signing in lands on a page that opens, never a 404 (FR-039; S15 before M6.1, S16 Your orders after; Sam and Dana are checked by M6 AT-030)', async () => {
++    // Either the root is her home (S15) or it sends her to her work page (S16 Your orders, M6.1); never a 404.
++    const cookie = await signIn(EMAIL.ana)
++    const r = await call('/', { cookie, redirect: 'manual' })
++    const landed = [302, 303, 307].includes(r.status) ? await call(r.headers.get('location') ?? '/missing', { cookie, redirect: 'manual' }) : r
++    expect(landed.status).toBe(200)
++    expect(landed.text).not.toMatch(/We couldn(&#39;|')t find that page/)
+   })
+ 
+   it('M5.2_AT_002 a role with a work page goes straight to it, and that page opens: Dr. Chen the dashboard, Omar and Fran paid orders (FR-039; flows.md F7 step 2)', async () => {
+diff --git a/tests/acceptance/M6.1/patient-orders.test.ts b/tests/acceptance/M6.1/patient-orders.test.ts
+new file mode 100644
+index 0000000..be5e76d
+--- /dev/null
++++ b/tests/acceptance/M6.1/patient-orders.test.ts
+@@ -0,0 +1,102 @@
++// QA-owned by define-acceptance (specs/M6.1-patient-orders/acceptance.md). Do not edit; report a wrong test in result.md ## Questions.
++//
++// M6.1 Patient orders (prd.md CQ-9, FR-039, AE-037, AE-067; screens.md S16; lld.md EP-42, FE-27): a patient lands on
++// her own orders, newest sent first, each with its practice, total (as the order page shows it) and status.
++import { describe, expect, it } from 'vitest'
++import { useApp } from '../support/app'
++import { call, expectProblem, newKey, signIn } from '../support/http'
++import { EMAIL } from '../support/people'
++
++const app = useApp({ paymentStubMode: 'succeed' })
++
++async function send(patientId: number, lines: { product_id: number; quantity: number }[]) {
++  const r = await call('/api/orders', { method: 'POST', cookie: await signIn(EMAIL.drChen), key: newKey(), body: { patient_id: patientId, lines } })
++  if (r.status !== 201) throw new Error(`send returned ${r.status}: ${r.text.slice(0, 200)}`)
++  return r.body.order_id as number
++}
++async function pay(email: string, orderId: number) {
++  const cookie = await signIn(email)
++  expect((await call(`/api/orders/${orderId}/checkout`, { method: 'POST', cookie })).status).toBe(200)
++  expect((await call(`/api/orders/${orderId}/payments`, { method: 'POST', cookie, key: newKey() })).status).toBe(201)
++}
++const S16_EMPTY = 'No orders yet. Your practice will send you a message when they order supplements for you.'
++
++describe('M6.1 patient orders', () => {
++  it('M6.1_AT_001 Ana signs in to Your orders: her $60.00 sent order then her $30.00 paid order, practice and status each, none of Ben\'s (AE-067, AE-037, FR-039)', async () => {
++    const w = app.world()
++    const paid = await send(w.ana, [{ product_id: w.omega3, quantity: 1 }])
++    await pay(EMAIL.ana, paid)
++    const bens = await send(w.ben, [{ product_id: w.magnesium, quantity: 1 }])
++    const sent = await send(w.ana, [{ product_id: w.vitaminD3, quantity: 2 }, { product_id: w.magnesium, quantity: 1 }])
++    const ana = await signIn(EMAIL.ana)
++    const root = await call('/', { cookie: ana, redirect: 'manual' })
++    expect([302, 303, 307]).toContain(root.status)
++    expect(root.headers.get('location')).toBe('/orders')
++    const page = await call('/orders', { cookie: ana, redirect: 'manual' })
++    expect(page.status).toBe(200)
++    expect(page.text).toMatch(/class="[^"]*\bpage-band\b[^"]*"[^>]*>(?:(?!<\/div>)[\s\S])*?<h1[^>]*>\s*Your orders\s*<\/h1>/)
++    const r = await call('/api/orders', { cookie: ana })
++    expect(r.status).toBe(200)
++    expect(r.body.data.map((o: any) => [o.order_id, o.status, o.practice_name, o.total_cents])).toEqual([
++      [sent, 'sent', 'Willow Creek Wellness', 6000],
++      [paid, 'paid', 'Willow Creek Wellness', 3000],
++    ])
++    expect(r.body.data.map((o: any) => o.order_id)).not.toContain(bens)
++    expect(r.body.data[1].paid_at).toBeTruthy()
++    expect(r.body.data[0].paid_at).toBeNull()
++    expect(r.body.next_cursor).toBeNull()
++  })
++
++  it('M6.1_AT_002 only a patient has an orders list: Dr. Chen and Omar get 403, a stranger 401, Ana 200 (FR-039, EP-42)', async () => {
++    expect((await call('/api/orders', { cookie: await signIn(EMAIL.ana) })).status).toBe(200)
++    expectProblem(await call('/api/orders', { cookie: await signIn(EMAIL.drChen) }), 403, 'forbidden')
++    expectProblem(await call('/api/orders', { cookie: await signIn(EMAIL.omar) }), 403, 'forbidden')
++    expectProblem(await call('/api/orders'), 401, 'unauthenticated')
++  })
++
++  it('M6.1_AT_003 Carla, with no orders, sees the S16 empty message and an empty list (S16 Empty)', async () => {
++    const carla = await signIn(EMAIL.carla)
++    const r = await call('/api/orders', { cookie: carla })
++    expect(r.status).toBe(200)
++    expect(r.body).toEqual({ data: [], next_cursor: null })
++    const page = await call('/orders', { cookie: carla, redirect: 'manual' })
++    expect(page.status).toBe(200)
++    expect(page.text).toContain(S16_EMPTY)
++  })
++
++  it('M6.1_AT_004 26 orders come 25 then 1, newest first with no repeats; a made-up cursor is 422 (EP-42 paging, BE-22)', async () => {
++    const w = app.world()
++    // one sign-in for all 26 sends: sign-in is rate-limited to 10 tries per 15 minutes (FR-039 limit)
++    const chen = await signIn(EMAIL.drChen)
++    const ids: number[] = []
++    for (let i = 0; i < 26; i++) {
++      const r = await call('/api/orders', { method: 'POST', cookie: chen, key: newKey(), body: { patient_id: w.ana, lines: [{ product_id: w.vitaminD3, quantity: 1 }] } })
++      expect(r.status).toBe(201)
++      ids.push(r.body.order_id)
++    }
++    const ana = await signIn(EMAIL.ana)
++    const first = await call('/api/orders', { cookie: ana })
++    expect(first.status).toBe(200)
++    expect(first.body.data.length).toBe(25)
++    expect(first.body.next_cursor).toBeTruthy()
++    const second = await call(`/api/orders?cursor=${encodeURIComponent(first.body.next_cursor)}`, { cookie: ana })
++    expect(second.status).toBe(200)
++    const all = [...first.body.data, ...second.body.data].map((o: any) => o.order_id)
++    expect(all).toEqual([...ids].reverse())
++    expect(second.body.next_cursor).toBeNull()
++    expectProblem(await call('/api/orders?cursor=not-a-cursor', { cookie: ana }), 422, 'validation')
++  })
++
++  it('M6.1_AT_005 each listed total is what the order page shows: after Magnesium goes from $24.00 to $26.00 the list and the order both say $62.00 (AE-067, EP-21 consistency)', async () => {
++    const w = app.world()
++    const id = await send(w.ana, [{ product_id: w.vitaminD3, quantity: 2 }, { product_id: w.magnesium, quantity: 1 }])
++    const chen = await signIn(EMAIL.drChen)
++    const ch = await call(`/api/practice/prices/${w.magnesium}`, { method: 'PUT', cookie: chen, key: newKey(), body: { price_cents: 2600, reason: 'supplier rise', expected_current_price_cents: 2400 } })
++    expect(ch.status).toBe(200)
++    const ana = await signIn(EMAIL.ana)
++    const order = await call(`/api/orders/${id}`, { cookie: ana })
++    expect(order.body.total_cents).toBe(6200)
++    const list = await call('/api/orders', { cookie: ana })
++    expect(list.body.data.find((o: any) => o.order_id === id).total_cents).toBe(6200)
++  })
++})
+diff --git a/tests/unit/patient-orders.test.ts b/tests/unit/patient-orders.test.ts
+new file mode 100644
+index 0000000..5e2ee37
+--- /dev/null
++++ b/tests/unit/patient-orders.test.ts
+@@ -0,0 +1,100 @@
++// BE-9 listOrdersForPatient (lld.md §2, EP-42, BE-22): her orders only, keyset (sent_at DESC, id DESC), 25 a page,
++// each row as getOrderForViewer shows it. Run against a fake Kysely driver, as in order-notices.test.ts; the real
++// database is exercised by tests/acceptance/M6.1.
++import { Kysely, PostgresAdapter, PostgresIntrospector, PostgresQueryCompiler, type CompiledQuery } from 'kysely'
++import { beforeEach, describe, expect, it, vi } from 'vitest'
++import { listOrdersForPatient } from '../../server/services/orders'
++import type { Viewer } from '../../server/services/session'
++import { encodeCursor } from '../../server/utils/paging'
++
++const fake = vi.hoisted(() => ({ listed: 0, queries: [] as { sql: string; params: unknown[] }[] }))
++
++function run(q: CompiledQuery): { rows: any[] } {
++  const s = q.sql
++  fake.queries.push({ sql: s, params: [...q.parameters] })
++  // the list query: ids 100, 99, ... with one sent second apart
++  if (s.includes('from "orders"') && s.includes('order by'))
++    return { rows: Array.from({ length: fake.listed }, (_, i) => ({ id: String(100 - i), key: `2026-10-11 12:00:${String(59 - i).padStart(2, '0')}.000000+00` })) }
++  // getOrderForViewer's load: the patient's own sent order
++  if (s.includes('inner join "practices"')) {
++    const id = String(q.parameters.at(-1))
++    return { rows: [{ id, patient_id: '5', practice_id: '2', status: 'sent', prices_held_until: null, paid_at: null, practice_name: 'Willow Creek Wellness', provider_display_name: 'Dr. Chen', hold_live: false, checkout_started: false }] }
++  }
++  if (s.includes('from "order_lines"')) return { rows: [{ product_id: '7', product_name: 'Vitamin D3', quantity: 2, sent_unit_price_cents: 1800, held_unit_price_cents: null, paid_unit_price_cents: null }] }
++  // currentPrices: today's price moved from 18.00 to 20.00, so the total follows today's price as EP-21 does
++  if (s.includes('from "products"')) return { rows: [{ id: '7', unit_cost_cents: 1000, price_cents: 2000 }] }
++  return { rows: [] }
++}
++
++vi.mock('../../server/utils/db', () => ({
++  useDb: () =>
++    new Kysely<any>({
++      dialect: {
++        createAdapter: () => new PostgresAdapter(),
++        createQueryCompiler: () => new PostgresQueryCompiler(),
++        createIntrospector: (db) => new PostgresIntrospector(db),
++        createDriver: () => ({
++          init: async () => {},
++          acquireConnection: async () => ({
++            executeQuery: async (q: CompiledQuery) => run(q) as any,
++            streamQuery: () => {
++              throw new Error('not used')
++            },
++          }),
++          beginTransaction: async () => {},
++          commitTransaction: async () => {},
++          rollbackTransaction: async () => {},
++          releaseConnection: async () => {},
++          destroy: async () => {},
++        }),
++      },
++    }),
++}))
++
++const ana: Viewer = { userId: 5n, displayName: 'Ana Ruiz', role: 'patient', practiceId: 2n, practiceName: 'Willow Creek Wellness', idleExpiresAt: new Date() }
++const listSql = () => fake.queries.find((q) => q.sql.includes('from "orders"') && q.sql.includes('order by'))!
++
++beforeEach(() => {
++  fake.listed = 0
++  fake.queries.length = 0
++})
++
++describe('listOrdersForPatient (BE-9, EP-42)', () => {
++  it('no orders: an empty page and no cursor (S16 Empty)', async () => {
++    expect(await listOrdersForPatient(ana, {})).toEqual({ data: [], next_cursor: null })
++  })
++
++  it('asks only for her orders, newest sent first, one more than the page to know if another exists', async () => {
++    await listOrdersForPatient(ana, {})
++    const q = listSql()
++    expect(q.sql).toMatch(/where "patient_id" = \$1/)
++    expect(q.params[0]).toBe('5')
++    expect(q.sql).toMatch(/order by "sent_at" desc, "id" desc limit \$\d+/)
++    expect(q.params.at(-1)).toBe(26)
++  })
++
++  it('each row carries what the order page shows: status, practice, total at today\'s price, sent_at and paid_at', async () => {
++    fake.listed = 1
++    const page = await listOrdersForPatient(ana, {})
++    expect(page.data).toEqual([{ order_id: 100, status: 'sent', practice_name: 'Willow Creek Wellness', total_cents: 4000, sent_at: '2026-10-11T12:00:59.000Z', paid_at: null }])
++    expect(page.next_cursor).toBeNull()
++  })
++
++  it('26 rows: 25 returned and a cursor from the 25th, which the next call reads as (sent_at, id) <', async () => {
++    fake.listed = 26
++    const page = await listOrdersForPatient(ana, {})
++    expect(page.data.map((o) => o.order_id)).toEqual(Array.from({ length: 25 }, (_, i) => 100 - i))
++    expect(page.next_cursor).toBe(encodeCursor('2026-10-11 12:00:35.000000+00', '76'))
++    fake.queries.length = 0
++    await listOrdersForPatient(ana, { cursor: page.next_cursor! })
++    expect(listSql().sql).toContain('("sent_at", "id") < ($2::timestamptz, $3::bigint)')
++    expect(listSql().params.slice(1, 3)).toEqual(['2026-10-11 12:00:35.000000+00', '76'])
++  })
++
++  it('a made-up cursor or a bad limit is 422 validation before any query', async () => {
++    await expect(listOrdersForPatient(ana, { cursor: 'not-a-cursor' })).rejects.toMatchObject({ slug: 'validation' })
++    await expect(listOrdersForPatient(ana, { limit: '0' })).rejects.toMatchObject({ slug: 'validation' })
++    await expect(listOrdersForPatient(ana, { cursor: ['a', 'b'] })).rejects.toMatchObject({ slug: 'validation' })
++    expect(fake.queries).toEqual([])
++  })
++})

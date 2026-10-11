@@ -497,6 +497,49 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
   "/api/orders":
+    get:
+      x-lld-id: "EP-42"
+      operationId: listMyOrders
+      summary: "The signed-in patient's own orders, newest sent first"
+      tags: [orders]
+      parameters:
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        "200":
+          description: "One page of the patient's orders"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PatientOrderPage"
+        "401":
+          description: "/problems/unauthenticated"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "403":
+          description: "/problems/forbidden"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "422":
+          description: "/problems/validation"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
     post:
       x-lld-id: "EP-19"
       operationId: sendOrder
@@ -1632,6 +1675,34 @@ components:
                 minimum: 1
             required: [product_id, quantity]
       required: [patient_id, lines]
+    PatientOrderSummary:
+      type: object
+      properties:
+        order_id:
+          type: integer
+        status:
+          $ref: "#/components/schemas/OrderStatus"
+        practice_name:
+          type: string
+        total_cents:
+          $ref: "#/components/schemas/Cents"
+        sent_at:
+          type: string
+          format: date-time
+        paid_at:
+          type: ["string", "null"]
+          format: date-time
+      required: [order_id, status, practice_name, total_cents, sent_at, paid_at]
+    PatientOrderPage:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/PatientOrderSummary"
+        next_cursor:
+          type: ["string", "null"]
+      required: [data, next_cursor]
     OrderStatus:
       type: string
       enum: [sent, in_checkout, payment_failed, paid, needs_review, cancelled]

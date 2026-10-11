@@ -1058,6 +1058,7 @@ classDiagram
 | Public method (signature only) | Called by | Returns | Raises (problem type) | Covers |
 |---|---|---|---|---|
 | `sendOrder(viewer: Viewer, input: SendOrderInput): Promise<Order>` | BE-1 via EP-19 | the sent order | `/problems/validation`, `/problems/below-price-floor`, `/problems/insufficient-stock`, `/problems/not-found` | FR-002 to FR-005, FR-025, FR-031, FR-043 |
+| (new, M6.1) `listOrdersForPatient(viewer: Viewer, page: PageRequest): Promise<PatientOrderPage>` | BE-1 via EP-42 after `assertRole(['patient'])` | the viewer's own orders, newest sent first, each total computed as `getOrderForViewer` would show it | `/problems/validation` | FR-039, AE-067 |
 | `getOrderForViewer(viewer: Viewer, orderId: bigint): Promise<OrderView>` | BE-1 via EP-21 | lines at current or held prices, price-change notices, hold time, `hold_ended` (changed: true when the order is `sent` and `checkout_started_at` is set, i.e. a hold ended unpaid; S2 "Your 30-minute price hold ended") | `/problems/not-found` | FR-005, FR-009, FR-022, FR-037 |
 | `startCheckout(viewer: Viewer, orderId: bigint): Promise<Checkout>` | BE-1 via EP-22 | the hold (same hold when repeated while live) | `/problems/invalid-transition`, `/problems/not-found` | FR-023, FR-024, FR-037 |
 | `cancelOrder(viewer: Viewer, orderId: bigint): Promise<Order>` | BE-1 via EP-20 | the cancelled order | `/problems/invalid-transition`, `/problems/not-found` | FR-066, FR-067 (changed) |
@@ -1359,6 +1360,7 @@ flowchart TD
 - FE-1 AppShell (every screen)
   - FE-25 HomePage (S15, new M5.2)
   - FE-26 ErrorPage (every page error, new M5.2)
+  - FE-27 PatientOrdersPage (S16, new M6.1)
   - FE-2 SignInPage (S8)
     - FE-23 ProblemMessage
   - FE-3 NoticePage (S9)
@@ -1433,6 +1435,7 @@ FE-12, FE-22 and FE-23 are shared, stateless components; each appears under ever
 | **FE-24** | OrderFunnel | S10 | funnel: Funnel | none | none (stateless) | edge data (few orders: "read the counts, not the bars") |
 | **FE-25** (new, M5.2) | HomePage | S15 | none | none | none (reads ST-1) | empty (role has no page yet), loading, permission denied (signed out: sign-in) |
 | **FE-26** (new, M5.2) | ErrorPage | all | error: { statusCode, message } | none | none (stateless) | error (404: "We couldn't find that page"; other: "Something went wrong on our side"), with "Go to your home" |
+| **FE-27** (new, M6.1) | PatientOrdersPage | S16 | none | none | none (reads EP-42) | empty, loading, error, success, permission denied, edge data (Show 25 more appends) |
 
 **Theme (new, M5.1, D81).** One global stylesheet, `app/assets/css/theme.css`, registered in `nuxt.config.ts` `css`, holds
 the screens.md VL-2 visual language as CSS custom properties (colours, radii, shadows, spacing, type sizes; the colour
@@ -1454,6 +1457,8 @@ is proven by an acceptance check that reads the colour custom properties from th
 text/background pair's WCAG contrast ratio.
 
 **M6 pages and the theme (new).** FE-17 to FE-21 and FE-24 follow the Theme paragraph: each page opens with the `page-band` title, its sections are `card`s, buttons use `btn-primary` / `btn-secondary`, status and "Refused" or "Needs attention" marks use `status-pill` modifiers, and no colour is written outside theme.css. FE-24's bars are CSS widths on `--color-primary`, with the counts printed beside them ("read the counts, not the bars").
+
+**(changed, M6.1)** `ROLE_PAGES.patient` is `[{ path: '/orders', title: 'Your orders' }]`, so a patient lands on S16 (FE-27) instead of S15.
 
 **Site root and safe landing (changed, M5.2; FE-25, FE-26).** One table, `ROLE_PAGES` in `app/utils/role-home.ts`, lists
 for each role the pages that exist today (path and title, in order); `ROLE_HOME` is a role's first listed page. `app/pages/index.vue`
@@ -1538,6 +1543,7 @@ side. Try again in a moment." with the same link; the response keeps its status 
 | **EP-16** | DELETE | `/api/session` | session | none | 204 | 401 `/problems/unauthenticated` | idempotent (DELETE) | — | FR-041 |
 | **EP-17** | GET | `/api/session` | session (idle limit 15 min) | none | 200 `Me` | 401 `/problems/unauthenticated` | n/a (safe) | — | FR-039, FR-041 |
 | **EP-18** | GET | `/api/patients/{patientId}/catalog` | session + provider of the patient's practice | path: patientId | 200 `Catalog` | 401 `/problems/unauthenticated`; 403 `/problems/forbidden`; 404 `/problems/not-found` | n/a (safe) | — (seeded list, under 100 products) | FR-001, FR-017, FR-025, FR-029 |
+| **EP-42** (new, M6.1) | GET | `/api/orders` | session + role patient (her own orders only) | query: cursor, limit (BE-22) | 200 `PatientOrderPage` (newest sent first; each: order_id, status, practice_name, total_cents as EP-21 shows it, sent_at, paid_at; next_cursor) | 401 `/problems/unauthenticated`; 403 `/problems/forbidden`; 422 `/problems/validation` (bad cursor or limit) | n/a (safe) | keyset on (sent_at DESC, id DESC), 25 per page | FR-039, AE-037, AE-067 |
 | **EP-19** | POST | `/api/orders` | session + provider of the patient's practice | `SendOrderRequest` | 201 `Order` | 400 `/problems/idempotency-key-missing`; 401 `/problems/unauthenticated`; 403 `/problems/forbidden`; 404 `/problems/not-found`; 409 `/problems/idempotency-in-flight`; 422 `/problems/validation`; 422 `/problems/below-price-floor`; 422 `/problems/insufficient-stock`; 422 `/problems/idempotency-mismatch` | `Idempotency-Key` required | — | FR-002, FR-003, FR-004, FR-005, FR-025, FR-031, FR-043, FR-044 |
 | **EP-20** | POST | `/api/orders/{orderId}/cancel` | session + provider of the order's practice | path: orderId | 200 `Order` | 401 `/problems/unauthenticated`; 404 `/problems/not-found`; 409 `/problems/invalid-transition` | natural: cancelling a cancelled order returns it unchanged | — | FR-066, FR-067 (changed) |
 | **EP-21** | GET | `/api/orders/{orderId}` | session + the order's patient, or a provider of its practice | path: orderId | 200 `OrderView` | 401 `/problems/unauthenticated`; 404 `/problems/not-found` | n/a (safe) | — | FR-005, FR-009, FR-022, FR-037 |
@@ -2984,3 +2990,4 @@ stateDiagram-v2
 | 2026-10-11 09:35 CDT | Delta (M5.2 safe landing, CQ-5): ROLE_PAGES; FE-25 HomePage (S15); FE-26 ErrorPage; FE-23 forbidden link | FE-23, FE-25, FE-26 | G3 by STANDING approval 2026-10-11 09:35 CDT |
 | 2026-10-11 09:25 CDT | Delta (M6-measurement-and-operations, job M6-LLD): M6 rows reconciled with the code M4, M5 and M5.1 shipped (route-file handlers, page guard, role lists, `reserveForOrder` as built, SEQ-2 attempt-before-stock order); routed M5 catch-up: attention items carry patient name and total (M5-pass6 R4), 422 for every bad cursor in the contract and one shared paging helper BE-22 (M5-pass1 R5, pass5 R5, R7, pass6 R8), price and stock bounds proposed (D83, against D77), `FOR NO KEY UPDATE` proposed (D84), invalid-transition members proposed (D85, Q-8, M5-pass7 R2); M6 design gaps closed: out-of-stock refusals counted in `request_stats` (D86), availability over 5-minute slots matching the probe (D87), EP-37 refusals reach BE-18, M6 grants; decision statuses synced with the journal (D38 superseded by D44; D39 to D42, D72 accepted); Q-9 to Q-12 | users, access_log, request_stats, health_pings, Database roles, BE-1, BE-2, BE-4, BE-8, BE-10, BE-13 to BE-19, BE-22, FE-15, FE-17 to FE-20, FE-22, FE-23, ST-7, EP-10 to EP-15, EP-25, EP-27 to EP-34, EP-37 to EP-40, Problem types, Pagination, SEQ-2, SEQ-8, SEQ-10, SEQ-12, SM-1, SM-2, FM-8, SEAM-7, D38 to D42, D72, D83 to D87, Q-8 to Q-12 | pending G3 |
 | 2026-10-11 10:36 CDT | Revise (clarify-spec pass 4, CQ-6 to CQ-8): Q-10 and Q-12 answered as recommended; Q-11 answered by keeping M5.2 (role none signs in to S15, pages refuse) — EP-15, BE-3.signIn, the role-none note, FE-2 and the problem registry no longer refuse its sign-in | EP-15, BE-3, FE-2, Q-10, Q-11, Q-12 | G3 by STANDING approval 2026-10-11 10:36 CDT |
+| 2026-10-11 13:47 CDT | Delta (M6.1 patient orders, CQ-9): EP-42, BE-9.listOrdersForPatient, FE-27 (S16), ROLE_PAGES.patient | EP-42, BE-9, FE-27 | G3 by STANDING approval 2026-10-11 13:47 CDT |
