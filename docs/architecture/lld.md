@@ -1361,7 +1361,11 @@ FE-12, FE-22 and FE-23 are shared, stateless components; each appears under ever
 | **FE-24** | OrderFunnel | S10 | funnel: Funnel | none | none (stateless) | edge data (few orders: "read the counts, not the bars") |
 
 **Theme (new, M5.1, D81).** One global stylesheet, `app/assets/css/theme.css`, registered in `nuxt.config.ts` `css`, holds
-the screens.md VL-2 visual language as CSS custom properties (colours, radii, shadows, spacing, type sizes) plus a
+the screens.md VL-2 visual language as CSS custom properties (colours, radii, shadows, spacing, type sizes; the colour
+names are fixed: `--color-page` #F5F9FF, `--color-card` #FFFFFF, `--color-border` #E3EAF6, `--color-ink` #0F172A,
+`--color-ink-muted` #475569, `--color-primary` #1D4ED8, `--color-on-primary` #FFFFFF, `--color-danger` #B91C1C,
+`--color-band-from` #1D4ED8, `--color-band-to` #2563EB, `--color-band-glow` #8EC5F5, `--color-on-band` #FFFFFF,
+`--color-focus` #3B82F6, each declared once on `:root` as a 6-digit hex) plus a
 small set of shared classes every screen uses: `page-band` (the sky header band around a page's title and
 subtitle), `card`, `btn-primary`, `btn-secondary`, `btn-danger`, `status-pill` (one modifier per order status),
 `focus ring` styling on `:focus-visible`, and the reduced-motion rule. Fonts are self-hosted from the npm packages

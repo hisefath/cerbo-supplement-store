@@ -51,10 +51,10 @@ Why this layout: the new look lives in the header band and the buttons, so every
 
 - Page: a pale blue-white background (#F5F9FF); content on white cards with 16 px rounded corners, a hairline
   border (#E3EAF6) and a soft, wide blue shadow; generous space: 24 px inside cards, 32 px between sections
-- Header band: on every screen the title sits in a band filled with a sky gradient, deeper blue (#3B7DDD) at the
-  top-left fading to light sky (#8EC5F5) at the bottom-right; the title and its subtitle are white, and the title
-  is at least 28 px so white on the gradient passes large-text contrast; the imitation chart header (provider
-  screens) stays above the band, unchanged
+- Header band: on every screen the title sits in a band filled with a blue gradient, deep blue (#1D4ED8) at the
+  top-left to bright blue (#2563EB) at the bottom-right, with a soft pale-sky glow (#8EC5F5) in the far right
+  corner that never sits behind text; the title and its subtitle are white, which passes 4.5:1 across the whole
+  gradient; the imitation chart header (provider screens) stays above the band, unchanged
 - Type: page titles in a classic serif (EB Garamond, medium weight, 32 px desktop / 26 px phone); everything else
   in a clean geometric sans (Geist; 16 px body, 14 px for table detail, never smaller); numbers in tables use
   even-width digits so columns line up
@@ -65,7 +65,7 @@ Why this layout: the new look lives in the header band and the buttons, so every
   dark red (#B91C1C) text on white, never red alone without the words
 - Status words keep their text and gain a soft pill behind them: Paid (green tint), Sent and In checkout (blue
   tint), Payment failed and Needs review (amber tint), Cancelled (grey tint); color is never the only signal
-- Focus: a 3 px sky-blue ring with a white gap around every focusable thing, always visible on white and on the band
+- Focus: a 3 px blue ring (#3B82F6, 3:1 or better on white) with a white gap around every focusable thing, always visible on white and on the band
 - Dialogs and sheets: white, 20 px rounded corners, the page behind dimmed with a light blur
 - Motion: 150-200 ms fades and lifts only; nothing moves when the person has asked their device to reduce motion
 - Fonts load with the page and fall back to the device's sans-serif and serif while loading, so the layout never jumps
