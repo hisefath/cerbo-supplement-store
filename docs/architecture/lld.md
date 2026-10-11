@@ -1365,7 +1365,10 @@ the screens.md VL-2 visual language as CSS custom properties (colours, radii, sh
 names are fixed: `--color-page` #F5F9FF, `--color-card` #FFFFFF, `--color-border` #E3EAF6, `--color-ink` #0F172A,
 `--color-ink-muted` #475569, `--color-primary` #1D4ED8, `--color-on-primary` #FFFFFF, `--color-danger` #B91C1C,
 `--color-band-from` #1D4ED8, `--color-band-to` #2563EB, `--color-band-glow` #8EC5F5, `--color-on-band` #FFFFFF,
-`--color-focus` #3B82F6, each declared once on `:root` as a 6-digit hex) plus a
+`--color-focus` #3B82F6, `--color-control-border` #64748B (input and select borders, 3:1 or better on card and page),
+and the status-pill pairs `--color-pill-green` #DCFCE7 / `--color-on-pill-green` #166534, `--color-pill-blue` #DBEAFE /
+`--color-on-pill-blue` #1E40AF, `--color-pill-amber` #FEF3C7 / `--color-on-pill-amber` #92400E, `--color-pill-grey` #F1F5F9 /
+`--color-on-pill-grey` #334155, each declared once on `:root` as a 6-digit hex) plus a
 small set of shared classes every screen uses: `page-band` (the sky header band around a page's title and
 subtitle), `card`, `btn-primary`, `btn-secondary`, `btn-danger`, `status-pill` (one modifier per order status),
 `focus ring` styling on `:focus-visible`, and the reduced-motion rule. Fonts are self-hosted from the npm packages
@@ -1375,6 +1378,10 @@ subtitle), `card`, `btn-primary`, `btn-secondary`, `btn-danger`, `status-pill` (
 and read colours, radii and type from the custom properties; no colour value is written outside theme.css. NFR-015
 is proven by an acceptance check that reads the colour custom properties from theme.css and computes each listed
 text/background pair's WCAG contrast ratio.
+
+**Site root (new, M5.1 fix, specs/bugs/root-url-404-after-sign-in.md).** `app/pages/index.vue` sends a signed-in person to
+their role's home from the shared `ROLE_HOME` table (`app/utils/role-home.ts`, also used by FE-2); if the session
+cannot be read it goes to `/sign-in`. It redirects only to fixed paths, never to input.
 
 ### State ownership
 
@@ -2739,7 +2746,7 @@ stateDiagram-v2
 - **Interview line:** "Tokens are random and only compared by hash, so I dropped the planned test seam instead of building code no test needed."
 - **Default if you don't answer:** stays proposed; nothing downstream may build on it.
 
-### D81 How the M5.1 visual language reaches every screen  [status: proposed]
+### D81 How the M5.1 visual language reaches every screen  [status: accepted]
 
 - **Question:** where do the VL-2 colours, fonts and shared styles live, and how are the fonts served?
 - **Forces:** 18 files each carry their own scoped styles with hard-coded colours; the CSP allows styles and fonts from the app's own origin only; NFR-016 forbids third-party requests inside the EHR; adding packages is Ask-first (AGENTS.md).
@@ -2786,3 +2793,4 @@ stateDiagram-v2
 | 2026-10-10 23:10 CDT | Revise (M5 close-out; M5-pass2 R4, M5-pass4 R4; Approvals 2026-10-10 23:10 CDT STANDING): OrderView gains `hold_ended` (EP-21, BE-9.getOrderForViewer); FM-7 reconcile also runs at the start of pay and checkout start | BE-9, EP-21, FM-7, openapi OrderView | G3 by STANDING approval 2026-10-10 23:10 CDT |
 | 2026-10-10 23:57 CDT | Revise (M5 review pass 7 R4, pass 6 R9 a/b, pass 1 R3; Approvals STANDING 2026-10-10 23:09 CDT): EP-17 `Me` gains `practice_name` (string or null), read with the session's user; S5 and S6 titles use it | EP-17, BE-3, openapi Me | G3 by STANDING approval 2026-10-10 23:57 CDT |
 | 2026-10-11 07:24 CDT | Delta (M5.1, D75, D80): FE-1 page frame (changed); Theme paragraph (theme.css custom properties, shared classes, self-hosted fonts); D81 proposed | FE-1, D81 | G3 by STANDING approval 2026-10-11 07:24 CDT |
+| 2026-10-11 08:11 CDT | Revise (M5.1 review pass 1 R5, R9): control-border token; pill tokens listed; D81 marked accepted (journal D81); site-root page recorded | Theme, FE-2, D81 | G3 by STANDING approval 2026-10-11 08:11 CDT |

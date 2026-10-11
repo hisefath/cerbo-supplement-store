@@ -177,3 +177,4 @@ Ways a test could pass while the feature is wrong (`references/silent-success.md
 |---|---|---|---|
 | 2026-10-11 07:27 CDT (UTC-0500) | First draft | all | G1 prd.md@92d4a5f (CQ-4), G3 lld.md@6faccb4, G-ux screens.md@6faccb4; STANDING approval 2026-10-10 23:09 CDT |
 | 2026-10-11 08:04 CDT | Bug repro found in the M5.1 browser check: the site root 404s after sign-in | AT-005, EDGE-011 | STANDING approval 2026-10-10 23:09 CDT |
+| 2026-10-11 08:12 CDT | Review pass 1: AT-001 adds control-border, focus-on-page and status-pill pairs (R2, R5); AT-002 also refuses hsl() and 4/8-digit hex (R3); AT-004 requires the h1 inside the band (R1). AT-001 red until M5.1-T005 adds --color-control-border | AT-001, AT-002, AT-004 | M5.1-pass1 R1, R2, R3, R5; STANDING approval 2026-10-10 23:09 CDT |

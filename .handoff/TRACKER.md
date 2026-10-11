@@ -33,7 +33,8 @@ several harnesses read it and the repo is public.
 | M5.1-T001 | theme, fonts, sign-in band | Standard / build | claude-subagent | done | 2026-10-11 07:31 CDT | see task file | 9987db7 |
 | M5.1-T002 | provider screens | Standard / build | claude-subagent | done | 2026-10-11 07:31 CDT | see task file | 3880298 |
 | M5.1-T003 | patient screens | Standard / build | claude-subagent | done | 2026-10-11 07:31 CDT | see task file | caabf90 |
-| M5.1-T004 | staff screens + suite join | Standard / build | claude-subagent | working | 2026-10-11 07:31 CDT | see task file | — |
+| M5.1-T004 | staff screens + suite join | Standard / build | claude-subagent | done | 2026-10-11 07:31 CDT | see task file | 7367c5d |
+| M5.1-T005 | review fixes R5, R7, R8 | Standard / build | claude-subagent | working | 2026-10-11 08:12 CDT | see task file | — |
 | M4-CI01 | CI on the MacBook runner: enable runner 245, .gitlab-ci.yml running make check | Fix / supervisor | supervisor (claude-opus-5-5) | done | 2026-10-10 19:05 CDT | .gitlab-ci.yml | — |
 | M5-T001 | Provider changes a practice price (specs/M5-prices-and-stock/tasks/T001.md) | Standard / implement-task | claude-subagent | done | 2026-10-10 21:09 CDT | see task file | 135b9ca |
 | M5-T002 | Payment reserves and releases stock (specs/M5-prices-and-stock/tasks/T002.md) | Standard / implement-task | claude-subagent | done | 2026-10-10 21:09 CDT | see task file | f5bb975 |
@@ -211,6 +212,8 @@ several harnesses read it and the repo is public.
 | 2026-10-11 07:31 CDT | G4 acceptance part (M5.1 AT-001 to AT-004 red; Q-1, Q-2 answered) | specs/M5.1-visual-refresh/acceptance.md@a7cb486 | STANDING row 2026-10-10 23:09 CDT |
 | 2026-10-11 07:31 CDT | G4 (M5.1 slices T001-T004; analyze run with a dotted-milestone copy: 0 overlaps, 0 cycles; 2 known tool limits accepted: tracer bullet covers no AE and T001 covers NFRs only, because a restyle has no AE by CQ-4) | specs/M5.1-visual-refresh/tasks@6bc24f6 | STANDING row 2026-10-10 23:09 CDT |
 | 2026-10-11 06:56 CDT | deploy (ship-milestone) | main@220a971 → Railway production (web-v2) | "yes, deploy 220a971 to production" |
+| 2026-10-11 08:12 CDT | M5.1 review pass 1 dispositions (STANDING): R5, R1, R2, R3, R7, R8, R9, R10 fix (tests and docs by supervisor, code in M5.1-T005); R4 keep (repro committed red first at 771b802); R6 file with M5-R03; R11 keep (real reset ran on the local demo database: "demo reset: 2 practices, 9 users, 3 products") | .handoff/reviews/M5.1-pass1.md | STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-11 08:12 CDT | G3 revise + G4 (M5.1: control-border and pill tokens, site-root paragraph; AT-001/002/004 tightened; M5.1-T005 review-fix task) | lld.md, screens.md, acceptance.md, tasks/T005.md | STANDING row 2026-10-10 23:09 CDT |
 
 ## Log
 
@@ -464,3 +467,5 @@ several harnesses read it and the repo is public.
 2026-10-11 07:55 CDT FIX demo reset list misses M5 tables: RESET_TABLES names every table; unit guard compares it with db/migrations (specs/bugs/demo-reset-misses-m5-tables.md)
 2026-10-11 08:06 CDT FIX site root 404 after sign-in: app/pages/index.vue sends to the role home (shared ROLE_HOME); AT-005 red at 771b802 then green; make check exit 0
 2026-10-11 08:07 CDT REVIEW M5.1 milestone: verifier pass 1 and check-security dispatched; browser check done locally (sign-in, prices, dashboard, 375 px, stock; found and fixed the root 404)
+2026-10-11 08:12 CDT REVIEW M5.1 pass 1: 0 P0, 1 P1, 5 P2, 5 P3
+2026-10-11 08:12 CDT DISPATCH M5.1-T005 harness=claude-subagent why=pass 1 review fixes

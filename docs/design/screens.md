@@ -65,7 +65,8 @@ Why this layout: the new look lives in the header band and the buttons, so every
   dark red (#B91C1C) text on white, never red alone without the words
 - Status words keep their text and gain a soft pill behind them: Paid (green tint), Sent and In checkout (blue
   tint), Payment failed and Needs review (amber tint), Cancelled (grey tint); color is never the only signal
-- Focus: a 3 px blue ring (#3B82F6, 3:1 or better on white) with a white gap around every focusable thing, always visible on white and on the band
+- Focus: a 3 px blue ring (#3B82F6, 3:1 or better on white and on the pale page) with a white gap around every focusable thing; nothing focusable sits inside the header band
+- Inputs and selects: a slate border (#64748B, 3:1 or better on white) so the field's edge is visible
 - Dialogs and sheets: white, 20 px rounded corners, the page behind dimmed with a light blur
 - Motion: 150-200 ms fades and lifts only; nothing moves when the person has asked their device to reduce motion
 - Fonts load with the page and fall back to the device's sans-serif and serif while loading, so the layout never jumps

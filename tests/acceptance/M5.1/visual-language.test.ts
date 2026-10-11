@@ -45,7 +45,7 @@ async function page(path: string, email: string) {
 }
 
 describe('M5.1 visual language', () => {
-  it('M5.1_AT_001 every colour pair in the theme meets WCAG 2.2 AA: text 4.5:1 on page, card, primary and band; focus ring 3:1 on white (NFR-015)', () => {
+  it('M5.1_AT_001 every colour pair in the theme meets WCAG 2.2 AA: text 4.5:1 on page, card, primary, band and pills; focus ring and control borders 3:1 (NFR-015)', () => {
     expect(existsSync(THEME), `${THEME} exists (lld.md Theme)`).toBe(true)
     const t = tokens()
     const need: [string, string, number][] = [
@@ -59,6 +59,13 @@ describe('M5.1 visual language', () => {
       ['--color-on-band', '--color-band-to', 4.5],
       ['--color-focus', '--color-card', 3],
       ['--color-primary', '--color-card', 4.5],
+      ['--color-control-border', '--color-card', 3],
+      ['--color-control-border', '--color-page', 3],
+      ['--color-focus', '--color-page', 3],
+      ['--color-on-pill-green', '--color-pill-green', 4.5],
+      ['--color-on-pill-blue', '--color-pill-blue', 4.5],
+      ['--color-on-pill-amber', '--color-pill-amber', 4.5],
+      ['--color-on-pill-grey', '--color-pill-grey', 4.5],
     ]
     const failing = need
       .map(([fg, bg, min]) => ({ pair: `${fg} on ${bg}`, fg: t[fg], bg: t[bg], min }))
@@ -69,12 +76,12 @@ describe('M5.1 visual language', () => {
     expect(ratio(t['--color-on-band']!, t['--color-band-glow']!)).toBeLessThan(3)
   })
 
-  it('M5.1_AT_002 no colour value is written outside the theme file: no hex or rgb() colour in any page or component (lld.md Theme)', () => {
+  it('M5.1_AT_002 no colour value is written outside the theme file: no hex, rgb() or hsl() colour in any page or component (lld.md Theme)', () => {
     const offenders = vueFiles('app').flatMap((f) =>
       readFileSync(f, 'utf8')
         .split('\n')
         .map((line, i) => ({ f, i: i + 1, line }))
-        .filter(({ line }) => /#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3})?\b(?![-\w])|rgba?\(/.test(line) && !/^\s*(\/\/|<!--|\*)/.test(line))
+        .filter(({ line }) => /#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{4}|[0-9a-fA-F]{3})\b(?![-\w])|rgba?\(|hsla?\(/.test(line) && !/^\s*(\/\/|<!--|\*)/.test(line))
         .map(({ f, i }) => `${f}:${i}`),
     )
     expect(vueFiles('app').length).toBeGreaterThan(10)
@@ -100,7 +107,8 @@ describe('M5.1 visual language', () => {
 
   it('M5.1_AT_004 each work screen puts its title in the sky header band: prices and dashboard (Dr. Chen), stock (Omar), Ana order page, and the sign-in page (FR-005, FR-018, FR-028, FR-030, FR-045; screens.md VL-2 header band; lld.md page-band)', async () => {
     const w = app.world()
-    const banded = (html: string) => /class="[^"]*\bpage-band\b[^"]*"[^>]*>[\s\S]*?<h1\b/.test(html)
+    // the h1 must sit inside the band: it comes before the band element closes
+    const banded = (html: string) => /class="[^"]*\bpage-band\b[^"]*"[^>]*>(?:(?!<\/div>)[\s\S])*?<h1\b/.test(html)
     // live twin: the pages answer 200 with their h1 before the band is required
     for (const [path, email] of [['/practice/prices', EMAIL.drChen], ['/practice/dashboard', EMAIL.drChen], ['/ops/stock', EMAIL.omar]] as const) {
       const r = await page(path, email)
