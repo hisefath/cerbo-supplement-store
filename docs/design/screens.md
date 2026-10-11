@@ -17,6 +17,8 @@ Updated: 2026-10-11 13:47 CDT (M6.1: S16 Your orders)
 - Page not found (M5.2): any address with no page shows, in the page frame, the title "We couldn't find that page", the text "The link may be old or mistyped." and a primary button "Go to your home"; any other failure to open a page shows "Something went wrong on our side. Try again in a moment." with the same button. Signed out, "Go to your home" leads to sign-in
 - Wrong role (M5.2, S8 Permission denied): every screen's wrong-role message is followed by a "Go to your home" link, so "Here is your own work" always has a way there
 
+- Sign out (FR-041, EP-16; added 2026-10-11 16:28 CDT at the human's request "theres no logout button, please make one"): every signed-in screen's frame shows a secondary button "Sign out" beside the menu; it ends the session and opens the sign-in page, which says "You signed out."; it is never shown to someone who is not signed in
+
 ### Visual language (M5.1)
 
 Revised for M5.1 (decision D75): every screen keeps its layout, states, copy and focus order; only how it looks
