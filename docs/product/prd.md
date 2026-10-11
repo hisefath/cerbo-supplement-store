@@ -430,6 +430,7 @@ Answered from sources: Problem → brief Problem, REQ-01, R02, R08, R10 · Users
 | M5.2 Safe landing | Every person lands somewhere safe after sign-in: their work page, or a home that says what to do; unknown addresses and wrong-role pages link home | FR-039, FR-058 (flows.md F7 steps 2 and 2b, already approved; no new behaviour beyond them) | AE-038 | A reviewer signs in as Sam and sees his home instead of a 404, opens a wrong address and gets back home in one click. |
 | M6 Measurement and operations | Platform health dashboard, volume report, financial report, operations roles, access log and system health | FR-032, FR-048, FR-049, FR-051, FR-052, FR-053, FR-054, FR-055, FR-056, FR-057, FR-058, FR-059, FR-060, FR-061, FR-062, FR-063, FR-064, FR-065 | AE-029, AE-045, AE-046, AE-048 to AE-062, SC-001, SC-002, SC-003 | Fran runs October's report and sees $90.00 = $45.00 + $44.32 + $0.68, balanced; Sam grants Dana a role and Fran sees it in the access log. |
 | M6.1 Patient orders | A patient signs in to a list of her own orders and opens any of them | FR-039, AE-037 (already approved; M5-R03) | AE-067 | Ana signs in and sees her orders, newest first, and opens one in a click. |
+| M7 Defensibility | A reviewer can check every claim: how the slice embeds in Cerbo's EHR, what attacks it resists and which test proves each defence, where each requirement's evidence lives, and that the money tests catch planted bugs | none (docs and test tooling only; no new behaviour) | every FR traced to its evidence | A reviewer opens docs/REVIEWER_GUIDE.md, follows any requirement to its passing test, reads the embedding plan and threat model, and runs the planted-bug check: every planted money bug is caught. |
 | Later | Not in this appetite: pricing campaigns and corrections; broader holistic-care products were considered for the future of the product and parked (NG-12, CQ-3) | FR-016, FR-033, FR-034 | — | — |
 
 ## Constraints
@@ -478,6 +479,7 @@ Answered from sources: Problem → brief Problem, REQ-01, R02, R08, R10 · Users
 | 2026-10-11 09:34 CDT | Clarify (CQ-5): M5.2 Safe landing row | M5.2 | G1 (human words in CQ-5) |
 | 2026-10-11 10:36 CDT | Clarify pass 4 (CQ-6 to CQ-8): NFR-014 export review note; AE-049 reworded | NFR-014, AE-049 | G1 (STANDING) |
 | 2026-10-11 13:47 CDT | Clarify pass 5 (CQ-9): M6.1 Patient orders row; AE-067 | M6.1, AE-067 | G1 (human words in CQ-9) |
+| 2026-10-11 17:27 CDT | Clarify pass 6 (CQ-10): M7 Defensibility row (docs and test tooling, no FRs) | M7 | G1 (human words in CQ-10) |
 
 ## Clarifications
 
@@ -575,3 +577,15 @@ Parked for a later phase: none
 - Applied: AE-067; Milestone cut row M6.1
 - Decision candidate: no — it meets the approved FR-039 and AE-037
 - Scope change: none
+
+### Pass 6 · 2026-10-11 17:27 CDT · clarify-spec (Claude Code, claude-opus-5-5) · base 0fa6390
+
+#### CQ-10 · [Scope] · Milestone cut › M7
+- Question: A survey of 14 peer Cerbo projects found four gaps a reviewer would probe: no written plan for embedding inside Cerbo's EHR, no threat model mapping attacks to defences and tests, no single requirement-to-evidence table, and no proof that the money tests catch planted bugs (F43). Add M7 Defensibility for them?
+- Options: A milestone M7 with the embedding plan, threat model, reviewer guide with an evidence table, and a planted-bug check on the money code · B docs only, no planted-bug check · do nothing · recommendation: A
+- Answer (verbatim): "go M7"
+- Status: resolved
+- Applied: Milestone cut row M7
+- Decision candidate: no — docs and test tooling; no FR, table or endpoint changes
+- Scope change: none (database ledger guards were also suggested and already exist: payments-ledger migration)
+

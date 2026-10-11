@@ -6,10 +6,10 @@
 # Commands table in AGENTS.md). Until then they fail on purpose, so an unconfigured repo can never look green.
 # Keep the target names: skills and hooks call `make check`, not the tools directly.
 
-.PHONY: check lint types test setup db-test-up test-acceptance test-acceptance-m4 test-acceptance-m5 test-acceptance-m5.1 test-acceptance-m5.2 test-acceptance-m6 test-acceptance-m6.1 decisions
+.PHONY: check lint types test setup db-test-up test-acceptance test-acceptance-m4 test-acceptance-m5 test-acceptance-m5.1 test-acceptance-m5.2 test-acceptance-m6 test-acceptance-m6.1 decisions mutation-check test-db
 
 ## check: lint + types + tests + M4, M5, M5.1, M5.2, M6 and M6.1 acceptance suites + decision review in sync — the gate
-check: lint types test test-acceptance-m4 test-acceptance-m5 test-acceptance-m5.1 test-acceptance-m5.2 test-acceptance-m6 test-acceptance-m6.1 decisions
+check: lint types test test-db test-acceptance-m4 test-acceptance-m5 test-acceptance-m5.1 test-acceptance-m5.2 test-acceptance-m6 test-acceptance-m6.1 decisions
 	@echo "make check: OK"
 
 ## lint: workflow scripts must parse (docs-only phase: no product code yet; stack tools are added at M3 design)
@@ -28,6 +28,14 @@ test:
 ## decisions: docs/decisions/REVIEW.md matches the decision journal and backfill-tags.md
 decisions:
 	bash scripts/decision-views.sh --check
+
+## mutation-check: plant 15 money bugs one at a time and check a test kills each (F43; slow, ~8 min, NOT in check; needs `make db-test-up`)
+mutation-check:
+	bash scripts/mutation-check.sh
+
+## test-db: database-level guards that are not acceptance tests (needs `make db-test-up`)
+test-db:
+	npx vitest run --dir tests/db
 
 ## setup: install the pinned dependencies (package-lock.json)
 setup:

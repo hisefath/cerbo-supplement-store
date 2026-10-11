@@ -265,6 +265,8 @@ several harnesses read it and the repo is public.
 | 2026-10-11 16:33 CDT | Fix track: Sign out button (screens.md Global conventions; AT-006; 2 code files, no API change) | fix/sign-out-button | "theres no logout button, please make one" |
 | 2026-10-11 16:51 CDT | Fix track: sign-in error line (wrong password showed "You're offline"; 2 code files + unit test, no API change) | fix/sign-in-error-message | "hey, this alert in red doesnt make sense, i typed in the wrong password, it should be representative of the right error." |
 | 2026-10-11 17:20 CDT | deploy (pre-approved) | main@502d111 → production web-v2 | "yes, deploy it when merged" |
+| 2026-10-11 17:27 CDT | G1 clarify CQ-10 (M7 Defensibility row) + G2/G3 n/a (docs/tooling, no design change) + G4 job files M7-J01..J04 | docs/product/prd.md | "go M7" (STANDING 2026-10-10 23:09 CDT) |
+| 2026-10-11 18:00 CDT | G5 M7 (report) + merge on green | docs/milestones/M7.md | STANDING 2026-10-10 23:09 CDT "i approve all next recommendations until project completion" |
 
 ## Log
 
@@ -578,3 +580,19 @@ several harnesses read it and the repo is public.
 2026-10-11 17:20 CDT MERGE fix MRs !17 (sign out) + !18 (sign-in error) -> main 502d111; make check on main OK
 2026-10-11 17:20 CDT DEPLOY 502d111 → production web-v2 (deployment eb79135e SUCCESS); SMOKE GREEN 7/0; "You signed out." live; no migrations
 2026-10-11 17:20 CDT FAIL ship script stopped on false "MIGRATIONS PRESENT": macOS wc -l pads with spaces; compare numerically
+2026-10-11 17:27 CDT DISPATCH M7-J01 harness=claude-subagent why=isolated doc/tool job, disjoint Owns
+2026-10-11 17:27 CDT DISPATCH M7-J02 harness=claude-subagent why=isolated doc/tool job, disjoint Owns
+2026-10-11 17:27 CDT DISPATCH M7-J03 harness=claude-subagent why=isolated doc/tool job, disjoint Owns
+2026-10-11 17:27 CDT DISPATCH M7-J04 harness=claude-subagent why=isolated doc/tool job, disjoint Owns
+2026-10-11 17:31 CDT RESULT M7-J03 status=done harness=claude-subagent timeout=no tree=clean
+2026-10-11 17:31 CDT FINDING LINV-1: lld.md names ct_order_lines_fee_shares_sum but no migration builds it (allocateFee enforces in code) -> M7-J05
+2026-10-11 17:31 CDT NOTE records push: GitHub mirror leg blocked by pre-push; GitLab branch pushed, MR !19
+2026-10-11 17:33 CDT RESULT M7-J01 status=done harness=claude-subagent timeout=no tree=clean
+2026-10-11 17:33 CDT FINDING SEC-5 residual wrong for EP-22 checkout (no body, no Idempotency-Key): safe today under SameSite=Lax; reachable cross-site once embedded (SameSite=None) -> embedding-plan E1 Origin check
+2026-10-11 17:44 CDT RESULT M7-J02 status=done harness=claude-subagent timeout=no tree=clean
+2026-10-11 17:44 CDT NOTE T-16 corrected on squash (EP-22 has no Idempotency-Key); CHECKLIST N7 cites D55 wrongly (D55 = deploy from M4 branch) -> fix in review
+2026-10-11 17:51 CDT RESULT M7-J04 status=done harness=claude-subagent timeout=no tree=clean
+2026-10-11 17:51 CDT FINDING MUT-1: pay() row lock (payments.ts:107) removable with no failing test; uq_payment_attempts_one_processing covers double pay; parallel cancel/hold-expiry during pay untested -> define-acceptance follow-up
+2026-10-11 17:51 CDT FLAKE M4_AT_028 paid_at 33 ms before a Node timestamp (DB clock vs app clock), passed on rerun
+2026-10-11 18:00 CDT VERIFY M7 55c255f make check exit 0 (unit 347, db 3, M4 43, M5 44, M5.1 5, M5.2 6, M6 44, M6.1 5)
+2026-10-11 18:00 CDT REPORT M7 docs/milestones/M7.md; G5 4/4
