@@ -348,3 +348,5 @@ several harnesses read it and the repo is public.
 2026-10-10 19:55 CDT DEPLOY production web-v2 158fb11 (deployment 21e295fd SUCCESS); /version = 158fb11f36a3d86d8374a2bb97c4d29a9437038b; SMOKE GREEN 7/0 TLS verified; review link and walkthrough sent
 2026-10-10 20:01 CDT DISPATCH M4-SEC2 harness=claude-subagent why=check-security re-run on main's M4 code (one skill, isolated: owns only CHECKLIST.md), parallel with M5-R01 design-lld; worktree .claude/worktrees/m4-sec2 from milestone/m4-security-recheck
 2026-10-10 20:08 CDT VERIFY M4-SEC2 squashed f7150d3: result done; scope-guard OK (1 path); checklist: secrets 0, unaccepted high/critical 0; 11 pass, 3 fail (all accepted D49-D53)
+2026-10-10 20:23 CDT DISPATCH M5-D01 harness=claude-subagent why=redraw erd after the M5-R01 LLD catch-up
+2026-10-10 20:23 CDT DISPATCH M5-D02 harness=claude-subagent why=redraw be-class after the M5-R01 LLD catch-up
