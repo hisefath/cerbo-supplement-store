@@ -30,6 +30,13 @@ several harnesses read it and the repo is public.
 | M5-T009 | S7 stock page fixes | Standard / build | claude-subagent | done | 2026-10-10 23:16 CDT | see task file | 12acb25 |
 | M5-T010 | S6 dashboard fixes | Standard / build | claude-subagent | done | 2026-10-10 23:16 CDT | see task file | 635d015 |
 | M5-T011 | review fixes: checkout answers (R2, R3), practice name (R4) | Standard / build | claude-subagent | done | 2026-10-10 23:57 CDT | see task file | 0c4510a |
+| M6-T001 | financial report + export (tracer) | Standard / build | claude-subagent | working | 2026-10-11 11:16 CDT | see task file | — |
+| M6-T002 | roles, access log, operations-access migration | Standard / build | claude-subagent | todo | 2026-10-11 11:16 CDT | see task file | — |
+| M6-T003 | access log screen | Standard / build | claude-subagent | todo | 2026-10-11 11:16 CDT | see task file | — |
+| M6-T004 | system health + uptime pings | Standard / build | claude-subagent | todo | 2026-10-11 11:16 CDT | see task file | — |
+| M6-T005 | platform health + volume | Standard / build | claude-subagent | todo | 2026-10-11 11:16 CDT | see task file | — |
+| M6-T006 | review list + stock bounds (D83, D84, D86) | Standard / build | claude-subagent | todo | 2026-10-11 11:16 CDT | see task file | — |
+| M6-T007 | ROLE_PAGES + privacy sweep + make check join | Standard / build | claude-subagent | todo | 2026-10-11 11:16 CDT | see task file | — |
 | M5.1-T001 | theme, fonts, sign-in band | Standard / build | claude-subagent | done | 2026-10-11 07:31 CDT | see task file | 9987db7 |
 | M5.1-T002 | provider screens | Standard / build | claude-subagent | done | 2026-10-11 07:31 CDT | see task file | 3880298 |
 | M5.1-T003 | patient screens | Standard / build | claude-subagent | done | 2026-10-11 07:31 CDT | see task file | caabf90 |
@@ -230,6 +237,7 @@ several harnesses read it and the repo is public.
 | 2026-10-11 10:36 CDT | G1 re-approval (clarify pass 4: CQ-6 to CQ-8) + G3 revise (Q-10 to Q-12 answered; role none keeps M5.2 S15) | docs/product/prd.md@97e8186 + lld.md + openapi.yaml | STANDING row 2026-10-10 23:09 CDT |
 | 2026-10-11 10:38 CDT | deploy (pre-approved): the M6 merge commit → Railway production (web-v2), once merged on green CI; migrations stay a human-run step | M6 MR (not yet opened) | "tell me when M6 is ready to deploy, also deploy it" |
 | 2026-10-11 11:08 CDT | G4 acceptance part (M6: 44 ATs, Q-1 to Q-13 recommendations, waivers EDGE-007, 033, 034, 039, 051, 058, 059; EDGE-039 waived with a verifier check of the repeatable-read transaction) | specs/M6-measurement-and-operations/acceptance.md@be96e14 + tests/acceptance/M6 | STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-11 11:16 CDT | G4 (M6: 7 slices, option a; T006 harness codex→claude for one dispatch path; analyze RESULT: PASS) | specs/M6-measurement-and-operations/tasks@45ff317 + acceptance.md | STANDING row 2026-10-10 23:09 CDT |
 
 ## Log
 
@@ -510,3 +518,5 @@ several harnesses read it and the repo is public.
 2026-10-11 10:36 CDT DISPATCH M6-ACC harness=claude-subagent why=define-acceptance first pass for M6; branch milestone/m6-measurement-and-operations
 2026-10-11 11:08 CDT PHASE define-acceptance M6: 44 ATs (42 red, 2 green pins); committed be96e14
 2026-10-11 11:08 CDT DISPATCH M6-SLICE harness=claude-subagent why=slice-tasks for M6
+2026-10-11 11:16 CDT NOTE M6 debt: BE-22 Paging not yet adopted by BE-8, BE-14, BE-15 (no M6 test grades it); D84 FOR NO KEY UPDATE guarded by M4/M5 concurrency tests and verifier read; CQ-6 export log line and NFR-010 checked by hand at G5 (demo smoke step 9)
+2026-10-11 11:16 CDT DISPATCH M6-T001 harness=claude-subagent why=tracer bullet (financial report)
