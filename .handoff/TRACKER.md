@@ -23,7 +23,7 @@ several harnesses read it and the repo is public.
 | M1-S01 | repo setup: backup, init-repo, AGENTS commands, make check, remotes, journal import (human's kickoff message) | Full / phase 0 (G-init) | supervisor (claude-opus-5-5) | done | 2026-10-08 22:33 CDT | scaffold paths, AGENTS.md Commands, Makefile, .gitignore, docs/decisions/DECISION_JOURNAL.md | 1ed9fd1 (G-init) |
 | M5-R01 | F20: design-lld catch-up before M5 (Q-1 to Q-4, D47 SM-1 guard, FM-3 new-key retry, pagination wording, EP-23 429, pay_rate_attempts) | Standard / design-lld | supervisor | done | 2026-10-10 18:31 CDT | docs/architecture/lld.md, contracts/openapi.yaml | — |
 | M5-R02 | F21: acceptance tests for review-fixed behaviours (key release, stuck attempt, parallel limits, cancel states) | Standard / define-acceptance | supervisor | done | 2026-10-10 18:31 CDT | specs/M4-tracer-bullet/acceptance.md, tests/acceptance/** | — |
-| M5-R03 | F22: M5 scope in the PRD (patient order list /orders 404, provider view of EP-4, needs-review amounts, copy gaps) | Standard / clarify-spec | supervisor | todo | 2026-10-10 18:31 CDT | docs/product/prd.md | — |
+| M5-R03 | F22: M5 scope in the PRD (patient order list /orders 404, provider view of EP-4, needs-review amounts, copy gaps) | Standard / clarify-spec | supervisor | working | 2026-10-10 18:31 CDT | docs/product/prd.md | — |
 | M5-R04 | define-acceptance re-run: review pins (pass2 R3, pass3 R1, pass4 R1-R3, pass6 R5) | Standard / define-acceptance | supervisor | done | 2026-10-10 23:05 CDT | specs/M5-prices-and-stock/acceptance.md, tests/acceptance/M5 | 44fed80 |
 | M5-T007 | abandoned payments never block; hold_ended | Standard / build | claude-subagent | done | 2026-10-10 23:16 CDT | see task file | 3d759da |
 | M5-T008 | S2 hold-ended banner | Standard / build | claude-subagent | done | 2026-10-10 23:16 CDT | see task file | 0b79027 |
@@ -245,6 +245,7 @@ several harnesses read it and the repo is public.
 | 2026-10-11 12:55 CDT | M6 review pass 1 dispositions: R1 fix (M6-T008, D85 dashboard copy); R2 to R8 file (R6 = SEC-16, accepted) | .handoff/reviews/M6-pass1.md | STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
 | 2026-10-11 13:16 CDT | G5 Revise (M6 report recommendation): answer DV-4 (a) with a Log NOTE; MILESTONES M6 row gets G4 sha and D88, D89 (DV-7); re-run report-milestone | docs/milestones/M6.md (draft 13:12) | STANDING row 2026-10-10 23:09 CDT |
 | 2026-10-11 13:22 CDT | G5 Merge (M6 report recommendation; 4 clauses yes; 0 open P0/P1; 0 unaccepted high/critical) | docs/milestones/M6.md@d4e0da1 | STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-11 13:53 CDT | G1 (clarify CQ-9: M6.1 Patient orders, AE-067) + G-ux (S16) + G3 (EP-42, BE-9.listOrdersForPatient, FE-27, ROLE_PAGES.patient) + G4 (AT-001..005, T001; M5.2 AT-001 accepts S15 or the S16 redirect) | prd.md, screens.md, flows.md, lld.md, openapi.yaml, specs/M6.1-patient-orders on milestone/m6.1-patient-orders | "go ahead with M5-R03, the patient order list" · STANDING row 2026-10-10 23:09 CDT |
 
 ## Log
 
@@ -546,3 +547,4 @@ several harnesses read it and the repo is public.
 2026-10-11 13:22 CDT NOTE DV-6: the security checklist was not re-run after 898e55f because that fix touches one .vue file (dashboard cancel copy) and no security path
 2026-10-11 13:34 CDT MERGE M6 MR !12 -> main 18da349 (pipeline #50251 success on 04fbfa3); make check on main exit 0 (337/43/44/5/5/44)
 2026-10-11 13:34 CDT DEPLOY M6 18da349 → production web-v2 (deployment d3719e5b SUCCESS); SMOKE GREEN 7/0; pre-approved by "tell me when M6 is ready to deploy, also deploy it"
+2026-10-11 13:53 CDT DISPATCH M6.1-T001 harness=claude-subagent why=patient order list (M5-R03)
