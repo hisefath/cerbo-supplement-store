@@ -1,7 +1,7 @@
 # M7-J04 result
 status: done
 base: 8d0262b · head: 5730a82 · branch: m7/j04-mutation-check
-worktree: /Users/mastershefu/Desktop/gauntlet_workbench/cerbo-supplement-store/.claude/worktrees/agent-a035b60b71063bfe6
+worktree: .claude/worktrees/agent-a035b60b71063bfe6
 
 ## Changed paths
 - scripts/mutation-check.sh (new): 15 mutants. Each one has a name, a file, a perl substitution and a test command. A trap restores the file with git checkout. The script will not run over uncommitted changes. It exits 1 on SURVIVED or NOT APPLIED.

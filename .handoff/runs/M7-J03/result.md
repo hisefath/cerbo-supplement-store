@@ -1,7 +1,7 @@
 status: done
 id: M7-J03
 branch: m7/j03-reviewer-guide
-worktree: /Users/mastershefu/Desktop/gauntlet_workbench/cerbo-supplement-store/.claude/worktrees/agent-a027bf83ab87ff4ad
+worktree: .claude/worktrees/agent-a027bf83ab87ff4ad
 base: 8d0262b
 head: 47806c42b05f651c332f09bac1f424ebd6dbff8e
 

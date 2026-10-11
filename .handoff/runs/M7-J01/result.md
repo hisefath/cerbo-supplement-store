@@ -3,7 +3,7 @@ status: done
 base: 8d0262b
 head: 17398f54bcf7066bf07d3ee604cbcfe5ec65b4e8
 branch: m7/j01-embedding-plan
-worktree: /Users/mastershefu/Desktop/gauntlet_workbench/cerbo-supplement-store/.claude/worktrees/agent-a50eb4741eafa3bd0
+worktree: .claude/worktrees/agent-a50eb4741eafa3bd0
 
 ## Changed paths
 - docs/architecture/embedding-plan.md (new)

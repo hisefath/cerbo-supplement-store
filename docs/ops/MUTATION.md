@@ -58,3 +58,9 @@ one 201, one 409, one ledger payment. The second Pay is still stopped, by the pa
 itself. What the lock alone protects (status read and hold check against a parallel cancel or hold expiry) is
 ⚠ not tested. Fix belongs to QA (`define-acceptance`): a test that races Pay against another writer of the
 order row. Tests were not edited in this job (M7-J04 rules).
+
+## Limits
+
+- Do not edit the five target files while it runs (~8 minutes): each mutant is undone with `git checkout --`, which discards an editor save made mid-run.
+- Ctrl-C restores the current file and stops the run. A `kill -9` cannot be trapped and can leave the planted bug in place: run `git checkout -- server/services` afterwards.
+- The unit baseline runs `tests/unit` only; the LINV-1 database test lives in `tests/db` (`make test-db`).

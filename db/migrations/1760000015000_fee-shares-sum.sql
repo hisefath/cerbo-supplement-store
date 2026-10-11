@@ -1,6 +1,6 @@
 -- Up Migration
 -- M7-J05 LINV-1 (lld.md §1 constraints, §7): at commit, a paid order's line fee shares add up to its platform fee.
--- Fires on line changes and on an order becoming paid. Runs as supplements_owner (Q-3, Q-4).
+-- Fires on line changes and on an order becoming paid. Created by supplements_owner (Q-3, Q-4); not security definer, so it runs as the writing role, which can read orders and order_lines.
 
 create function order_fee_shares_sum() returns trigger language plpgsql set search_path = public, pg_temp as $$
 declare

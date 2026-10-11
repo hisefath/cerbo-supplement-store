@@ -17,7 +17,9 @@ if ! git diff --quiet -- "${FILES[@]}"; then
 fi
 
 current=''
-trap '[ -n "$current" ] && git checkout -q -- "$current"' EXIT INT TERM
+restore() { [ -n "$current" ] && git checkout -q -- "$current"; current=''; }
+trap restore EXIT
+trap 'restore; exit 130' INT TERM
 
 echo "baseline: unit tests must pass before planting bugs"
 if ! $UNIT >/dev/null 2>&1; then echo "mutation-check: unit tests fail without any mutant; fix them first" >&2; exit 2; fi

@@ -4,7 +4,7 @@ status: done
 base_sha: 8d0262b
 head_sha: 34ca79f
 branch: m7/j02-threat-model
-worktree: /Users/mastershefu/Desktop/gauntlet_workbench/cerbo-supplement-store/.claude/worktrees/agent-a133ae0188af56d3f
+worktree: .claude/worktrees/agent-a133ae0188af56d3f
 ---
 ## Changed paths
 - docs/security/THREAT_MODEL.md (new)

@@ -1,0 +1,895 @@
+diff --git a/Makefile b/Makefile
+index 0d658b7..8c713cb 100644
+--- a/Makefile
++++ b/Makefile
+@@ -6,7 +6,7 @@
+ # Commands table in AGENTS.md). Until then they fail on purpose, so an unconfigured repo can never look green.
+ # Keep the target names: skills and hooks call `make check`, not the tools directly.
+ 
+-.PHONY: check lint types test setup db-test-up test-acceptance test-acceptance-m4 test-acceptance-m5 test-acceptance-m5.1 test-acceptance-m5.2 test-acceptance-m6 test-acceptance-m6.1 decisions
++.PHONY: check lint types test setup db-test-up test-acceptance test-acceptance-m4 test-acceptance-m5 test-acceptance-m5.1 test-acceptance-m5.2 test-acceptance-m6 test-acceptance-m6.1 decisions mutation-check
+ 
+ ## check: lint + types + tests + M4, M5, M5.1, M5.2, M6 and M6.1 acceptance suites + decision review in sync — the gate
+ check: lint types test test-acceptance-m4 test-acceptance-m5 test-acceptance-m5.1 test-acceptance-m5.2 test-acceptance-m6 test-acceptance-m6.1 decisions
+@@ -29,6 +29,10 @@ test:
+ decisions:
+ 	bash scripts/decision-views.sh --check
+ 
++## mutation-check: plant 15 money bugs one at a time and check a test kills each (F43; slow, ~8 min, NOT in check; needs `make db-test-up`)
++mutation-check:
++	bash scripts/mutation-check.sh
++
+ ## setup: install the pinned dependencies (package-lock.json)
+ setup:
+ 	npm ci
+diff --git a/db/migrations/1760000015000_fee-shares-sum.sql b/db/migrations/1760000015000_fee-shares-sum.sql
+new file mode 100644
+index 0000000..70111be
+--- /dev/null
++++ b/db/migrations/1760000015000_fee-shares-sum.sql
+@@ -0,0 +1,31 @@
++-- Up Migration
++-- M7-J05 LINV-1 (lld.md §1 constraints, §7): at commit, a paid order's line fee shares add up to its platform fee.
++-- Fires on line changes and on an order becoming paid. Runs as supplements_owner (Q-3, Q-4).
++
++create function order_fee_shares_sum() returns trigger language plpgsql set search_path = public, pg_temp as $$
++declare
++  r jsonb := to_jsonb(case when tg_op = 'DELETE' then old else new end);
++  v_order bigint := coalesce(r ->> 'order_id', r ->> 'id')::bigint;
++  o orders%rowtype;
++  s record;
++begin
++  select * into o from orders where id = v_order;
++  if o.status is distinct from 'paid' then
++    return null;
++  end if;
++  select sum(fee_share_cents) as total, count(*) filter (where fee_share_cents is null) as missing
++    into s from order_lines where order_id = v_order;
++  if s.missing > 0 or s.total is distinct from o.platform_fee_cents then
++    raise exception 'fee shares of order % do not add up to its platform fee', v_order using errcode = 'check_violation';
++  end if;
++  return null;
++end $$;
++create constraint trigger ct_order_lines_fee_shares_sum after insert or update or delete on order_lines
++  deferrable initially deferred for each row execute function order_fee_shares_sum();
++create constraint trigger ct_orders_fee_shares_sum after insert or update on orders
++  deferrable initially deferred for each row when (new.status = 'paid') execute function order_fee_shares_sum();
++
++-- Down Migration
++drop trigger ct_orders_fee_shares_sum on orders;
++drop trigger ct_order_lines_fee_shares_sum on order_lines;
++drop function order_fee_shares_sum();
+diff --git a/docs/REVIEWER_GUIDE.md b/docs/REVIEWER_GUIDE.md
+new file mode 100644
+index 0000000..74c877f
+--- /dev/null
++++ b/docs/REVIEWER_GUIDE.md
+@@ -0,0 +1,174 @@
++# Reviewer guide
++
++This page is for someone checking the slice, not building it. Every claim below points at a file and line, a
++decision (D-row), an acceptance test (M<N>_AT_###) or a review row. Anything not in the repo is marked "⚠ not built".
++
++## Start here (10 minutes)
++
++Read in this order. Stop when you have what you need.
++
++| # | Read | Why | Time |
++|---|---|---|---|
++| 1 | [docs/README.md](README.md) | The index of every artifact. There is no root `README.md` (⚠ not built); `AGENTS.md` and this index stand in for it. | 1 min |
++| 2 | [docs/product/prd.md](product/prd.md) | What the slice must do: FR-001 to FR-069. Its "Milestone cut" (prd.md:420) says which milestone built which FR. | 2 min |
++| 3 | [docs/architecture/hld.md](architecture/hld.md) | The shape: one Nuxt app, one PostgreSQL 16 database (D33, D34). Invariants at hld.md:234. | 2 min |
++| 4 | [docs/architecture/lld.md](architecture/lld.md) | Tables, services, endpoints. Invariants at lld.md:2632, test seams at lld.md:2677. | 2 min |
++| 5 | Milestone reports: [M4](milestones/M4.md), [M5](milestones/M5.md), [M5.1](milestones/M5.1.md), [M5.2](milestones/M5.2.md), [M6](milestones/M6.md), [M6.1](milestones/M6.1.md) | What each milestone shipped and what it left open. | 1 min |
++| 6 | [docs/decisions/DECISION_JOURNAL.md](decisions/DECISION_JOURNAL.md) and [docs/decisions/REVIEW.md](decisions/REVIEW.md) | Every D-row: what was chosen, what was rejected, who approved it. | 1 min |
++| 7 | [docs/security/THREAT_MODEL.md](security/THREAT_MODEL.md) | What attacks the slice resists and which test proves each defence (written in M7, in parallel with this page). | 1 min |
++| 8 | [docs/architecture/embedding-plan.md](architecture/embedding-plan.md) | How the slice would embed in Cerbo's EHR (written in M7, in parallel with this page). | — |
++| 9 | Live app: <https://web-v2-production-6640.up.railway.app> | Try it. Accounts below. | — |
++
++### Demo accounts
++
++All synthetic, all on the reserved `example.test` domain (db/seed/demo.ts:18-26). They share one password. It is not
++in the repo: the operator sets it as `DEMO_PASSWORD` when seeding (db/seed/demo.ts:2). Ask the operator for it.
++
++| Email | Role | Practice |
++|---|---|---|
++| maya.chen@example.test | provider | Willow Creek |
++| sam.lee@example.test | provider | Maple Grove |
++| ana.ruiz@example.test | patient | Willow Creek |
++| ben.ortiz@example.test | patient | Willow Creek |
++| carla.diaz@example.test | patient | Maple Grove |
++| omar.ortega@example.test | operations_specialist | — |
++| sam.reyes@example.test | sre | — |
++| dana.ito@example.test | data_analyst | — |
++| fran.fields@example.test | finance_lead | — |
++
++## What is stubbed and where the seam is
++
++The assignment allows stand-ins with clean seams (prd.md C-3). These are the seams from lld.md:2677 (§9).
++
++| Seam | What is real today | What is stubbed | Where to swap it | Test that uses it |
++|---|---|---|---|---|
++| SEAM-1 clock | system time | tests freeze and step it | server/services/clock.ts:4, `freezeClock` at clock.ts:7 | M5_AT_007 (checkout hold expiry, FR-037) |
++| SEAM-2 random tokens | `crypto.randomBytes` (session.ts:3, messaging.ts:19) | not faked: tokens are stored only by hash (D72) | none | — |
++| SEAM-3 payment provider | nothing: no real provider (⚠ not built) | BE-11 stub that moves no money; mode set by `PAYMENT_STUB_MODE` = succeed, decline or no_answer | server/services/payment-gateway.ts:1, :35 | M4_AT_005 (FR-007), M4_AT_031 and M4_AT_040 (FR-035) |
++| SEAM-4 messaging | nothing: no email or text (⚠ not built) | a row in `notices` that holds only the practice name and a sign-in path | server/services/messaging.ts:1, `sendOrderNotice` at :15 | M4_AT_017 (FR-043, FR-044, LINV-5) |
++| SEAM-5 signed-in person | real email + password sign-in with server sessions and a 15-minute idle limit (hld.md D36) | tests sign in a seeded account through the real endpoint | server/services/session.ts | M4_AT_032 to M4_AT_036 |
++| SEAM-6 password hash cost | scrypt at production cost | low cost through `SCRYPT_COST` | server/services/session.ts:44 | used by every sign-in test |
++| SEAM-7 uptime monitor | `/healthz` (server/routes/healthz.get.ts) | no outside monitor calls it (⚠ not built) | tests call `/healthz` with a frozen clock | M6_AT_034 to M6_AT_038 (FR-059) |
++
++Not stubbed, not built: shipping and tax (out of scope, prd.md C-5), pricing campaigns and corrections (FR-016,
++FR-033, FR-034, milestone "Later", prd.md:434). Never faked in tests: the PostgreSQL 16 engine and the money module
++(lld.md §9, last line).
++
++## Invariants and how each is enforced
++
++From hld.md:234 (§7) and lld.md:2632 (§7). "Database" means PostgreSQL refuses the bad write even if the app code is
++wrong. Test ids come from each spec's Traceability table, where the Covers column names the invariant.
++
++| Id | Always true | Database layer | App layer | Tests |
++|---|---|---|---|---|
++| INV-1 | cost + payout + fee = amount paid, to the cent | `ck_orders_split_balances` (db/migrations/1760000001000_core-orders.sql:4) | `assertSplitBalances`, server/services/money.ts:82 | M4_AT_029, M6_AT_011 |
++| INV-2 | an order is paid at most once | `uq_payment_attempts_one_success` (1760000002000_payments-ledger.sql:54) | idempotency keys, server/services/idempotency.ts | M4_AT_006, M4_AT_038 |
++| INV-3 | every amount is whole cents | integer money columns in every migration | integer-only maths in server/services/money.ts | M4_AT_009 |
++| INV-4 | paid amounts and all history are never changed or deleted | `tg_orders_paid_frozen` (core-orders.sql:5), `tg_order_lines_paid_frozen` (payments-ledger.sql:39); app user gets only SELECT, INSERT on `ledger_entries` (payments-ledger.sql:105), `price_changes` (1760000012000_price-changes.sql:22), `stock_movements` (1760000013000_stock-movements.sql:26), `access_log` (1760000014000_operations-access.sql:39) | no update or delete path in the services | M4_AT_026, M4_AT_027, M5_AT_004, M5_AT_044, M6_AT_027 |
++| INV-5 | stock is never below zero | `ck_products_stock_nonneg` (core-orders.sql:45) | row lock before lowering, server/services/stock.ts:32 | M5_AT_015, M5_AT_016, M5_AT_019, M5_AT_034, M5_AT_036, M5_AT_038, M5_AT_039 |
++| INV-6 | provider payout is never below $0.00 | `ck_orders_payout_nonneg` (core-orders.sql:4), at payment | checked at send (orders.ts:76) and price change (pricing.ts:67) | M4_AT_003, M4_AT_041, M5_AT_003, M5_AT_033 |
++| INV-7 | a person sees only their own or their practice's orders; operations never see patient identity | composite FKs `fk_orders_provider_in_practice` (core-orders.sql:74) | one access check, server/services/access-policy.ts | M4_AT_007, M4_AT_025, M4_AT_043, M6_AT_004, M6_AT_007, M6_AT_013, M6_AT_039 |
++| INV-8 | checkout pays the prices fixed at checkout start | `ck_orders_hold_when_in_checkout` (core-orders.sql:4) | prices copied to the order at checkout start (orders.ts:168) | M5_AT_006, M5_AT_035 |
++| INV-9 | report totals equal the ledger | `ct_ledger_entries_balance` (payments-ledger.sql:100) | the report sums only `ledger_entries`, server/services/finance-report.ts:74 | M6_AT_010 |
++| INV-10 | only the SRE changes operations roles, never their own | — (app only) | `assertCanChangeRole`, server/services/access-policy.ts:62 | M6_AT_019, M6_AT_020, M6_AT_029, M6_AT_032 |
++| LINV-1 | an order's line fee shares add up to its fee | ⚠ not built: lld.md names `ct_order_lines_fee_shares_sum`, but no migration creates it; only `ck_order_lines_fee_share_nonneg` exists (core-orders.sql:95) | `allocateFee`, server/services/money.ts:29, called at payments.ts:44 | M5_AT_022, M5_AT_027, M5_AT_028 |
++| LINV-2 | each paid order's ledger entries balance and match the order | `ct_ledger_entries_balance` (payments-ledger.sql:100) | written in the payment transaction | M4_AT_009, M4_AT_030 |
++| LINV-3 | provider and patient belong to the order's practice | `fk_orders_provider_in_practice` and the patient FK (core-orders.sql:74) | `assertCanActOnPatient`, access-policy.ts:30 | M4_AT_008, M4_AT_022, M4_AT_044 |
++| LINV-4 | at most one line per product | `uq_order_lines_order_product` (core-orders.sql:101) | repeats merged, orders.ts:44 | M4_AT_037 |
++| LINV-5 | a notice never holds items or amounts | `notices` has no column for them | `Notice` type has only two fields, messaging.ts:9 | M4_AT_017 |
++| LINV-6 | at most one payment in flight per order | `uq_payment_attempts_one_processing` (payments-ledger.sql:55) | in-flight key check, idempotency.ts | M4_AT_038 |
++
++## How to verify
++
++```bash
++make setup          # npm ci
++make db-test-up     # PostgreSQL 16 test database on localhost:54329
++make check          # syntax, typecheck, unit tests, every acceptance suite (M4 to M6.1), decision views
++npx vitest run tests/acceptance -t M4_AT_001        # one acceptance test by id
++bash scripts/smoke.sh https://web-v2-production-6640.up.railway.app <expected-sha>   # live deploy: GET only, verified TLS
++bash scripts/evidence-table.sh                      # regenerate the table below
++```
++
++`make check` is the one green/red gate (AGENTS.md, Makefile:12). The smoke script never signs in or creates data
++(scripts/smoke.sh:6). The expected SHA is the commit the operator deployed (docs/runbooks/deploy.md).
++
++## Evidence: every requirement to its tests
++
++One row per FR in prd.md. Milestone comes from the PRD Milestone cut. Tests come from each
++`specs/M*/acceptance.md` Traceability table. "⚠ none" means no acceptance test covers it; today those are only the
++three "Later" FRs, which were never built. Regenerate with `bash scripts/evidence-table.sh` and paste the output
++between the markers.
++
++<!-- evidence:start -->
++| FR | Requirement (shortened) | Milestone | Acceptance tests | Test files |
++|---|---|---|---|---|
++| FR-001 | When a provider starts an order for a patient of their practice,… | M4 | M4_AT_001, M4_AT_022 | `tests/acceptance/M4/send-order.test.ts` |
++| FR-002 | When a provider adds a product and a quantity to an order,… | M4 | M4_AT_001, M4_AT_021, M4_AT_037 | `tests/acceptance/M4/send-order.test.ts` |
++| FR-003 | If a provider tries to send an order with no items or… | M4 | M4_AT_002 | `tests/acceptance/M4/send-order.test.ts` |
++| FR-004 | If an order's provider payout after the platform fee would be below… | M4 | M4_AT_003, M4_AT_041 | `tests/acceptance/M4/send-order.test.ts` |
++| FR-005 | When a provider sends an order, the system shall show it to… | M4, M5.1 | M4_AT_004, M5.1_AT_004 | `tests/acceptance/M4/send-order.test.ts`, `tests/acceptance/M5.1/visual-language.test.ts` |
++| FR-006 | When a patient confirms payment for an order in checkout, the system… | M4 | M4_AT_005, M4_AT_012, M4_AT_043, M5_AT_029, M5_AT_031, M5_AT_039, M5_AT_042 | `tests/acceptance/M4/pay-order.test.ts`, `tests/acceptance/M5/close-out.test.ts`, `tests/acceptance/M5/m4-regressions.test.ts` |
++| FR-007 | The system shall label the payment step as a test payment that… | M4 | M4_AT_005 | `tests/acceptance/M4/pay-order.test.ts` |
++| FR-008 | If a patient submits payment for an order that is already paid… | M4 | M4_AT_006, M4_AT_013, M4_AT_021, M5_AT_029 | `tests/acceptance/M4/pay-order.test.ts`, `tests/acceptance/M4/send-order.test.ts`, `tests/acceptance/M5/m4-regressions.test.ts` |
++| FR-009 | If a person opens an order that belongs to neither them nor… | M4 | M4_AT_007, M4_AT_008, M4_AT_022, M4_AT_043, M4_AT_044 | `tests/acceptance/M4/pay-order.test.ts`, `tests/acceptance/M4/send-order.test.ts` |
++| FR-010 | When an order is marked paid, the system shall record its split… | M4 | M4_AT_009 | `tests/acceptance/M4/pay-order.test.ts` |
++| FR-011 | The system shall compute the platform fee once per order as 0.75%… | M4 | M4_AT_009, M4_AT_010, M4_AT_011, M4_AT_020, M4_AT_041 | `tests/acceptance/M4/pay-order.test.ts`, `tests/acceptance/M4/send-order.test.ts` |
++| FR-012 | The system shall compute the provider payout as the amount paid minus… | M4 | M4_AT_009, M4_AT_011, M4_AT_020, M4_AT_041 | `tests/acceptance/M4/pay-order.test.ts`, `tests/acceptance/M4/send-order.test.ts` |
++| FR-013 | If an order's item cost, provider payout and platform fee do not… | M4 | M4_AT_029, M5_AT_033 | `tests/acceptance/M4/audit-order.test.ts`, `tests/acceptance/M5/m4-regressions.test.ts` |
++| FR-014 | When a platform reviewer opens a paid order, the system shall show… | M4 | M4_AT_014 | `tests/acceptance/M4/audit-order.test.ts` |
++| FR-015 | If anyone tries to change or delete a paid order's recorded amounts,… | M4 | M4_AT_026, M4_AT_027 | `tests/acceptance/M4/audit-order.test.ts` |
++| FR-016 | When a platform administrator records a correction to a paid order, the… | Later | ⚠ none | ⚠ none |
++| FR-017 | The system shall start every product at a default patient price of… | M4 | M4_AT_015 | `tests/acceptance/M4/send-order.test.ts` |
++| FR-018 | When a provider submits the price-change form with either a new price… | M5, M5.1 | M5.1_AT_002, M5.1_AT_004, M5_AT_001, M5_AT_002, M5_AT_008, M5_AT_009, M5_AT_011, M5_AT_012, M5_AT_013, M5_AT_043 | `tests/acceptance/M5.1/visual-language.test.ts`, `tests/acceptance/M5/close-out.test.ts`, `tests/acceptance/M5/prices.test.ts` |
++| FR-019 | When a practice's price for a product changes, the system shall add… | M5 | M5_AT_001, M5_AT_008, M5_AT_010, M5_AT_011 | `tests/acceptance/M5/prices.test.ts` |
++| FR-020 | If a submitted price would leave the provider a payout below $0.00… | M5 | M5_AT_003, M5_AT_012 | `tests/acceptance/M5/prices.test.ts` |
++| FR-021 | If anyone tries to edit or delete a price history entry, then… | M5 | M5_AT_004 | `tests/acceptance/M5/prices.test.ts` |
++| FR-022 | When an item's price changes while an order containing it is not… | M5 | M5_AT_005, M5_AT_007, M5_AT_041 | `tests/acceptance/M5/close-out.test.ts`, `tests/acceptance/M5/prices.test.ts` |
++| FR-023 | When a patient starts checkout, the system shall fix every item's price… | M5 | M5_AT_006, M5_AT_040 | `tests/acceptance/M5/close-out.test.ts`, `tests/acceptance/M5/prices.test.ts` |
++| FR-024 | While an order is in checkout, when its practice's price for an… | M5 | M5_AT_006, M5_AT_035 | `tests/acceptance/M5/prices.test.ts`, `tests/acceptance/M5/stock-release.test.ts` |
++| FR-025 | If a provider adds more units of a product than are in… | M5 | M5_AT_014 | `tests/acceptance/M5/stock-dashboard.test.ts` |
++| FR-026 | If a patient pays for an order whose items are no longer… | M5 | M5_AT_015, M5_AT_016, M5_AT_034, M5_AT_036, M5_AT_038 | `tests/acceptance/M5/stock-dashboard.test.ts`, `tests/acceptance/M5/stock-release.test.ts` |
++| FR-027 | When an order is marked paid, the system shall reduce each product's… | M5 | M5_AT_021, M5_AT_034, M5_AT_036, M5_AT_039, M5_AT_040 | `tests/acceptance/M5/close-out.test.ts`, `tests/acceptance/M5/stock-dashboard.test.ts`, `tests/acceptance/M5/stock-release.test.ts` |
++| FR-028 | When a provider opens the practice dashboard for a chosen period, the… | M5, M5.1 | M5.1_AT_002, M5.1_AT_004, M5_AT_022, M5_AT_026 | `tests/acceptance/M5.1/visual-language.test.ts`, `tests/acceptance/M5/stock-dashboard.test.ts` |
++| FR-029 | The system shall show the current units in stock for each product… | M5 | M5_AT_021 | `tests/acceptance/M5/stock-dashboard.test.ts` |
++| FR-030 | When a platform staff member records a stock adjustment with a quantity… | M5, M5.1 | M5.1_AT_002, M5.1_AT_004, M5_AT_017, M5_AT_019, M5_AT_020, M5_AT_044 | `tests/acceptance/M5.1/visual-language.test.ts`, `tests/acceptance/M5/stock-dashboard.test.ts` |
++| FR-031 | The system shall record on every order its practice, provider, time sent… | M4 | M4_AT_001, M4_AT_028 | `tests/acceptance/M4/pay-order.test.ts`, `tests/acceptance/M4/send-order.test.ts` |
++| FR-032 | When a platform reviewer opens the volume report for a month, the… | M6 | M6_AT_001, M6_AT_006, M6_AT_009 | `tests/acceptance/M6/platform-health.test.ts` |
++| FR-033 | Where pricing campaigns are offered, the system shall let a platform administrator… | Later | ⚠ none | ⚠ none |
++| FR-034 | Where a campaign price leaves the provider payout below $0.00, the system… | Later | ⚠ none | ⚠ none |
++| FR-035 | If the payment step fails or does not answer, then the system… | M4 | M4_AT_031, M4_AT_040 | `tests/acceptance/M4/pay-failure.test.ts` |
++| FR-036 | The system shall record each paid line's unit cost as it stood… | M4 | M4_AT_014, M4_AT_024 | `tests/acceptance/M4/audit-order.test.ts` |
++| FR-037 | When 30 minutes pass after a patient started checkout without paying, the… | M5 | M5_AT_007, M5_AT_035, M5_AT_041, M5_AT_042 | `tests/acceptance/M5/close-out.test.ts`, `tests/acceptance/M5/prices.test.ts`, `tests/acceptance/M5/stock-release.test.ts` |
++| FR-038 | If a provider tries to record a stock adjustment, then the system… | M5 | M5_AT_018 | `tests/acceptance/M5/stock-dashboard.test.ts` |
++| FR-039 | When a person signs in with their own account, the system shall… | M4, M5.2, M6.1 | M4_AT_032, M4_AT_035, M5.1_AT_005, M5.2_AT_001, M5.2_AT_002, M5.2_AT_003, M5.2_AT_004, M5.2_AT_005, M5.2_AT_006, M5_AT_030, M6.1_AT_001, M6.1_AT_002, M6.1_AT_003, M6.1_AT_004, M6_AT_030 | `tests/acceptance/M4/sign-in.test.ts`, `tests/acceptance/M5.1/visual-language.test.ts`, `tests/acceptance/M5.2/landing.test.ts`, `tests/acceptance/M5.2/sign-out.test.ts`, `tests/acceptance/M5/m4-regressions.test.ts`, `tests/acceptance/M6.1/patient-orders.test.ts`, `tests/acceptance/M6/roles.test.ts` |
++| FR-040 | If someone who is not signed in opens an order, price, stock… | M4 | M4_AT_033 | `tests/acceptance/M4/sign-in.test.ts` |
++| FR-041 | When a signed-in person has been inactive for 15 minutes, the system… | M4 | M4_AT_034, M5.2_AT_006 | `tests/acceptance/M4/sign-in.test.ts`, `tests/acceptance/M5.2/sign-out.test.ts` |
++| FR-042 | When a patient signs in after opening an order notice, the system… | M4 | M4_AT_036 | `tests/acceptance/M4/sign-in.test.ts` |
++| FR-043 | When a provider sends an order, the system shall send the patient… | M4 | M4_AT_017 | `tests/acceptance/M4/send-order.test.ts` |
++| FR-044 | The system shall leave item names, quantities, amounts and health details out… | M4 | M4_AT_017 | `tests/acceptance/M4/send-order.test.ts` |
++| FR-045 | When a provider opens the practice dashboard, the system shall list the… | M5, M5.1 | M5.1_AT_004, M5_AT_023, M5_AT_026, M5_AT_037, M5_AT_043 | `tests/acceptance/M5.1/visual-language.test.ts`, `tests/acceptance/M5/close-out.test.ts`, `tests/acceptance/M5/stock-dashboard.test.ts` |
++| FR-046 | While a practice's order has been sent and unpaid for more than… | M5 | M5_AT_024, M5_AT_037 | `tests/acceptance/M5/stock-dashboard.test.ts` |
++| FR-047 | While a product has 3 units or fewer in stock, the system… | M5 | M5_AT_025 | `tests/acceptance/M5/stock-dashboard.test.ts` |
++| FR-048 | When platform staff open the platform health dashboard for a period, the… | M6 | M6_AT_002, M6_AT_005, M6_AT_006 | `tests/acceptance/M6/platform-health.test.ts` |
++| FR-049 | While a health measure is past its alert line, the system shall… | M6 | M6_AT_003 | `tests/acceptance/M6/platform-health.test.ts` |
++| FR-050 | The system shall show platform staff an order number in place of… | M4 | M4_AT_023, M4_AT_025 | `tests/acceptance/M4/audit-order.test.ts` |
++| FR-051 | The system shall let only the finance lead run and export financial… | M6 | M6_AT_016 | `tests/acceptance/M6/financial-report.test.ts` |
++| FR-052 | The system shall let only the operations specialist work the review list… | M6 | M6_AT_040, M6_AT_041, M6_AT_042 | `tests/acceptance/M6/review-and-stock.test.ts` |
++| FR-053 | The system shall show the data analyst totals on the health dashboard… | M6 | M6_AT_004, M6_AT_007, M6_AT_008 | `tests/acceptance/M6/platform-health.test.ts` |
++| FR-054 | When the SRE grants or removes an operations role, the system shall… | M6 | M6_AT_018, M6_AT_021, M6_AT_022, M6_AT_023, M6_AT_024, M6_AT_025, M6_AT_026, M6_AT_028, M6_AT_029 | `tests/acceptance/M6/roles.test.ts` |
++| FR-055 | If anyone other than the SRE tries to grant or remove an… | M6 | M6_AT_019, M6_AT_025 | `tests/acceptance/M6/roles.test.ts` |
++| FR-056 | If the SRE tries to grant or remove a role on their… | M6 | M6_AT_020 | `tests/acceptance/M6/roles.test.ts` |
++| FR-057 | When the finance lead opens the access log for a period, the… | M6 | M6_AT_031, M6_AT_032, M6_AT_033 | `tests/acceptance/M6/access-log.test.ts` |
++| FR-058 | If an operations person opens a page or action their role does… | M5.2, M6 | M5.2_AT_004, M6_AT_008, M6_AT_016, M6_AT_021, M6_AT_028, M6_AT_030, M6_AT_032, M6_AT_038, M6_AT_039, M6_AT_041 | `tests/acceptance/M5.2/landing.test.ts`, `tests/acceptance/M6/access-log.test.ts`, `tests/acceptance/M6/financial-report.test.ts`, `tests/acceptance/M6/platform-health.test.ts`, `tests/acceptance/M6/review-and-stock.test.ts`, `tests/acceptance/M6/roles.test.ts`, `tests/acceptance/M6/system-health.test.ts` |
++| FR-059 | When the SRE opens system health for a period, the system shall… | M6 | M6_AT_034, M6_AT_035, M6_AT_036, M6_AT_037, M6_AT_038 | `tests/acceptance/M6/system-health.test.ts` |
++| FR-060 | When the finance lead runs the financial report for a period, the… | M6 | M6_AT_010, M6_AT_015, M6_AT_017 | `tests/acceptance/M6/financial-report.test.ts` |
++| FR-061 | The system shall show on the financial report whether patient payments equal… | M6 | M6_AT_011, M6_AT_014 | `tests/acceptance/M6/financial-report.test.ts` |
++| FR-062 | The system shall show revenue on the financial report two ways, each… | M6 | M6_AT_012 | `tests/acceptance/M6/financial-report.test.ts` |
++| FR-063 | When the finance lead exports the financial report, the system shall produce… | M6 | M6_AT_007, M6_AT_013, M6_AT_017 | `tests/acceptance/M6/financial-report.test.ts`, `tests/acceptance/M6/platform-health.test.ts` |
++| FR-064 | When the finance lead runs the financial report, the system shall list… | M6 | M6_AT_010 | `tests/acceptance/M6/financial-report.test.ts` |
++| FR-065 | If a period's totals do not balance to the cent, then the… | M6 | M6_AT_014 | `tests/acceptance/M6/financial-report.test.ts` |
++| FR-066 | When a provider cancels a sent or payment-failed order, the system shall… | M4 | M4_AT_018, M4_AT_042, M4_AT_044, M5_AT_032 | `tests/acceptance/M4/pay-failure.test.ts`, `tests/acceptance/M4/send-order.test.ts`, `tests/acceptance/M5/m4-regressions.test.ts` |
++| FR-067 | If a provider tries to cancel an order whose checkout has started… | M4 | M4_AT_019, M5_AT_032 | `tests/acceptance/M4/send-order.test.ts`, `tests/acceptance/M5/m4-regressions.test.ts` |
++| FR-068 | If anyone tries to change the items or quantities of a sent… | M4 | M4_AT_039 | `tests/acceptance/M4/send-order.test.ts` |
++| FR-069 | The system shall share each paid order's one platform fee across its… | M5 | M5_AT_022, M5_AT_027, M5_AT_028 | `tests/acceptance/M5/stock-dashboard.test.ts` |
++<!-- evidence:end -->
+diff --git a/docs/architecture/embedding-plan.md b/docs/architecture/embedding-plan.md
+new file mode 100644
+index 0000000..75965bc
+--- /dev/null
++++ b/docs/architecture/embedding-plan.md
+@@ -0,0 +1,172 @@
++# Cerbo EHR embedding plan
++
++Status: plan only (M7-J01). Nothing in this file is built unless it cites code that exists today.
++Every Cerbo fact below cites a research file. Anything about Cerbo's own API, launch or frame rules that no
++research file states is marked ⚠ and is an open question for the partner (§7).
++All examples use fictional people and `example.test` addresses.
++
++## 1. What exists today
++
++**A standalone web app.** One Nuxt 4 deployable serves the Vue pages and the JSON API on one web address
++(D36, D44; `docs/architecture/hld.md:177`). Cerbo's chart and portal do not show it yet. The "host frame" in
++the designs is an imitation chart header, not a real one (`docs/design/screens.md:9`).
++
++**A stand-in sign-in.** Each fictional person has a seeded email and password (A-12 `docs/product/prd.md:385`,
++C-3 `docs/product/prd.md:442`, D37).
++
++- Sign-in checks the password and opens a server-side session (`server/services/session.ts:137`,
++  `server/api/session/index.post.ts:10`).
++- The cookie is `session`, HTTP-only, Secure, `SameSite=Lax`, path `/` (`server/services/session.ts:195-197`).
++- Sessions end after 15 idle minutes and after 12 hours in all (`server/services/session.ts:23-24`; NFR-008, SEC-6).
++- Sign-in is rate-limited per email and per address (`server/services/session.ts:80-128`; TH-1).
++- Every API call starts with `requireViewer`, which reads only that cookie (`server/services/session.ts:204-208`).
++- There is no link from a Cerbo user to one of our users. The `users` table holds email, password hash, role and
++  practice, and no outside id (`db/migrations/1760000001000_core-orders.sql:13-25`).
++
++**A strict CSP.** In production every response carries these headers (`nuxt.config.ts:13-26`, `:41`):
++
++- `frame-ancestors 'self'` (`nuxt.config.ts:21`). So today **no other site may frame the app**, Cerbo included.
++  A unit test pins this (`tests/unit/hardening.test.ts:66-70`).
++- Scripts, styles and fonts come only from our own origin, plus one hashed config script (`nuxt.config.ts:14-17`).
++  This already meets NFR-016 (`docs/product/prd.md:265`; D80, D81).
++- `form-action 'self'`, `object-src 'none'`, `base-uri 'self'`, nosniff, a referrer policy and HSTS
++  (`nuxt.config.ts:18-25`; SEC-4).
++- The dev server sends none of these (`nuxt.config.ts:40-41`).
++
++**CSRF today.** There is no anti-CSRF token and no Origin check (SEC-5, accepted as D52). The defence is
++`SameSite=Lax` plus JSON-only bodies (`server/utils/problem.ts:47-55`). D52 and D55 both say embedding must
++fix this first (`docs/decisions/DECISION_JOURNAL.md:600`, `:634`).
++
++## 2. Target: how the pages appear inside Cerbo
++
++What the research says about Cerbo:
++
++- Cerbo has charts, a patient portal and in-house supplement inventory (R02 F1, F2).
++- Providers already build a supplement plan inside a patient's encounter, and it shows under Plan Rx/Orders
++  (R02 F6).
++- Cerbo's portal front end is Vue on TypeScript (R01 F1, I3). D36 chose API-first so Cerbo could embed it later
++  (`docs/architecture/hld.md:346`).
++- ⚠ No research file says how Cerbo shows a third-party page: an iframe, a tab, a pop-up, or a link out.
++
++Proposed placement, by screen (`docs/design/screens.md`):
++
++| Where in Cerbo | Our screen | Page today | Who |
++|---|---|---|---|
++| Chart, inside the patient's encounter (next to Plan Rx/Orders, R02 F6) | S1 Supplement order | `app/pages/patients/[patientId]/supplements.vue` | provider |
++| Chart, practice area | S5 Practice prices, S6 Practice dashboard | `app/pages/practice/prices.vue`, `app/pages/practice/dashboard.vue` | provider |
++| Patient portal | S16 Your orders, S2 Your supplement order (checkout) | `app/pages/orders/index.vue`, `app/pages/orders/[orderId].vue` | patient |
++| Patient portal message (replaces the stand-in notice) | S9 Order notice | `app/pages/notices/[token].vue` | patient |
++| Not embedded: stays on our own address | S3, S4, S7, S10 to S14 (operations) | `app/pages/ops/**` | platform staff |
++| Not embedded: replaced by the launch | S8 Sign in, S15 Your home | `app/pages/sign-in.vue`, `app/pages/index.vue` | everyone |
++
++Operations pages stay standalone. Their users are platform staff, not practice users (P-5 to P-8,
++`docs/product/prd.md:34-46`), so a practice's chart has no reason to frame them.
++
++## 3. Launch handshake options
++
++The question: when a provider or patient opens our panel inside Cerbo, how does our server learn who they are,
++which practice, and which patient chart, without a second password?
++
++⚠ No research file says Cerbo offers SMART on FHIR, OAuth, OpenID Connect, signed launch tokens, or any partner
++API. R02 F5 says only that Cerbo's Fullscript integration is set up by a Cerbo super-admin who authorizes it on
++Fullscript's page. Every option below therefore needs the partner to confirm what Cerbo can send.
++
++| Option | How it works | Cost to us | Cost to Cerbo | Risks |
++|---|---|---|---|---|
++| Do nothing: keep the stand-in sign-in inside the frame | The panel shows S8; the person types a second password | none | none | Two identities that can disagree; a password form inside a third-party frame trains people to type passwords into frames; fails the "no second password" goal |
++| A. Signed launch token (recommended) | Cerbo's server signs a short-lived token (user id, role, practice id, patient id, expiry, one-time id). The frame URL carries it once. Our server checks the signature with Cerbo's public key, refuses reuse, maps the Cerbo ids to our user, and opens our normal session | ⚠ estimate 2 to 3 days: a verify endpoint, a key setting, a used-token table, an outside-id column on `users`, tests | ⚠ Cerbo must sign tokens and publish a key; unknown if they have this | Token in a URL can leak through logs or Referer; mitigated by one use, under 60 s expiry, and our `strict-origin-when-cross-origin` referrer policy (`nuxt.config.ts:24`) |
++| B. SMART on FHIR EHR launch | Cerbo opens us with a `launch` value; we run OAuth with Cerbo's server and read patient context over FHIR | ⚠ estimate 5 to 8 days: OAuth client, FHIR reads, token storage | ⚠ needs Cerbo to be a SMART server; no research says it is | Biggest build; best if Cerbo already has it, since it is the health-IT standard |
++| C. OAuth or OpenID Connect sign-in with Cerbo as the identity provider | We redirect to Cerbo to sign in, get an ID token, open our session | ⚠ estimate 3 to 4 days | ⚠ needs Cerbo to run an OAuth server for partners | Sign-in redirects often cannot run inside a frame; usually needs a pop-up or a top-level step; gives identity but not "which patient chart" |
++
++**Recommendation: A, a signed launch token**, unless the partner says Cerbo already runs B. It is the smallest
++thing Cerbo would have to build. It also carries the patient context, which C does not. If Cerbo already offers
++SMART on FHIR, B wins, because it is the standard and Cerbo would build nothing new.
++
++Rules for A, whichever signer Cerbo uses (all ⚠ not built):
++
++- Verify with an asymmetric key (Cerbo holds the private key; we hold only the public one), so a leak on our side
++  cannot mint tokens.
++- Expire within 60 seconds; store each one-time id until it expires and refuse a second use.
++- Exchange the token for our existing server-side session right away, then redirect to a clean URL with no token.
++- Keep our own role and ownership checks (TB-2, TH-4). A launch token says who the person is. It never widens
++  what they may see.
++- Keep the 15-minute idle and 12-hour absolute limits (NFR-008, SEC-6). On expiry, show "Reopen this panel from
++  the chart" instead of S8.
++
++## 4. Data: read from Cerbo vs stays ours
++
++| Data | Today | After embedding | Why |
++|---|---|---|---|
++| People (providers, patients) and their roles | our `users` table, seeded (`db/migrations/1760000001000_core-orders.sql:13`) | Cerbo is the source; we keep a thin row per person with Cerbo's id, our role, and no password | NFR-007 personal accounts still hold, now through Cerbo's accounts |
++| Practices | our `practices` table, name only (`db/migrations/1760000001000_core-orders.sql:7`) | Cerbo is the source; we keep id, Cerbo's id and name | A-5 each order has one practice |
++| Patient in context | the `patientId` in the page path (`app/pages/patients/[patientId]/supplements.vue`) | comes from the launch token, then checked against the provider's practice | stops a provider typing another id (TH-4) |
++| Patient contact details | none stored | ⚠ read from Cerbo only if a notice needs them; stand-in today (C-3) | NFR-010, NFR-012 keep names and contacts out of logs and ops pages |
++| Products, stock, practice prices, price history | ours | stays ours | the platform holds inventory (A-1) |
++| Orders, lines, checkout holds, payments | ours | stays ours | the sale must live in this system (R02 I1) |
++| Ledger, splits, financial report | ours | stays ours | INV-1, INV-4, INV-9; NFR-013 3-year keep |
++| Access log, stock and role history | ours | stays ours | NFR-014 |
++| Order status back into Cerbo | none | ⚠ optional later: R02 F9 says Fullscript sends no order status back; doing so would be a selling point | open question Q-5 |
++
++We copy as little from Cerbo as possible. Each read is by id, at launch time, and keeps no health detail.
++
++## 5. Security changes
++
++Each item below is **⚠ not built**. Each needs its own test before the embed goes live.
++
++1. **frame-ancestors allowlist.** Change `frame-ancestors 'self'` (`nuxt.config.ts:21`) to `'self'` plus Cerbo's
++   exact chart and portal origins, read from one setting. No wildcards. ⚠ The origins are unknown (Q-1).
++   Update `tests/unit/hardening.test.ts:70` to expect the list. Operations pages keep `'self'` only.
++2. **Cookies in a third-party frame.** Inside Cerbo's page our cookie is third-party, and browsers drop
++   `SameSite=Lax` cookies there. Set the session cookie to `SameSite=None; Secure; Partitioned; HttpOnly`
++   (change `server/services/session.ts:195-201`). `Partitioned` keeps a separate cookie per top-level site, so a
++   session opened inside Cerbo is never sent when our app is framed by another site. The installed cookie library
++   already has the option (the `partitioned` option of cookie-es 1.2.3, the library behind h3's
++   `setCookie`). ⚠ Browsers that block third-party cookies entirely would need the Storage Access API or a
++   top-level step; not planned until tested.
++3. **CSRF and Origin checks.** `SameSite=None` removes today's CSRF defence (SEC-5, D52). Add:
++   - an Origin check on every non-GET API call: allow only our own origin, refuse missing or other origins;
++   - a per-session anti-CSRF token in a header on every write.
++
++   This is not optional. Two writes take no JSON body today, so a plain cross-site form POST could reach them once
++   the cookie is `SameSite=None`: EP-22 start checkout (`server/api/orders/[orderId]/checkout.post.ts:7-12`, no
++   body, no Idempotency-Key) and EP-16 sign-out (`server/api/session/index.delete.ts`; DELETE needs a CORS
++   preflight, so it is lower risk). SEC-5's note that "every write needs JSON plus a custom Idempotency-Key header"
++   does not hold for EP-22; the Idempotency-Key is only on six routes (`server/api/orders/index.post.ts`,
++   `payments.post.ts`, `cancel.post.ts`, `practice/prices/[productId].put.ts`, `ops/stock/.../adjustments.post.ts`,
++   `ops/staff/.../role.put.ts`). Today Lax blocks it; embedded, it would not.
++4. **Clickjacking.** The allowlist in item 1 is the main defence: only Cerbo can frame us. Also:
++   - keep `'self'` on every operations page and on sign-in;
++   - paying is already two API calls, start checkout (EP-22) and then pay
++     (`server/api/orders/[orderId]/payments.post.ts`); ⚠ not verified that S2 needs two separate clicks, so
++     whether one hijacked click can complete a payment is untested.
++5. **Launch token checks** as listed in §3 (signature, expiry, one use, no token left in the URL).
++6. **NFR-016 holds unchanged.** The CSP already loads nothing from other origins (`nuxt.config.ts:15-17`). Keep it.
++   Do not load any Cerbo script into our page; talk to the parent only with `postMessage`, checking the sender's
++   origin, if resizing is needed (⚠ not built).
++7. **Update the threat model.** Add a TB-6 "Cerbo host page → our frame" boundary to `docs/architecture/hld.md` §5
++   with threats for forged launch, framing by others, and cross-site writes.
++
++## 6. Phases with exit checks
++
++| Phase | Work | Exit check |
++|---|---|---|
++| E0 Ask | Partner answers Q-1 to Q-4 (§7) | Answers written into this file with their source; ⚠ marks removed or kept |
++| E1 Harden first, still standalone | CSRF token plus Origin check (§5 item 3); a test that a cross-site POST to EP-22 is refused | New unit test fails if the check is removed; `make check` green; SEC-5 closed in `docs/security/CHECKLIST.md` |
++| E2 Launch | Launch-token verify endpoint, one-time-id table, outside-id columns on `users` and `practices`, map Cerbo ids to roles | Tests: valid token opens a session; expired, reused, wrong-key and tampered tokens are refused; a provider's token cannot open another practice's patient (extends TH-4) |
++| E3 Frame | `frame-ancestors` allowlist from a setting; cookie `SameSite=None; Secure; Partitioned`; ops pages stay `'self'` | `hardening.test.ts` expects the allowlist on chart and portal pages and `'self'` on ops; a manual check in a test Cerbo sandbox (⚠ exists?) shows S1 inside a chart |
++| E4 Pilot | One fictional practice in a Cerbo test tenant; S1, S5, S6, S16, S2 in their slots | Each embedded page loads only same-origin assets (NFR-016); full order and pay journey works inside the frame; idle sign-out shows the reopen message |
++| E5 Retire stand-ins | Remove password sign-in for embedded roles; keep it, or move to staff SSO, for operations | No embedded role can reach S8; A-12 and C-3 updated in the PRD |
++
++Each phase is its own milestone with the normal gates. E1 is worth doing even if embedding never happens.
++
++## 7. Open questions
++
++| Id | Question | Why it matters | Who closes it |
++|---|---|---|---|
++| Q-1 | Which exact origins host Cerbo's chart and patient portal? | the `frame-ancestors` allowlist (§5 item 1) | partner |
++| Q-2 | How does Cerbo show partner pages: iframe, tab, pop-up or link? | decides whether §5 items 1, 2 and 4 are needed at all | partner |
++| Q-3 | Does Cerbo offer SMART on FHIR, OAuth/OIDC, or signed launch tokens to partners? | picks option A, B or C in §3 | partner |
++| Q-4 | Does a Cerbo test tenant exist for partners? | E3 and E4 exit checks need one | partner |
++| Q-5 | Should order and payment status flow back into the chart (R02 F9)? | a new write into Cerbo, and a new trust boundary | partner and product owner |
++| Q-6 | How do platform staff sign in once the stand-in is retired? | ops pages stay outside Cerbo (§2) | product owner |
++| Q-7 | Which browsers must work with third-party cookies blocked? | may need the Storage Access API (§5 item 2) | partner |
+diff --git a/docs/ops/MUTATION.md b/docs/ops/MUTATION.md
+new file mode 100644
+index 0000000..729da4a
+--- /dev/null
++++ b/docs/ops/MUTATION.md
+@@ -0,0 +1,60 @@
++# Mutation check (planted bugs in the money code)
++
++Closes finding F43 (`docs/product/prd.md:584`): proof that the money tests catch planted bugs.
++
++## What it is
++`scripts/mutation-check.sh` plants one known bug ("mutant") at a time in the money code, runs the fastest test
++that covers it, and puts the file back. A mutant is **KILLED** when that test fails, **SURVIVED** when it still
++passes. Each mutant is a name, a file and one perl substitution, listed in the script.
++
++- Money code covered: `server/services/money.ts` (BE-6: fee, payout, fee shares, price floor),
++  `server/services/payments.ts` (BE-10: split, order row, ledger posting, row lock, negative-payout review),
++  `server/services/pricing.ts` (BE-8: price-change floor), `server/services/orders.ts` (BE-9: send-time floor),
++  `server/services/idempotency.ts` (BE-5: replay of a repeated Pay).
++- After every mutant the script runs `git checkout -- <file>`; a trap does the same on exit or Ctrl-C.
++- It refuses to start when those five files have uncommitted changes, so it never wipes your work.
++- It fails (exit 1) when any mutant SURVIVED or a substitution matched nothing (NOT APPLIED).
++- Limit: KILLED means "the test command failed". An acceptance run that fails for another reason (database
++  down, build error) also reads as KILLED. The script checks the unit tests pass before it starts; run
++  `make check` first so the acceptance baseline is green too.
++
++## How to run
++```
++make db-test-up        # PostgreSQL 16 test database on 127.0.0.1:54329 (acceptance mutants need it)
++make mutation-check    # about 8 minutes; NOT part of make check (too slow)
++```
++
++## Last run
++- Date: 2026-10-11, 22:32 to 22:40 UTC
++- Code SHA: `8d0262b` (milestone/m7-defensibility) plus this script
++- Result: 14 KILLED, 1 SURVIVED, 0 NOT APPLIED; exit 1
++
++| Mutant | File | Test command | Result |
++|---|---|---|---|
++| fee-floor-not-half-up | server/services/money.ts | `npx vitest run --dir tests/unit` | KILLED |
++| fee-half-down | server/services/money.ts | `npx vitest run --dir tests/unit` | KILLED |
++| fee-plus-one-cent | server/services/money.ts | `npx vitest run --dir tests/unit` | KILLED |
++| payout-adds-fee | server/services/money.ts | `npx vitest run --dir tests/unit` | KILLED |
++| fee-share-ties-to-later-line | server/services/money.ts | `npx vitest run --dir tests/unit` | KILLED |
++| floor-one-cent-low | server/services/money.ts | `npx vitest run --dir tests/unit` | KILLED |
++| fee-on-cost-not-total | server/services/payments.ts | `npx vitest run --dir tests/unit` | KILLED |
++| fee-rounded-per-line | server/services/payments.ts | `npx vitest run --dir tests/unit` | KILLED |
++| price-change-below-floor | server/services/pricing.ts | `npx vitest run --dir tests/unit` | KILLED |
++| send-below-floor-allowed | server/services/orders.ts | `npx vitest run tests/acceptance/M4/send-order.test.ts -t M4_AT_0(03\|41)` | KILLED |
++| order-row-payout-fee-swapped | server/services/payments.ts | `npx vitest run tests/acceptance/M4/pay-order.test.ts -t M4_AT_009` | KILLED |
++| ledger-payout-fee-swapped | server/services/payments.ts | `npx vitest run tests/acceptance/M4/pay-order.test.ts -t M4_AT_009` | KILLED |
++| pay-without-order-row-lock | server/services/payments.ts | `npx vitest run tests/acceptance/M4/pay-order.test.ts -t M4_AT_038` | SURVIVED |
++| negative-payout-charged | server/services/payments.ts | `npx vitest run tests/acceptance/M5/m4-regressions.test.ts -t M5_AT_033` | KILLED |
++| idempotent-replay-skipped | server/services/idempotency.ts | `npx vitest run tests/acceptance/M4/pay-order.test.ts -t M4_AT_006` | KILLED |
++
++(The `\|` in one row is the escaped `|` of the `-t` regex.)
++
++## Findings
++**MUT-1: removing the order row lock in Pay survives.** The mutant deletes `.forUpdate()` from transaction 1 of
++`pay()` (`server/services/payments.ts:107`). M4_AT_038 (two Pay presses at once, different keys) still passes:
++one 201, one 409, one ledger payment. The second Pay is still stopped, by the partial unique index
++`uq_payment_attempts_one_processing` (`db/migrations/1760000002000_payments-ledger.sql:55`; comment at
++`server/services/payments.ts:143`), not by the lock. So no money is at risk in this race, but no test pins the lock
++itself. What the lock alone protects (status read and hold check against a parallel cancel or hold expiry) is
++⚠ not tested. Fix belongs to QA (`define-acceptance`): a test that races Pay against another writer of the
++order row. Tests were not edited in this job (M7-J04 rules).
+diff --git a/docs/product/prd.md b/docs/product/prd.md
+index 444c470..e477132 100644
+--- a/docs/product/prd.md
++++ b/docs/product/prd.md
+@@ -430,6 +430,7 @@ Answered from sources: Problem → brief Problem, REQ-01, R02, R08, R10 · Users
+ | M5.2 Safe landing | Every person lands somewhere safe after sign-in: their work page, or a home that says what to do; unknown addresses and wrong-role pages link home | FR-039, FR-058 (flows.md F7 steps 2 and 2b, already approved; no new behaviour beyond them) | AE-038 | A reviewer signs in as Sam and sees his home instead of a 404, opens a wrong address and gets back home in one click. |
+ | M6 Measurement and operations | Platform health dashboard, volume report, financial report, operations roles, access log and system health | FR-032, FR-048, FR-049, FR-051, FR-052, FR-053, FR-054, FR-055, FR-056, FR-057, FR-058, FR-059, FR-060, FR-061, FR-062, FR-063, FR-064, FR-065 | AE-029, AE-045, AE-046, AE-048 to AE-062, SC-001, SC-002, SC-003 | Fran runs October's report and sees $90.00 = $45.00 + $44.32 + $0.68, balanced; Sam grants Dana a role and Fran sees it in the access log. |
+ | M6.1 Patient orders | A patient signs in to a list of her own orders and opens any of them | FR-039, AE-037 (already approved; M5-R03) | AE-067 | Ana signs in and sees her orders, newest first, and opens one in a click. |
++| M7 Defensibility | A reviewer can check every claim: how the slice embeds in Cerbo's EHR, what attacks it resists and which test proves each defence, where each requirement's evidence lives, and that the money tests catch planted bugs | none (docs and test tooling only; no new behaviour) | every FR traced to its evidence | A reviewer opens docs/REVIEWER_GUIDE.md, follows any requirement to its passing test, reads the embedding plan and threat model, and runs the planted-bug check: every planted money bug is caught. |
+ | Later | Not in this appetite: pricing campaigns and corrections; broader holistic-care products were considered for the future of the product and parked (NG-12, CQ-3) | FR-016, FR-033, FR-034 | — | — |
+ 
+ ## Constraints
+@@ -478,6 +479,7 @@ Answered from sources: Problem → brief Problem, REQ-01, R02, R08, R10 · Users
+ | 2026-10-11 09:34 CDT | Clarify (CQ-5): M5.2 Safe landing row | M5.2 | G1 (human words in CQ-5) |
+ | 2026-10-11 10:36 CDT | Clarify pass 4 (CQ-6 to CQ-8): NFR-014 export review note; AE-049 reworded | NFR-014, AE-049 | G1 (STANDING) |
+ | 2026-10-11 13:47 CDT | Clarify pass 5 (CQ-9): M6.1 Patient orders row; AE-067 | M6.1, AE-067 | G1 (human words in CQ-9) |
++| 2026-10-11 17:27 CDT | Clarify pass 6 (CQ-10): M7 Defensibility row (docs and test tooling, no FRs) | M7 | G1 (human words in CQ-10) |
+ 
+ ## Clarifications
+ 
+@@ -575,3 +577,15 @@ Parked for a later phase: none
+ - Applied: AE-067; Milestone cut row M6.1
+ - Decision candidate: no — it meets the approved FR-039 and AE-037
+ - Scope change: none
++
++### Pass 6 · 2026-10-11 17:27 CDT · clarify-spec (Claude Code, claude-opus-5-5) · base 0fa6390
++
++#### CQ-10 · [Scope] · Milestone cut › M7
++- Question: A survey of 14 peer Cerbo projects found four gaps a reviewer would probe: no written plan for embedding inside Cerbo's EHR, no threat model mapping attacks to defences and tests, no single requirement-to-evidence table, and no proof that the money tests catch planted bugs (F43). Add M7 Defensibility for them?
++- Options: A milestone M7 with the embedding plan, threat model, reviewer guide with an evidence table, and a planted-bug check on the money code · B docs only, no planted-bug check · do nothing · recommendation: A
++- Answer (verbatim): "go M7"
++- Status: resolved
++- Applied: Milestone cut row M7
++- Decision candidate: no — docs and test tooling; no FR, table or endpoint changes
++- Scope change: none (database ledger guards were also suggested and already exist: payments-ledger migration)
++
+diff --git a/docs/runbooks/deploy.md b/docs/runbooks/deploy.md
+index ae33f6b..c276dc5 100644
+--- a/docs/runbooks/deploy.md
++++ b/docs/runbooks/deploy.md
+@@ -6,7 +6,7 @@
+ | Services | v2 demo: a new web service `web-v2` and a new managed PostgreSQL `postgres-v2` in project `cerbo-supplement-store` (to be created, FS-2). The project's existing `app` service and `Postgres` database run the v1 Laravel build and stay untouched (D22) |
+ | Environments | production (Railway environment `production`): v2 demo at https://web-v2-production-6640.up.railway.app · v1 at https://supplement-store-slice.up.railway.app (not this release) |
+ | Method | clean `git archive` upload of the release SHA with `railway up --path-as-root` |
+-| Current release | M6.1 @ 1377d9d — see §8 |
++| Current release | sign-out + sign-in error fixes @ 502d111 — see §8 |
+ | Last updated | 2026-10-10 16:52 CDT |
+ | Written by | ship-milestone (Claude Code, claude-opus-5-5) |
+ | Approvals | deploy and rollback yes-es live in `.handoff/TRACKER.md ## Approvals` (never in this file) |
+@@ -155,6 +155,7 @@ Never add `-y`, `--yes` or `--new` to `railway up`, and never deploy without `--
+ | 2026-10-11 10:31 CDT | production (web-v2) | M5.2 from main | c9b890d | 2026-10-11 ("tell me when M5.2 is ready to deploy, also deploy it") | c9b890d2762ac9d45468811e88218830162d8090 | SMOKE GREEN: 7 passed, 0 failed against https://web-v2-production-6640.up.railway.app at c9b890d2762ac9d45468811e88218830162d8090 (TLS verified) | live; deployment 5224c9ca; no migrations; signed-out / and unknown pages 303 to sign-in; rollback target b3c00832 (c956959) |
+ | 2026-10-11 13:34 CDT | production (web-v2) | M6 from main | 18da349 | 2026-10-11 ("tell me when M6 is ready to deploy, also deploy it") | 18da3496c9669d200c8a31e3a6d68422fb6e13e4 | SMOKE GREEN: 7 passed, 0 failed against https://web-v2-production-6640.up.railway.app at 18da3496c9669d200c8a31e3a6d68422fb6e13e4 (TLS verified) | live; deployment d3719e5b; migration 1760000014000 applied earlier by the human-run railway-setup.sh --skip-seed; M6 pages 303 and finance API 401 when signed out; rollback target 5224c9ca (c9b890d) |
+ | 2026-10-11 14:51 CDT | production (web-v2) | M6.1 from main | 1377d9d | 2026-10-11 ("tell me when M6.1 is ready to deploy, also deploy it") | 1377d9d471e92cec749203a8f413b74a1119c058 | SMOKE GREEN: 7 passed, 0 failed against https://web-v2-production-6640.up.railway.app at 1377d9d471e92cec749203a8f413b74a1119c058 (TLS verified) | live; deployment ef903acd; no migrations; /orders 303 and /api/orders 401 signed out; rollback target d3719e5b (18da349) |
++| 2026-10-11 17:20 CDT | production (web-v2) | fixes !17 + !18 from main | 502d111 | 2026-10-11 ("yes, deploy it when merged") | 502d1113f1ee9d761fff19ea92b529dbea8b8ea6 | SMOKE GREEN: 7 passed, 0 failed against https://web-v2-production-6640.up.railway.app at 502d1113f1ee9d761fff19ea92b529dbea8b8ea6 (TLS verified) | live; deployment eb79135e; no migrations; rollback target ef903acd (1377d9d) |
+ 
+ ## 9. Open questions
+ 
+diff --git a/docs/security/THREAT_MODEL.md b/docs/security/THREAT_MODEL.md
+new file mode 100644
+index 0000000..2d521af
+--- /dev/null
++++ b/docs/security/THREAT_MODEL.md
+@@ -0,0 +1,101 @@
++---
++artifact: threat-model
++milestone: M7
++task: M7-J02
++base_sha: 8d0262b
++written: Sun Oct 11 17:30:06 CDT 2026
++sources: docs/architecture/hld.md §5 and §7, docs/architecture/lld.md §7 and §8, docs/security/CHECKLIST.md, db/migrations/*.sql, server/**, tests/acceptance/**
++---
++
++# Threat model: cerbo-supplement-store
++
++This page lists who could attack the app, what they would try, what stops them, and which test proves it.
++Every defence points at a file and line. Every proof points at an acceptance test (AT id) or, where no AT
++exists, a unit test. A row with no test says "⚠ no test". Anything the repo does not contain says "⚠ not built".
++People in the examples are the synthetic demo users (Ana and Ben are patients, Dr. Chen and Dr. Lee are
++providers, Omar, Fran, Dana and Sam are operations staff; all on example.test).
++
++## Trust boundaries
++
++From `docs/architecture/hld.md` §5 (TB-1 to TB-5).
++
++| Id | Boundary | Less trusted side | What guards the crossing |
++|---|---|---|---|
++| TB-1 | Internet → web app | any browser, signed in or not | session check `requireViewer` (`server/services/session.ts:204`), security headers (`nuxt.config.ts:13`), JSON-only bodies (`server/utils/problem.ts:50`) |
++| TB-2 | Between roles inside the app | a signed-in person of one role | BE-4 AccessPolicy, one place, deny by default (`server/services/access-policy.ts:16`) |
++| TB-3 | Web app → database | app code, which can have bugs | the app's database user `supplements_app` gets narrow grants; CHECK constraints and triggers guard money (`db/migrations/1760000002000_payments-ledger.sql:6`, :17, :76, :104) |
++| TB-4 | Web app → outside providers | payment and messaging providers (stubs today) | in-process stubs (`server/services/payment-gateway.ts:34`, `server/services/messaging.ts:15`) |
++| TB-5 | Host platform → our system | the host account and its secret store | outside the repo: ⚠ not built here (CHECKLIST N3) |
++
++## Threats
++
++STRIDE: S spoofing, T tampering, R repudiation, I information disclosure, D denial of service, E elevation of privilege.
++
++| Id | STRIDE | Boundary | Attacker and goal | Attack | Defence (file:line) | Proving test | Residual risk |
++|---|---|---|---|---|---|---|---|
++| T-1 | I | TB-2 | Ben (patient) wants to read Ana's order | Open another patient's order: change the number in `/api/orders/{id}` | `assertCanViewOrder` lets in only the order's own patient or a provider of its practice; unknown and forbidden both answer not-found (`server/services/access-policy.ts:22`); checked before any read of lines or any write (`server/services/orders.ts:311`). The patient list is scoped to her own id from the session (`server/services/orders.ts:423`, CHECKLIST CK-03) | M4_AT_007 (`tests/acceptance/M4/pay-order.test.ts:85`); M6.1_AT_001 (`tests/acceptance/M6.1/patient-orders.test.ts:25`) | low. Order ids are sequential (`db/migrations/1760000001000_core-orders.sql:59`), so guessing is easy; the check is what holds |
++| T-2 | I | TB-2 | Dr. Lee (other practice) wants Willow Creek orders | Open another practice's order or dashboard by id | same check, practice branch (`server/services/access-policy.ts:25`); orders tied to one practice by composite foreign keys (`db/migrations/1760000001000_core-orders.sql:74`, LINV-3) | M4_AT_008 (`tests/acceptance/M4/pay-order.test.ts:98`); M5_AT_026 (`tests/acceptance/M5/stock-dashboard.test.ts:223`) | low |
++| T-3 | E | TB-2 | Ben wants to act on Ana's order | Start checkout on, or pay, another patient's order | `assertIsOrderPatient` (`server/services/access-policy.ts:41`), called under the order row lock in pay (`server/services/payments.ts:110`) and checkout (`server/services/orders.ts:147`) | M4_AT_043 (`tests/acceptance/M4/pay-order.test.ts:107`) | low |
++| T-4 | E | TB-2 | Dr. Lee wants to send or cancel orders for Willow Creek patients | Send an order for another practice's patient; cancel another practice's order | `assertCanActOnPatient` (`server/services/access-policy.ts:30`, used at `server/services/orders.ts:39`); cancel checks view rights (`server/services/orders.ts:354`); DB composite FKs as backup (`db/migrations/1760000001000_core-orders.sql:74`) | M4_AT_022 (`tests/acceptance/M4/send-order.test.ts:133`); M4_AT_044 (`tests/acceptance/M4/send-order.test.ts:223`) | low |
++| T-5 | T | TB-1 | a patient or provider wants to pay less | Tamper the price in the request: add `unit_price_cents` or an amount to the send or pay body | The send body is a strict schema with only `patient_id`, `product_id`, `quantity`; any extra field is refused (`server/api/orders/index.post.ts:11`). Prices come from the practice's own records (`server/services/orders.ts:68`). Pay reads no body at all, only the order id (`server/api/orders/[orderId]/payments.post.ts:14`), and charges the held prices from the database (`server/services/payments.ts:124`) | server-computed totals: M4_AT_001 (`tests/acceptance/M4/send-order.test.ts:17`). ⚠ no test sends a forged price field | low. The forged-field refusal is untested |
++| T-6 | T | TB-1 | a patient wants the old, lower price after a price rise, or a provider raises the price mid-checkout | Change the price during checkout | Prices are copied onto the lines when checkout starts (`server/services/orders.ts:168`); pay reads only those (`server/services/payments.ts:124`); hold must be live (`server/services/payments.ts:114`); INV-8 | M5_AT_006 (`tests/acceptance/M5/prices.test.ts:125`); M5_AT_042 hold ended (`tests/acceptance/M5/close-out.test.ts:99`) | low |
++| T-7 | T | TB-1, TB-3 | a patient (or a bug) wants to be charged once but get two orders' worth, or a double-click charges twice | Pay twice in parallel with two different keys | Order row lock (`server/services/payments.ts:107`); at most one processing and one succeeded attempt per order, unique indexes (`db/migrations/1760000002000_payments-ledger.sql:54`, :55); INV-2, LINV-6 | M4_AT_038 (`tests/acceptance/M4/pay-order.test.ts:120`) | low |
++| T-8 | T | TB-1 | anyone with a captured request wants a second charge or a confusing state | Replay a payment: resend the same request with the same Idempotency-Key | Key required (`server/services/idempotency.ts:43`); stored per user and key, and a repeat gets the first answer back (`server/services/idempotency.ts:51`, :117); unique `(order_id, idempotency_key)` (`db/migrations/1760000002000_payments-ledger.sql:52`). A replay is not counted against the rate limit (`server/api/orders/[orderId]/payments.post.ts:14`) | M4_AT_006 (`tests/acceptance/M4/pay-order.test.ts:41`); M4_AT_013 (`tests/acceptance/M4/pay-order.test.ts:64`) | low. Keys live 24 hours (`server/services/idempotency.ts:53`); after that, a replay meets a paid order and is refused by T-7's indexes |
++| T-9 | T | TB-3 | someone holding the app's database login (a bug, SQL injection, a leaked app password) wants to rewrite money | Edit the ledger via the app login: UPDATE or DELETE `ledger_entries`, or change a paid order's amounts | The app user may only SELECT and INSERT ledger rows (`db/migrations/1760000002000_payments-ledger.sql:105`); paid orders and their lines are frozen by triggers (`db/migrations/1760000002000_payments-ledger.sql:28`, :39); a succeeded payment attempt is frozen (`db/migrations/1760000003000_idempotency-keys.sql:32`); ledger must balance at commit (`db/migrations/1760000002000_payments-ledger.sql:100`); no DELETE grant on orders (`db/migrations/1760000001000_core-orders.sql:118`). INV-4, LINV-2 | M4_AT_026 (`tests/acceptance/M4/audit-order.test.ts:111`); M4_AT_027 (`tests/acceptance/M4/audit-order.test.ts:129`); M4_AT_030 (`tests/acceptance/M4/audit-order.test.ts:160`) | med. The owner role (`supplements_owner`) can still change anything. That the live database runs the app as `supplements_app` with exactly these grants is not checked (CHECKLIST N10) |
++| T-10 | T | TB-3 | a code bug wants (by accident) to record a split that does not add up | Write a paid order whose item cost + payout + fee ≠ amount paid, or a negative payout | `ck_orders_split_balances` and `ck_orders_payout_nonneg` (`db/migrations/1760000002000_payments-ledger.sql:10`, :12); split checked before charging (`server/services/payments.ts:134`); INV-1, INV-6 | M4_AT_029 (`tests/acceptance/M4/audit-order.test.ts:144`); M5_AT_033 (`tests/acceptance/M5/m4-regressions.test.ts:69`) | low |
++| T-11 | R, T | TB-3 | a provider, Omar or Sam wants to deny or hide a change | Edit or delete price history, stock history or the access log | INSERT and SELECT only: `price_changes` (`db/migrations/1760000012000_price-changes.sql:22`), `stock_movements` (`db/migrations/1760000013000_stock-movements.sql:26`), `access_log` (`db/migrations/1760000014000_operations-access.sql:39`); each row records who and why; INV-4 | M5_AT_004 (`tests/acceptance/M5/prices.test.ts:78`); M5_AT_044 (`tests/acceptance/M5/stock-dashboard.test.ts:321`); M6_AT_027 (`tests/acceptance/M6/roles.test.ts:162`) | low. Same owner-role and live-grant caveat as T-9 (N10) |
++| T-12 | T | TB-1, TB-3 | two patients want the last bottle | Oversell the last unit: pay for it at the same moment | Products locked in id order before the count is checked (`server/services/stock.ts:32`, :50); `ck_products_stock_nonneg` (`db/migrations/1760000001000_core-orders.sql:45`); a short order rolls back with no charge (`server/services/stock.ts:56`); INV-5 | M5_AT_016 (`tests/acceptance/M5/stock-dashboard.test.ts:66`); M5_AT_038 (`tests/acceptance/M5/stock-dashboard.test.ts:277`); M5_AT_015 (`tests/acceptance/M5/stock-dashboard.test.ts:54`) | low |
++| T-13 | I | TB-2 | a curious patient wants to learn the practice's margin or the platform's fee | Cost/fee leak to a patient: read cost, payout or fee from the order view or the receipt | The patient order view returns only lines, prices and total (`server/services/orders.ts:327`); the receipt type has no cost, payout or fee field (`server/services/payments.ts:15`); the catalog with cost is provider-only (`server/api/patients/[patientId]/catalog.get.ts:10`); breakdowns are reviewer-only (`server/api/ops/orders/[orderId].get.ts:11`) | M4_AT_004 checks what the patient sees (`tests/acceptance/M4/send-order.test.ts:74`). ⚠ no test asserts that cost, payout or fee are absent | low. A later field added to the view would leak silently |
++| T-14 | S | TB-1 | an attacker wants to act as Ana | Session theft: steal the cookie (script, network, shared computer) or reuse an old one | Random 32-byte token (`server/services/session.ts:146`), stored only as a SHA-256 hash (`server/services/session.ts:33`, :150); cookie HttpOnly, Secure, SameSite=Lax (`server/services/session.ts:196`); idle 15 minutes and absolute 12 hours (`server/services/session.ts:23`, :24, :158); CSP with no inline script (`nuxt.config.ts:14`); HSTS (`nuxt.config.ts:25`); no-store on API and order pages (`nuxt.config.ts:43`); role re-read every request (`server/services/session.ts:180`) | M4_AT_034 (`tests/acceptance/M4/sign-in.test.ts:52`); M6_AT_028 (`tests/acceptance/M6/roles.test.ts:172`); unit: absolute lifetime (`tests/unit/hardening.test.ts:101`), sign-out (`tests/unit/session.test.ts:273`) | low. No second factor (HLD TH-1, A-12). `/` is not no-store (SEC-15, D82). Live headers unchecked (N1) |
++| T-15 | S | TB-1 | an attacker wants into any account | Sign-in brute force: many passwords for one email, or one password across many emails | At most 10 attempts per 15 minutes per email or per address, counted under advisory locks (`server/services/session.ts:101`, :109); unknown email costs the same scrypt time (`server/services/session.ts:144`); one message for both failures (`server/services/session.ts:145`); old attempt rows pruned every 15 minutes (`nuxt.config.ts:50`) | M5_AT_030 (`tests/acceptance/M5/m4-regressions.test.ts:35`); M4_AT_035 (`tests/acceptance/M4/sign-in.test.ts:24`); unit (`tests/unit/session.test.ts:167`, :178) | med. Every demo account shares one password (CHECKLIST Q2, `db/seed/demo.ts:63`). Behind the proxy the counted address depends on `TRUST_PROXY` (`server/services/session.ts:89`), unchecked live (N2) |
++| T-16 | S, T | TB-1 | a hostile site wants Ana's browser to send an order, pay or change a role | Cross-site form post (CSRF) | Bodies are read only as `application/json` (`server/utils/problem.ts:50`); six writes need a custom `Idempotency-Key` header, which forces a CORS preflight no config allows (`server/services/idempotency.ts:43`), but EP-22 start checkout takes no body and no key (`server/api/orders/[orderId]/checkout.post.ts:7-12`), so SameSite=Lax alone guards it and an Origin check is needed before embedding (embedding-plan §5 item 3); cookie SameSite=Lax (`server/services/session.ts:196`); `form-action 'self'` (`nuxt.config.ts:20`) | M4_AT_013 no key is refused (`tests/acceptance/M4/pay-order.test.ts:64`); unit: a form post to sign-in is 422 (`tests/unit/session.test.ts:246`). ⚠ no AT posts a cross-site form | low. No anti-CSRF token or Origin check (SEC-5, D52). GET order views can run a due hold ending (SEC-13, D78). Embedding with SameSite=None would reopen this (N7) |
++| T-17 | T | TB-1 | a hostile site wants Ana to click Pay without knowing | Clickjacking: frame the app and overlay it | `frame-ancestors 'self'` in the CSP (`nuxt.config.ts:21`), sent on every production response (`nuxt.config.ts:41`) | unit only: `tests/unit/hardening.test.ts:66`. ⚠ no AT | low today. The dev server sends no headers (`nuxt.config.ts:40`). Embedding in Cerbo's EHR will need Cerbo's origin here (N7) |
++| T-18 | I | TB-2 | Omar, Fran, Dana or Sam (platform staff) wants to learn who a patient is | PII to platform staff: read names or emails in ops lists, breakdowns, reports, export or access log | Ops queries select no patient column and never join the patient row (`server/services/ops-order-queries.ts:2`, :85); breakdown is reviewer-only (`server/api/ops/orders/[orderId].get.ts:11`); SRE and analyst refused breakdowns; INV-7 | M4_AT_023 (`tests/acceptance/M4/audit-order.test.ts:70`); M6_AT_007 (`tests/acceptance/M6/platform-health.test.ts:146`); M6_AT_039 (`tests/acceptance/M6/system-health.test.ts:99`); M4_AT_025 (`tests/acceptance/M4/audit-order.test.ts:97`) | low. A patient who hand-crafts a role-change PUT puts her own name and text into the access log Fran reads (SEC-16, D88) |
++| T-19 | I | TB-1 | anyone who can read server logs (host staff, a log service) wants order or personal data | Log leakage: an error, a constraint failure or request stats carry amounts, names or ids | Unexpected errors log only class, PostgreSQL code and constraint name (`server/utils/problem.ts:60`, :86); the payment gateway logs the same facts only (`server/services/payment-gateway.ts:24`); request stats group by route, never by id (`server/services/request-metrics.ts:46`) | M6_AT_037 (`tests/acceptance/M6/system-health.test.ts:72`); unit (`tests/unit/hardening.test.ts:120`, :128, :141) | low. The host's own access logs and a production 500 page are not checked (N9) |
++| T-20 | E | TB-2 | Sam (SRE) wants the finance role, or Fran wants to hand out roles | Grant yourself a role, or change roles without being the SRE | `assertCanChangeRole`: SRE only, never self (`server/services/access-policy.ts:62`), checked before the write and every refusal logged (`server/services/staff-access.ts:84`, :86); stale-role check under a row lock (`server/services/staff-access.ts:98`); the app may update only `role` and `role_changed_at` on users (`db/migrations/1760000014000_operations-access.sql:44`); INV-10 | M6_AT_019 (`tests/acceptance/M6/roles.test.ts:48`); M6_AT_020 (`tests/acceptance/M6/roles.test.ts:60`); M6_AT_029 (`tests/acceptance/M6/roles.test.ts:179`) | low. With the shared demo password anyone can sign in as Sam (Q2) |
++| T-21 | E | TB-2 | a patient or the wrong staff member wants to change a price or a stock count | Call the price PUT or stock adjustment directly | Price change is provider-only (`server/api/practice/prices/[productId].put.ts:12`), scoped to the provider's practice; stock adjustment is operations-specialist-only (`server/api/ops/stock/[productId]/adjustments.post.ts:12`); stale-count and below-zero refusals (`server/services/stock-adjustments.ts:47`, :51) | M5_AT_009 (`tests/acceptance/M5/prices.test.ts:185`); M5_AT_018 (`tests/acceptance/M5/stock-dashboard.test.ts:106`); M6_AT_041 (`tests/acceptance/M6/review-and-stock.test.ts:36`) | low |
++| T-22 | T | TB-1 | a provider wants to sell below cost, so the platform pays the fee | Set a price under cost, or send an order whose payout is negative | Price floor in pricing (`server/services/pricing.ts:67`) and at send (`server/services/orders.ts:77`); DB backstop `ck_orders_payout_nonneg` (`db/migrations/1760000002000_payments-ledger.sql:12`); INV-6 | M5_AT_003 (`tests/acceptance/M5/prices.test.ts:66`); M4_AT_041 (`tests/acceptance/M4/send-order.test.ts:209`); M4_AT_003 (`tests/acceptance/M4/send-order.test.ts:61`) | low |
++| T-23 | I | TB-4 | anyone who sees a patient's email or text wants health details | Read items or amounts from the order notice | The notice input has no field for items or amounts (`server/services/messaging.ts:9`, :15); the public notice route returns only the practice name and a sign-in link (`server/services/messaging.ts:27`); the token is 32 random bytes (`server/services/messaging.ts:19`); LINV-5 | M4_AT_017 (`tests/acceptance/M4/send-order.test.ts:102`); M4_AT_036 (`tests/acceptance/M4/sign-in.test.ts:65`) | low. A real provider is ⚠ not built (stub only) |
++| T-24 | S | TB-1 | a phisher wants a trusted-looking link that lands on their site | Open redirect through `/sign-in?next=` | `safeNext` keeps only same-site paths (`app/middleware/auth.global.ts:11`) | unit: `tests/unit/session.test.ts:325`. ⚠ no AT | low |
++| T-25 | D | TB-1 | anyone on the internet wants to slow or stop the app | Flood sign-in, pay or read routes | Sign-in and pay limited to 10 per 15 minutes per person and per address (`server/services/session.ts:101`, `server/services/payments.ts:59`); failed stats writes never fail a request (`server/services/request-metrics.ts:72`) | M5_AT_031 (`tests/acceptance/M5/m4-regressions.test.ts:44`); unit (`tests/unit/hardening.test.ts:158`) | med. Read routes have no limit and each counted request writes a stats row (SEC-17, D89). One app instance, no autoscale (HLD TH-3) |
++| T-26 | S | TB-4 | an attacker wants an order marked paid without paying | Fake a "paid" answer from the payment provider | Today the gateway is an in-process stub with no inbound call (`server/services/payment-gateway.ts:34`). Signature check and confirm-by-asking for a real provider: ⚠ not built (HLD TH-10) | ⚠ no test | med once a real provider is added: node-forge's forged-signature advisory is accepted only while nothing verifies signatures (SEC-2, D49) |
++| T-27 | E, I | TB-5 | someone with the host account or a leaked secret wants everything | Read the database password, deploy bad code, or find a secret in git history | Deploys are human-only (`AGENTS.md`, HLD TH-12). Secret store, private network, database TLS and host two-factor: ⚠ not built in the repo (N3, N6). History scan is a grep heuristic only (CHECKLIST secret scan, 16 false positives) | ⚠ no test | med. Outside the code. No verified gitleaks scan has run on a repo with a public mirror (N4) |
++| T-28 | S | TB-1 | Cerbo's EHR, once it embeds the app, becomes the source of who the patient is | Forge or reuse a launch identity to see another patient's list | Launch-token check: ⚠ not built; framing is blocked today (`nuxt.config.ts:21`) | ⚠ no test | high once embedded, none today (N7) |
++
++## How the threats map to the HLD
++
++| HLD threat | Rows here |
++|---|---|
++| TH-1 session theft | T-14, T-15 |
++| TH-2 price tamper | T-5, T-6 |
++| TH-3 flooding | T-25 |
++| TH-4 open another's order | T-1, T-2, T-3, T-4 |
++| TH-5 ops learn patient identity | T-18 |
++| TH-6 role escalation | T-20 |
++| TH-7 deny a change | T-11 |
++| TH-8 bug edits paid money | T-9, T-10 |
++| TH-9 database password leak | T-27 |
++| TH-10 fake provider answer | T-26 |
++| TH-11 health detail in notice | T-23 |
++| TH-12 host account | T-27 |
++
++## Gaps, ranked (⚠ rows)
++
++Worst first. "Not built" means the repo has no defence; "no test" means the defence exists but nothing proves it.
++
++1. **T-28 embed identity (not built).** No launch-token check exists. Harmless today because framing is blocked
++   (`nuxt.config.ts:21`). It becomes the main trust boundary the day the app is embedded in Cerbo (N7).
++2. **T-27 host and secrets (not built, no test).** Secret store, private database network, database TLS and
++   host two-factor live outside the repo (N3, N6). No verified history scan has run (N4).
++3. **T-26 real payment provider (not built, no test).** Signature verification and confirm-by-asking do not
++   exist yet. Must ship with the first real provider, together with the D49 trigger for node-forge.
++4. **T-13 cost/fee leak to a patient (no test).** The response shapes hold today, but no test asserts that
++   cost, payout or fee are absent from the patient's order view or receipt. A new field would leak silently.
++5. **T-5 forged price field (no test).** The strict schema refuses extra fields, but no test sends one.
++6. **T-16 cross-site form post (no AT).** Defended in depth; only unit-tested for sign-in. No acceptance test
++   posts a form or a cross-origin request at a write route.
++7. **T-17 clickjacking (no AT).** Header is unit-tested from config only; the live header is unchecked (N1).
++8. **T-24 open redirect (no AT).** `safeNext` is unit-tested only.
++
++Medium residual risks with tests in place: T-9 and T-11 (owner role and live grants unchecked, N10),
++T-15 (shared demo password, Q2; proxy address, N2), T-25 (read routes unlimited, SEC-17).
+diff --git a/scripts/evidence-table.sh b/scripts/evidence-table.sh
+new file mode 100755
+index 0000000..eb959f1
+--- /dev/null
++++ b/scripts/evidence-table.sh
+@@ -0,0 +1,47 @@
++#!/usr/bin/env bash
++# Prints a markdown evidence table: one row per FR-### in docs/product/prd.md,
++# with its milestone(s) from the PRD "Milestone cut", the acceptance tests whose
++# Traceability "Covers" column names it, and the test files that hold those tests.
++# Usage: bash scripts/evidence-table.sh   (run from anywhere; no dependencies)
++set -euo pipefail
++cd "$(dirname "$0")/.."
++
++prd=docs/product/prd.md
++tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
++
++# FR id -> milestone, from the "## Milestone cut" table (col 2 = milestone, col 4 = FR scope).
++awk -F'|' '/^## Milestone cut/{p=1;next} /^## /{p=0}
++  p && /^\| (M[0-9]|Later)/ {
++    split($2, m, " "); n = split($4, w, /[^A-Z0-9-]+/)
++    for (i = 1; i <= n; i++) if (w[i] ~ /^FR-[0-9]+$/) print w[i] "\t" m[1]
++  }' "$prd" > "$tmp/ms"
++
++# FR id -> acceptance test id (M<N>_AT_###), from every specs/M*/acceptance.md "## Traceability" table.
++for f in specs/M*/acceptance.md; do
++  mid=$(basename "$(dirname "$f")"); mid=${mid%%-*}
++  awk -F'|' -v mid="$mid" '/^## Traceability/{p=1;next} /^## /{p=0}
++    p && $2 ~ /AT-[0-9]+/ {
++      at = $2; gsub(/[ ]|AT-/, "", at); n = split($3, w, /[^A-Z0-9-]+/)
++      for (i = 1; i <= n; i++) if (w[i] ~ /^FR-[0-9]+$/) print w[i] "\t" mid "_AT_" at
++    }' "$f"
++done | sort -u > "$tmp/at"
++
++join_col() { awk -F'\t' -v k="$1" '$1==k{print $2}' "$2" | sort -u | paste -sd, - | sed 's/,/, /g'; }
++
++echo "| FR | Requirement (shortened) | Milestone | Acceptance tests | Test files |"
++echo "|---|---|---|---|---|"
++grep -E '^- \*\*FR-[0-9]+\*\*' "$prd" | while IFS= read -r line; do
++  fr=$(sed -E 's/^- \*\*(FR-[0-9]+)\*\*.*/\1/' <<<"$line")
++  # Drop the id, the [Kind] and (US-n) tags and any trailing (CQ-n, ...) note; keep the first 12 words.
++  text=$(sed -E 's/^- \*\*FR-[0-9]+\*\* \[[A-Za-z]+\] \(US-[0-9]+\) //; s/ \(CQ-[0-9]+,.*$//' <<<"$line")
++  short=$(awk '{n = NF > 12 ? 12 : NF; s = $1; for (i = 2; i <= n; i++) s = s " " $i; if (NF > 12) s = s "…"; print s}' <<<"$text" | tr '|' '/')
++  ms=$(join_col "$fr" "$tmp/ms"); ms=${ms:-⚠ none}
++  ats=$(join_col "$fr" "$tmp/at")
++  if [[ -z $ats ]]; then
++    ats="⚠ none"; files="⚠ none"
++  else
++    files=$(for t in ${ats//,/ }; do grep -rlF "$t " tests/acceptance || true; done | sort -u | sed 's/.*/`&`/' | paste -sd, - | sed 's/,/, /g')
++    files=${files:-⚠ none}
++  fi
++  echo "| $fr | $short | $ms | $ats | $files |"
++done
+diff --git a/scripts/mutation-check.sh b/scripts/mutation-check.sh
+new file mode 100755
+index 0000000..4f06901
+--- /dev/null
++++ b/scripts/mutation-check.sh
+@@ -0,0 +1,70 @@
++#!/usr/bin/env bash
++# mutation-check.sh — plants one known bug at a time in the money code and checks a test catches it (finding F43).
++# Each mutant: apply a perl substitution in place, run the fastest test that covers it, record KILLED or SURVIVED,
++# then `git checkout -- <file>` (always, via trap). Exit 1 when any mutant SURVIVED or a substitution matched nothing.
++# Acceptance mutants need the test database (make db-test-up, 127.0.0.1:54329); each one boots Nuxt.
++# Run: make mutation-check. Not part of make check: too slow. See docs/ops/MUTATION.md.
++set -u
++cd "$(git rev-parse --show-toplevel)"
++
++UNIT='npx vitest run --dir tests/unit'
++acc() { echo "npx vitest run $1 -t $2"; }
++
++FILES=(server/services/money.ts server/services/payments.ts server/services/pricing.ts server/services/orders.ts server/services/idempotency.ts)
++if ! git diff --quiet -- "${FILES[@]}"; then
++  echo "mutation-check: commit or set aside your changes to ${FILES[*]} first (the script restores them with git checkout)" >&2
++  exit 2
++fi
++
++current=''
++trap '[ -n "$current" ] && git checkout -q -- "$current"' EXIT INT TERM
++
++echo "baseline: unit tests must pass before planting bugs"
++if ! $UNIT >/dev/null 2>&1; then echo "mutation-check: unit tests fail without any mutant; fix them first" >&2; exit 2; fi
++
++rows=()
++bad=0
++# mutant <name> <file> <perl -0777 substitution> <test command>
++mutant() {
++  local name=$1 file=$2 expr=$3 cmd=$4 verdict
++  current=$file
++  perl -0777 -pi -e "$expr" "$file"
++  if git diff --quiet -- "$file"; then
++    verdict='NOT APPLIED'
++    bad=1
++  elif $cmd >/dev/null 2>&1; then
++    verdict='SURVIVED'
++    bad=1
++  else
++    verdict='KILLED'
++  fi
++  git checkout -q -- "$file"
++  current=''
++  rows+=("| $name | $file | \`$cmd\` | $verdict |")
++  echo "$verdict  $name"
++}
++
++M=server/services/money.ts
++P=server/services/payments.ts
++mutant fee-floor-not-half-up        $M 's/amountPaidCents \* 75 \+ 5000\)/amountPaidCents * 75)/' "$UNIT"
++mutant fee-half-down                $M 's/\* 75 \+ 5000\)/* 75 + 4999)/' "$UNIT"
++mutant fee-plus-one-cent            $M 's{\(amountPaidCents \* 75 \+ 5000\) / 10000\)}{(amountPaidCents * 75 + 5000) / 10000) + 1}' "$UNIT"
++mutant payout-adds-fee              $M 's/amountPaidCents - itemCostCents - feeCents/amountPaidCents - itemCostCents + feeCents/' "$UNIT"
++mutant fee-share-ties-to-later-line $M 's/x\.i - y\.i/y.i - x.i/' "$UNIT"
++mutant floor-one-cent-low           $M 's/platformFeeCents\(p\)\) < 0\)/platformFeeCents(p)) < -1)/' "$UNIT"
++mutant fee-on-cost-not-total        $P 's/const fee = platformFeeCents\(amountPaidCents\)/const fee = platformFeeCents(itemCostCents)/' "$UNIT"
++mutant fee-rounded-per-line         $P 's/const fee = platformFeeCents\(amountPaidCents\)/const fee = amounts.reduce((s, a) => s + platformFeeCents(a), 0)/' "$UNIT"
++mutant price-change-below-floor     server/services/pricing.ts 's/if \(price < lowest\)/if (price < lowest - 1)/' "$UNIT"
++mutant send-below-floor-allowed     server/services/orders.ts 's/if \(belowFloor\.length > 0\)/if (belowFloor.length > 1)/' "$(acc tests/acceptance/M4/send-order.test.ts 'M4_AT_0(03|41)')"
++mutant order-row-payout-fee-swapped $P 's/provider_payout_cents: split\.providerPayoutCents,(\s*)platform_fee_cents: split\.platformFeeCents/provider_payout_cents: split.platformFeeCents,${1}platform_fee_cents: split.providerPayoutCents/' "$(acc tests/acceptance/M4/pay-order.test.ts M4_AT_009)"
++mutant ledger-payout-fee-swapped    $P "s/\\['provider_payout', split\\.providerPayoutCents\\],(\\s*)\\['platform_fee', split\\.platformFeeCents\\]/['provider_payout', split.platformFeeCents],\${1}['platform_fee', split.providerPayoutCents]/" "$(acc tests/acceptance/M4/pay-order.test.ts M4_AT_009)"
++mutant pay-without-order-row-lock   $P "s/(\\.where\\('id', '=', orderId\\.toString\\(\\)\\))\\s*\\.forUpdate\\(\\)/\${1}/" "$(acc tests/acceptance/M4/pay-order.test.ts M4_AT_038)"
++mutant negative-payout-charged      $P 's/if \(split\.providerPayoutCents < 0\) throw/if (false) throw/' "$(acc tests/acceptance/M5/m4-regressions.test.ts M5_AT_033)"
++mutant idempotent-replay-skipped    server/services/idempotency.ts "s/if \\('replay' in started\\) return/if (false) return/" "$(acc tests/acceptance/M4/pay-order.test.ts M4_AT_006)"
++
++echo
++echo "| Mutant | File | Test command | Result |"
++echo "|---|---|---|---|"
++printf '%s\n' "${rows[@]}"
++if [ "$bad" -ne 0 ]; then echo "mutation-check: FAIL (a mutant survived or did not apply)"; exit 1; fi
++echo "mutation-check: OK (${#rows[@]} mutants, all killed)"
+diff --git a/specs/M4-tracer-bullet/acceptance.md b/specs/M4-tracer-bullet/acceptance.md
+index a5a014b..d96bad9 100644
+--- a/specs/M4-tracer-bullet/acceptance.md
++++ b/specs/M4-tracer-bullet/acceptance.md
+@@ -99,7 +99,7 @@ Out of scope this milestone: FR-016, FR-018 to FR-030, FR-032 to FR-034, FR-037,
+ | AT-025 | FR-050, INV-7 | FR-050: The system shall show platform staff an order number in place of any patient name or contact detail. | **Given** Omar can open Order 1001 (twin) **When** Sam (SRE), Dana (data analyst) and Ana open it **Then** each gets 403 /problems/forbidden with no amounts | authz | integration | `tests/acceptance/M4/audit-order.test.ts::M4_AT_025` | red @ b72127a |
+ | AT-026 | AE-014, FR-015, EC-12, INV-4 | FR-015: If anyone tries to change or delete a paid order's recorded amounts, then the system shall refuse and keep the original amounts unchanged. | **Given** updating an unpaid order works (twin) **When** the paid order's fee is set to $0.00 **Then** the database refuses (tg_orders_paid_frozen) and the fee still reads 45 cents | state | integration | `tests/acceptance/M4/audit-order.test.ts::M4_AT_026` | red @ b72127a |
+ | AT-027 | FR-015, INV-4, NFR-014 | FR-015: If anyone tries to change or delete a paid order's recorded amounts, then the system shall refuse and keep the original amounts unchanged. | **Given** connected as supplements_app (Q-3) the four ledger lines can be read (twin) **When** it updates or deletes a ledger line, deletes the order or deletes its lines **Then** each is refused with permission error 42501 | authz | integration | `tests/acceptance/M4/audit-order.test.ts::M4_AT_027` | red @ b72127a |
+-| AT-029 | AE-012, FR-013, INV-1 | FR-013: If an order's item cost, provider payout and platform fee do not add up to the amount paid to the cent, then the system shall refuse to mark the order paid and list it for review. | **Given** a balanced paid order 6000 = 3000 + 2955 + 45 saves (twin) **When** another order is saved paid with item cost 2999 (one cent short) **Then** it is refused by ck_orders_split_balances and stays sent (Q-2) | decision-table | integration | `tests/acceptance/M4/audit-order.test.ts::M4_AT_029` | red @ b72127a |
++| AT-029 | AE-012, FR-013, INV-1 | FR-013: If an order's item cost, provider payout and platform fee do not add up to the amount paid to the cent, then the system shall refuse to mark the order paid and list it for review. | **Given** a balanced paid order 6000 = 3000 + 2955 + 45, its line fee shares summing to 45, saves (twin) **When** another order is saved paid with item cost 2999 (one cent short) **Then** it is refused by ck_orders_split_balances and stays sent (Q-2) | decision-table | integration | `tests/acceptance/M4/audit-order.test.ts::M4_AT_029` | red @ b72127a |
+ | AT-030 | LINV-2 | FR-012: The system shall compute the provider payout as the amount paid minus the item cost minus the platform fee. | **Given** a paid order with balanced ledger lines **When** its platform_fee line is replaced by 44 cents in one transaction **Then** the commit is refused (ct_ledger_entries_balance) and the fee line still reads 45 | money-time | integration | `tests/acceptance/M4/audit-order.test.ts::M4_AT_030` | red @ b72127a |
+ | AT-032 | AE-037, FR-039 | FR-039: When a person signs in with their own account, the system shall show only the pages their role allows: a patient their own orders, a provider their practice, platform staff the platform pages. | **Given** Omar can list paid orders (twin) **When** Ana signs in and asks for the same list **Then** her session shows role patient at Willow Creek and the list answers 403 /problems/forbidden | authz | integration | `tests/acceptance/M4/sign-in.test.ts::M4_AT_032` | red @ b72127a |
+ | AT-035 | FR-039, NFR-007 | FR-039: When a person signs in with their own account, the system shall show only the pages their role allows: a patient their own orders, a provider their practice, platform staff the platform pages. | **Given** Ana signs in with her password (twin, 200) **When** she uses a wrong password, and an unknown email is tried **Then** both get 401 /problems/sign-in-failed with the same title and no session cookie | partition | integration | `tests/acceptance/M4/sign-in.test.ts::M4_AT_035` | red @ b72127a |
+@@ -426,3 +426,4 @@ of a wrong guess first. Unasked gaps stay here as ⚠.
+ | Date | Change | Ids | Why (approved artifact, or the human's exact words) |
+ |---|---|---|---|
+ | 2026-10-10 11:56 CDT (UTC-0500) | First draft | all | G1 prd.md@998ed94, G2 hld.md@fea2e18, G-ux screens.md@bff1dd4, G3 lld.md@5a984b8 (Revise "a"); Q-1 to Q-4 answered "yes" |
++| 2026-10-11 17:49 CDT (UTC-0500) | AT-029 twin sets its line fee shares (45 + 0) before it is marked paid | AT-029 | M7-J05 builds LINV-1 `ct_order_lines_fee_shares_sum` as approved at G3 (lld.md:733, :2646); the twin wrote a paid order with no shares, which LINV-1 refuses. STANDING approval: "i approve all next recommendations until project completion" |
+diff --git a/tests/acceptance/M4/audit-order.test.ts b/tests/acceptance/M4/audit-order.test.ts
+index a49063b..a4e2d5e 100644
+--- a/tests/acceptance/M4/audit-order.test.ts
++++ b/tests/acceptance/M4/audit-order.test.ts
+@@ -150,6 +150,8 @@ describe('US-3 the database refuses bad money (Q-2, Q-3)', () => {
+     expect(b.status).toBe(201)
+     const set = (cost: number) =>
+       `update orders set status = 'paid', paid_at = now(), amount_paid_cents = 6000, item_cost_cents = ${cost}, provider_payout_cents = 2955, platform_fee_cents = 45 where id = $1`
++    // LINV-1 (ct_order_lines_fee_shares_sum): a paid order's line fee shares add up to its fee, so the twin gets its 45 first
++    expect(await sqlError(OWNER_URL, 'update order_lines set fee_share_cents = case when id = (select min(id) from order_lines where order_id = $1) then 45 else 0 end where order_id = $1', [a.body.order_id])).toBeNull()
+     expect(await sqlError(OWNER_URL, set(3000), [a.body.order_id])).toBeNull()
+     const err = await sqlError(OWNER_URL, set(2999), [b.body.order_id])
+     expect(err?.constraint).toBe('ck_orders_split_balances')
+diff --git a/tests/unit/fee-shares-sum.test.ts b/tests/unit/fee-shares-sum.test.ts
+new file mode 100644
+index 0000000..4bfa022
+--- /dev/null
++++ b/tests/unit/fee-shares-sum.test.ts
+@@ -0,0 +1,80 @@
++// M7-J05 LINV-1: ct_order_lines_fee_shares_sum refuses, at commit, a paid order whose line fee shares do not add up to
++// its platform fee. Runs against the throwaway supplements_test database (make db-test-up), via the acceptance helpers.
++import { afterAll, beforeAll, describe, expect, it } from 'vitest'
++import { lockDatabase, OWNER_URL, rebuildSchema, unlockDatabase, withClient } from '../acceptance/support/db'
++
++// Pays a fresh two-line order with a $0.45 platform fee in one transaction; shares are written before the order is paid
++// (the pay path's order: lines are frozen once the order is paid).
++async function payWithShares(shares: [number, number]): Promise<{ order: number; error: Error | null }> {
++  return withClient(OWNER_URL, async (c) => {
++    await c.query('begin')
++    const pr = (await c.query("insert into practices (name) values ('Unit Test Practice') returning id")).rows[0].id
++    const user = async (role: string) =>
++      (
++        await c.query(
++          "insert into users (email, password_hash, display_name, role, practice_id) values ($1, 'x', 'Unit Test', $2, $3) returning id",
++          [`${role}.${Date.now()}.${Math.random()}@example.test`, role, pr],
++        )
++      ).rows[0].id
++    const provider = await user('provider')
++    const patient = await user('patient')
++    const product = async () =>
++      (
++        await c.query(
++          "insert into products (sku, name, unit_cost_cents) values ($1, 'Unit Test Product', 1000) returning id",
++          [`SKU-${Date.now()}-${Math.random()}`],
++        )
++      ).rows[0].id
++    const order = (
++      await c.query('insert into orders (practice_id, provider_id, patient_id) values ($1, $2, $3) returning id', [
++        pr,
++        provider,
++        patient,
++      ])
++    ).rows[0].id
++    for (const share of shares)
++      await c.query(
++        "insert into order_lines (order_id, product_id, product_name, quantity, sent_unit_price_cents, paid_unit_price_cents, unit_cost_cents_at_payment, fee_share_cents) values ($1, $2, 'Unit Test Product', 1, 3000, 3000, 1000, $3)",
++        [order, await product(), share],
++      )
++    await c.query(
++      "update orders set status = 'paid', paid_at = now(), amount_paid_cents = 6000, item_cost_cents = 2000, provider_payout_cents = 3955, platform_fee_cents = 45 where id = $1",
++      [order],
++    )
++    try {
++      await c.query('commit')
++      return { order, error: null }
++    } catch (e) {
++      return { order, error: e as Error }
++    }
++  })
++}
++
++describe('LINV-1 ct_order_lines_fee_shares_sum', () => {
++  beforeAll(async () => {
++    await lockDatabase()
++    await rebuildSchema()
++  }, 120_000)
++  afterAll(unlockDatabase)
++
++  it('commits a paid order whose shares sum to its platform fee', async () => {
++    const { order, error } = await payWithShares([23, 22])
++    expect(error).toBeNull()
++    const rows = await withClient(OWNER_URL, (c) => c.query('select status from orders where id = $1', [order]))
++    expect(rows.rows[0].status).toBe('paid')
++  })
++
++  it('refuses at commit a paid order whose shares are one cent off, naming the order', async () => {
++    const { order, error } = await payWithShares([23, 21])
++    expect(error).not.toBeNull()
++    expect((error as Error & { code?: string }).code).toBe('23514')
++    expect(error!.message).toBe(`fee shares of order ${order} do not add up to its platform fee`)
++    const rows = await withClient(OWNER_URL, (c) => c.query('select count(*)::int as n from orders where id = $1', [order]))
++    expect(rows.rows[0].n).toBe(0)
++  })
++
++  it('refuses at commit a paid order with a line that has no fee share', async () => {
++    const { error } = await payWithShares([45, null as unknown as number])
++    expect(error?.message).toMatch(/^fee shares of order \d+ do not add up to its platform fee$/)
++  })
++})
