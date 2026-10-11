@@ -1,5 +1,5 @@
 // BE-23 OriginGuard (NFR-017, D91): a write to /api whose Origin names another host, or whose Sec-Fetch-Site says
-// cross-site, is refused 403 before any handler runs. No Origin and no Sec-Fetch-Site (server-to-server) passes.
+// cross-site, is refused 403 before any handler runs. No Origin and Sec-Fetch-Site not cross-site (server-to-server) passes.
 import { getRequestHeader, getRequestHost } from 'h3'
 import { defineApiHandler, ProblemError } from '../utils/problem'
 
@@ -10,7 +10,7 @@ export function isCrossSiteWrite(method: string, path: string, origin: string | 
   if (fetchSite === 'cross-site') return true
   if (!origin) return false
   try {
-    return new URL(origin).host !== host
+    return new URL(origin).host !== host.toLowerCase().replace(/:(443|80)$/, '')
   } catch {
     return true // "null" or garbage is not our page
   }

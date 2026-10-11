@@ -268,6 +268,7 @@ several harnesses read it and the repo is public.
 | 2026-10-11 17:27 CDT | G1 clarify CQ-10 (M7 Defensibility row) + G2/G3 n/a (docs/tooling, no design change) + G4 job files M7-J01..J04 | docs/product/prd.md | "go M7" (STANDING 2026-10-10 23:09 CDT) |
 | 2026-10-11 18:00 CDT | G5 M7 (report) + merge on green | docs/milestones/M7.md | STANDING 2026-10-10 23:09 CDT "i approve all next recommendations until project completion" |
 | 2026-10-11 18:33 CDT | G1 clarify CQ-11 (M7.1 Hardening, NFR-017, AE-068..070) + D91 + LLD BE-23 + G4 (supervisor builds; 1 code file + tests) | docs/product/prd.md, docs/architecture/lld.md | "go M7.1" (STANDING 2026-10-10 23:09 CDT) |
+| 2026-10-11 18:35 CDT | G5 M7.1 + merge on green + deploy (pre-approved) | docs/milestones/M7.1.md | "tell me when M7.1 is merged, also deploy it" |
 
 ## Log
 
@@ -599,3 +600,4 @@ several harnesses read it and the repo is public.
 2026-10-11 18:00 CDT REPORT M7 docs/milestones/M7.md; G5 4/4
 2026-10-11 18:33 CDT M7.1 red: AT-003 got 200 (expected 403); AT-001/002/004 green pins. AT-004 does not kill MUT-1 (expireHoldIfDue takes the same lock first) -> accepted, documented
 2026-10-11 18:33 CDT M7.1 BE-23 OriginGuard built; unit 3/3, M7.1 4/4
+2026-10-11 18:35 CDT REVIEW M7.1 pass1 R1-R6 fixed (host normalised)

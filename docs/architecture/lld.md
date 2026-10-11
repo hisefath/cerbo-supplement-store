@@ -1250,7 +1250,7 @@ classDiagram
 
 ### BE-23 OriginGuard · server middleware · CN-1 · (new)
 
-- **Responsibility:** refuse, before any handler runs, every `/api/**` request whose method is not GET, HEAD or OPTIONS when its `Origin` header names a host other than the request's own, or its `Sec-Fetch-Site` is `cross-site` (NFR-017, D91). A request with neither header passes (server-to-server, tests).
+- **Responsibility:** refuse, before any handler runs, every `/api/**` request whose method is not GET, HEAD or OPTIONS when its `Origin` header names a host other than the request's own, or its `Sec-Fetch-Site` is `cross-site` (NFR-017, D91). A request with no Origin whose Sec-Fetch-Site is not cross-site passes (server-to-server, tests). The request host is compared lowercased, without a default :443 or :80.
 - **Depends on:** h3 (installed); the request's own host from `Host` / `X-Forwarded-Host` (Railway's proxy). Lives in `server/middleware/origin-guard.ts`
 - **Tables:** none · **Transactions:** none
 - **Basis:** D91 (supersedes D52 in part); docs/security/THREAT_MODEL.md T-16

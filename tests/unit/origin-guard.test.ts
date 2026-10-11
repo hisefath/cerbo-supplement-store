@@ -19,4 +19,9 @@ describe('isCrossSiteWrite', () => {
     expect(isCrossSiteWrite('POST', '/api/orders', undefined, undefined, H)).toBe(false)
     expect(isCrossSiteWrite('POST', '/api/orders', undefined, 'same-site', H)).toBe(false)
   })
+  it('matches a proxy host given with a default port or in capitals', () => {
+    expect(isCrossSiteWrite('POST', '/api/orders', `https://${H}`, undefined, `${H}:443`)).toBe(false)
+    expect(isCrossSiteWrite('POST', '/api/orders', `https://${H}`, undefined, H.toUpperCase())).toBe(false)
+    expect(isCrossSiteWrite('POST', '/api/orders', 'https://evil.example', undefined, `${H}:443`)).toBe(true)
+  })
 })
