@@ -413,12 +413,6 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
-        "403":
-          description: "/problems/forbidden: the password matched but the account's role is none, so no session is opened (lld.md Q-11)"
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/Problem"
         "422":
           description: "/problems/validation"
           content:

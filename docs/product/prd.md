@@ -260,7 +260,7 @@ changes made by one person and reviewed by another, so that nobody holds more ac
 - **NFR-011** [Privacy] 0 records from real patients are used in the demo, examples or tests; every person is fictional. Source: (Q8).
 - **NFR-012** [Privacy] Platform staff see 0 records containing a patient's name or contact details on any page or report. Source: (Q11).
 - **NFR-013** [Auditability] 100 % of paid orders, their splits, and the price, stock and access histories are kept for at least 3 years. Source: R14 F7 (IRS record keeping), (Q12).
-- **NFR-014** [Auditability] 100 % of privileged actions (role changes, stock adjustments, price changes, report exports) are logged with who acted and when, and reviewed by someone other than the actor. Source: R15 F2, F4, F5, (Q12).
+- **NFR-014** [Auditability] 100 % of privileged actions (role changes, stock adjustments, price changes, report exports) are logged with who acted and when, and reviewed by someone other than the actor. Source: R15 F2, F4, F5, (Q12). (CQ-6: a report export is logged as one structured line naming the actor, period and row count, which the SRE reviews; the finance lead reviews role changes in the access log.)
 - **NFR-015** [Accessibility] 100 % of text and control colour pairs on every screen meet WCAG 2.2 AA contrast (4.5:1 for normal text, 3:1 for large text and focus rings). Source: CQ-4; screens.md Global conventions (planned, not verified).
 - **NFR-016** [Privacy] Pages shown inside the EHR load 0 scripts, styles or fonts from any origin but the app's own, so no outside party learns who opened a chart. Source: CQ-4; D80.
 
@@ -328,7 +328,7 @@ cost → default patient price): Vitamin D3 $9.00 → $18.00; Magnesium Glycinat
 - **AE-046** (FR-049) Given 1 order needs review and its alert line is 1, When platform staff open the health dashboard, Then "Orders needing review: 1" is marked as needing attention.
 - **AE-047** (FR-050) Given Ana's paid order number 1042, When a platform reviewer opens it, Then it shows "Order 1042" and no patient name or contact detail.
 - **AE-048** (FR-051) Given Fran Fields is the finance lead, When Omar Ortega, the operations specialist, tries to run October's financial report, Then he is refused and Fran can run it.
-- **AE-049** (FR-052) Given Order 2001 is on the review list, When Dana Ito, the data analyst, tries to clear it, Then she is refused and Omar can clear it.
+- **AE-049** (FR-052) Given Order 2001 is on the review list, When Dana Ito, the data analyst, tries to open the review list, Then she is refused and Omar sees Order 2001 on it. (CQ-8: no clear action exists; needs_review is terminal, corrections are Later, NG-7)
 - **AE-050** (FR-053) Given Dana is the data analyst, When she opens the October volume report, Then she sees totals per practice and cannot open Order 1042.
 - **AE-051** (FR-054) Given Sam Reyes is the SRE, When he grants Dana the data analyst role with the reason "new hire", Then the access log shows Sam, Dana, data analyst, the time and "new hire".
 - **AE-052** (FR-055) Given Fran is the finance lead, When she tries to grant Omar the SRE role, Then she is refused and Omar's roles are unchanged.
@@ -474,6 +474,7 @@ Answered from sources: Problem → brief Problem, REQ-01, R02, R08, R10 · Users
 | 2026-10-09 22:14 CDT | G1 Revise (Q12, R14, R15): financial report US-9, operations roles US-10, personas P-5 to P-8, retention and privileged-action logging | US-9, US-10, FR-051 to FR-065, NFR-013, NFR-014, AE-048 to AE-062, EC-15, EC-16, A-13, A-14 | G1 |
 | 2026-10-11 07:23 CDT | Clarify pass 2 (CQ-4): M5.1 visual refresh row; NFR-015 contrast, NFR-016 own-origin assets | M5.1, NFR-015, NFR-016 | G1 (STANDING) |
 | 2026-10-11 09:34 CDT | Clarify (CQ-5): M5.2 Safe landing row | M5.2 | G1 (human words in CQ-5) |
+| 2026-10-11 10:36 CDT | Clarify pass 4 (CQ-6 to CQ-8): NFR-014 export review note; AE-049 reworded | NFR-014, AE-049 | G1 (STANDING) |
 
 ## Clarifications
 
@@ -531,3 +532,32 @@ Parked for a later phase: none
 - Applied: Milestone cut row M5.2 (FR-039, FR-058)
 - Decision candidate: no — it meets approved flows F7 steps 2 and 2b
 - Scope change: none (the patient order list stays M5-R03)
+
+### Pass 4 · 2026-10-11 10:36 CDT · clarify-spec (Claude Code, claude-opus-5-5)
+
+#### CQ-6 · [Non-functional] · NFR-014
+- Question: is one structured log line per report export, reviewed by the SRE, enough to meet "reviewed by someone other than the actor" for exports? (lld.md Q-10)
+- Options: A yes for this slice · B an export history on S13 (PRD and screen change) · do nothing · recommendation: A
+- Answer (verbatim): STANDING approval 2026-10-10 23:09 CDT "i approve all next recommendations until project completion"
+- Status: resolved
+- Applied: NFR-014 note
+- Decision candidate: no
+- Scope change: none
+
+#### CQ-7 · [Edge cases] · FR-039, US-10
+- Question: what happens when an operations person whose role was removed (role none) signs in? (lld.md Q-11)
+- Options: A refuse the sign-in with new S8 copy · B keep M5.2 as built: sign-in succeeds, S15 says "Your account has no role yet. Contact platform support to get access.", every page refuses · do nothing · recommendation: B, because M5.2 shipped it at the human's request ("also everytime i log in, i get 404s ... lets fix that") and A would reverse that fix
+- Answer (verbatim): STANDING approval 2026-10-10 23:09 CDT "i approve all next recommendations until project completion"
+- Status: resolved
+- Applied: none in the PRD (FR-039 already covers it; screens.md S15 has the copy)
+- Decision candidate: no
+- Scope change: none
+
+#### CQ-8 · [Acceptance] · AE-049, FR-052
+- Question: AE-049 says Omar can "clear" Order 2001, but no clear action exists (needs_review is terminal; corrections are Later, NG-7). What does FR-052 test? (lld.md Q-12)
+- Options: A reword AE-049 to opening the review list · B add a clear action (scope change) · do nothing · recommendation: A
+- Answer (verbatim): STANDING approval 2026-10-10 23:09 CDT "i approve all next recommendations until project completion"
+- Status: resolved
+- Applied: AE-049 reworded
+- Decision candidate: no
+- Scope change: none
