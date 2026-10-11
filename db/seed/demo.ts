@@ -33,9 +33,11 @@ export const WORLD = {
 }
 
 // Every M4 table (db/migrations). TRUNCATE skips the row triggers that freeze paid orders and succeeded attempts.
-const M4_TABLES = [
+// Every application table: a table left out that references one listed here makes Postgres refuse the TRUNCATE
+// (tests/unit/seed-demo.test.ts checks this list against db/migrations).
+export const RESET_TABLES = [
   'ledger_entries', 'payment_attempts', 'idempotency_keys', 'notices', 'order_lines', 'orders', 'practice_prices',
-  'sessions', 'sign_in_attempts', 'pay_rate_attempts', 'products', 'users', 'practices',
+  'price_changes', 'stock_movements', 'sessions', 'sign_in_attempts', 'pay_rate_attempts', 'products', 'users', 'practices',
 ]
 
 /** scrypt$N$8$1$<salt b64>$<hash b64>, the format BE-3 verifyPassword reads (Q-1, SEAM-6). */
@@ -57,7 +59,7 @@ interface Db {
 type Env = Record<string, string | undefined>
 
 export async function seedDemo(env: Env, connect: (url: string) => Db = (url) => new pg.Client({ connectionString: url })) {
-  if (env.DEMO_RESET !== 'yes') throw new Error('refusing to run: this empties every M4 table; set DEMO_RESET=yes')
+  if (env.DEMO_RESET !== 'yes') throw new Error('refusing to run: this empties every application table; set DEMO_RESET=yes')
   if (!env.DEMO_PASSWORD) throw new Error('refusing to run: set DEMO_PASSWORD in the environment')
   if (!env.DATABASE_URL) throw new Error('refusing to run: set DATABASE_URL (the owner role)')
   const N = Number(env.SCRYPT_COST) || 16384
@@ -67,7 +69,7 @@ export async function seedDemo(env: Env, connect: (url: string) => Db = (url) =>
   await db.connect()
   try {
     await db.query('begin')
-    await db.query(`truncate ${M4_TABLES.join(', ')} restart identity`)
+    await db.query(`truncate ${RESET_TABLES.join(', ')} restart identity`)
     const practiceIds = new Map<string, string>()
     for (const name of WORLD.practices) {
       const { rows } = await db.query('insert into practices (name) values ($1) returning id', [name])

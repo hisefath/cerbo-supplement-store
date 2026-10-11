@@ -461,3 +461,4 @@ several harnesses read it and the repo is public.
 2026-10-11 07:43 CDT DISPATCH M5.1-T002 and M5.1-T003 harness=claude-subagent why=parallel restyles (disjoint Owns)
 2026-10-11 07:54 CDT VERIFY M5.1-T002 squashed 3880298 and M5.1-T003 squashed caabf90: scope-guard OK (6 and 4 paths); supervisor make check exit 0 in each worktree; T003 wrote a placeholder result.md before its worktree existed (supervisor setup slip), since replaced
 2026-10-11 07:54 CDT DISPATCH M5.1-T004 harness=claude-subagent why=last task: staff screens + M5.1 suite join
+2026-10-11 07:55 CDT FIX demo reset list misses M5 tables: RESET_TABLES names every table; unit guard compares it with db/migrations (specs/bugs/demo-reset-misses-m5-tables.md)

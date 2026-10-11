@@ -1,6 +1,7 @@
 // M4-T903 demo data loader (runbook FS-8): its guards and its password hash format (acceptance Q-1).
+import { readdirSync, readFileSync } from 'node:fs'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { hashPassword, seedDemo, WORLD } from '../../db/seed/demo'
+import { hashPassword, RESET_TABLES, seedDemo, WORLD } from '../../db/seed/demo'
 import { verifyPassword } from '../../server/services/session'
 
 // Synthetic test value, built at run time so no literal password sits in the code.
@@ -78,5 +79,17 @@ describe('the demo world', () => {
       // users.ck_users_practice_matches_role: only patients and providers belong to a practice
       expect(u.practice !== null).toBe(u.role === 'patient' || u.role === 'provider')
     }
+  })
+})
+
+// Bug (specs/bugs/demo-reset-misses-m5-tables.md): the demo reset truncates a fixed table list; a table
+// left out that references a truncated one makes Postgres refuse the whole TRUNCATE.
+describe('demo reset table list', () => {
+  it('names every table the migrations create', () => {
+    const created = readdirSync('db/migrations')
+      .filter((f) => f.endsWith('.sql'))
+      .flatMap((f) => [...readFileSync(`db/migrations/${f}`, 'utf8').split('-- Down Migration')[0]!.matchAll(/create table (\w+)/gi)].map((m) => m[1]!))
+    expect(created.length).toBeGreaterThan(10)
+    expect(created.filter((t) => !RESET_TABLES.includes(t)).sort()).toEqual([])
   })
 })
