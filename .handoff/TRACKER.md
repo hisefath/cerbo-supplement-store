@@ -30,8 +30,8 @@ several harnesses read it and the repo is public.
 | M5-T009 | S7 stock page fixes | Standard / build | claude-subagent | done | 2026-10-10 23:16 CDT | see task file | 12acb25 |
 | M5-T010 | S6 dashboard fixes | Standard / build | claude-subagent | done | 2026-10-10 23:16 CDT | see task file | 635d015 |
 | M5-T011 | review fixes: checkout answers (R2, R3), practice name (R4) | Standard / build | claude-subagent | done | 2026-10-10 23:57 CDT | see task file | 0c4510a |
-| M6-T001 | financial report + export (tracer) | Standard / build | claude-subagent | working | 2026-10-11 11:16 CDT | see task file | — |
-| M6-T002 | roles, access log, operations-access migration | Standard / build | claude-subagent | todo | 2026-10-11 11:16 CDT | see task file | — |
+| M6-T001 | financial report + export (tracer) | Standard / build | claude-subagent | done | 2026-10-11 11:16 CDT | see task file |  |
+| M6-T002 | roles, access log, operations-access migration | Standard / build | claude-subagent | working | 2026-10-11 11:16 CDT | see task file | — |
 | M6-T003 | access log screen | Standard / build | claude-subagent | todo | 2026-10-11 11:16 CDT | see task file | — |
 | M6-T004 | system health + uptime pings | Standard / build | claude-subagent | todo | 2026-10-11 11:16 CDT | see task file | — |
 | M6-T005 | platform health + volume | Standard / build | claude-subagent | todo | 2026-10-11 11:16 CDT | see task file | — |
@@ -520,3 +520,5 @@ several harnesses read it and the repo is public.
 2026-10-11 11:08 CDT DISPATCH M6-SLICE harness=claude-subagent why=slice-tasks for M6
 2026-10-11 11:16 CDT NOTE M6 debt: BE-22 Paging not yet adopted by BE-8, BE-14, BE-15 (no M6 test grades it); D84 FOR NO KEY UPDATE guarded by M4/M5 concurrency tests and verifier read; CQ-6 export log line and NFR-010 checked by hand at G5 (demo smoke step 9)
 2026-10-11 11:16 CDT DISPATCH M6-T001 harness=claude-subagent why=tracer bullet (financial report)
+2026-10-11 11:34 CDT VERIFY M6-T001 squashed : scope-guard OK (10 paths); supervisor make check exit 0 (267/43/44/5/5); M6 AT-010..017 8/8; repeatable-read transaction at finance-report.ts:130 (EDGE-039 waiver)
+2026-10-11 11:34 CDT DISPATCH M6-T002 harness=claude-subagent why=roles and access log (parallel: false, runs alone)
