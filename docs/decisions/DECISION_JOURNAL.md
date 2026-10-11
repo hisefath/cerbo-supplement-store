@@ -827,3 +827,15 @@ Copy this block for each new entry (D-ids increase by one, starting at D1):
 - Cost accepted: a future test that must know a token in advance needs the seam added then. · Reversibility: Type 2 two-way — add the module later · Confidence: high
 - Revisit if: a test needs a known token value, or tokens start carrying meaning. · Evidence: docs/architecture/lld.md SEAM-2, BE-3, BE-12; .handoff/reviews/M4-pass1.md R5; proposed as docs/architecture/lld.md D72; approval G3 D72 2026-10-10 20:32 CDT · Interview line: "Tokens are random and only compared by hash, so I dropped the planned test seam instead of building code no test needed."
 - Review: Topic Security · Weight ●○○ · One-liner: Session and notice tokens come straight from randomBytes; no test seam.
+
+### D73 Design catch-up: the LLD matches what M4 shipped  [status: accepted]
+- Date 2026-10-10 20:32 CDT · phase 6 design-lld (G3, M5-R01 catch-up) · milestone M5 · Decided by: human, G3 2026-10-10 20:32 CDT: "Approve, then /define-acceptance" · Proposed by: design-lld (Claude Code, claude-opus-5-5) · artifact: docs/architecture/lld.md@9708841
+- Context and forces: the M4 retro routed design drift to design-lld (FINDINGS F20): acceptance Q-1 to Q-4, D47's guard, the FM-3 retry path, the rate-limit tables, the 429 on EP-23, /healthz and /version, EP-25 paging, review rows M4-pass1 R4 to R6, pass6 R5, R6, R8, R9, R11 and pass7 R3.
+- Options:
+  - Do nothing / simplest (shown as "Stop"): leave the LLD as approved before M4 — cost: M5's tests and tasks would build on a design that disagrees with the code — rejected: the human approved the catch-up
+  - Approve the catch-up: 37 rows (changed) or (new), D72, diagrams erd and be-class redrawn, Q-8 kept as an M5 task (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: none now — chosen
+  - Revise named rows before M5 migrations exist — cost: another design round — rejected: no row named
+- Choice: approve the catch-up · Why: In the context of a design that drifted while M4 was built and reviewed, facing M5 work that must build on it, we chose to bring the LLD in line with the shipped code over leaving it stale, to give M5 one true design, accepting that Q-8 (invalid-transition members) waits for an M5 task.
+- Cost accepted: Q-8 stays open until an M5 task adds from and event to /problems/invalid-transition. · Reversibility: Type 2 two-way — later revise passes · Confidence: high
+- Revisit if: an M5 review finds the LLD and code disagree again. · Evidence: docs/architecture/lld.md Change log revise row; software-factory-kit FINDINGS.md F20; approval G3 2026-10-10 20:32 CDT · Interview line: "After the first slice shipped, I brought the design back in line with the code before building the next slice, so the next tests start from the truth."
+- Review: Topic Process · Weight ●●○ · One-liner: The design caught up with M4's code before M5 builds on it.

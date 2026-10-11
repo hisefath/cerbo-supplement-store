@@ -66,7 +66,7 @@ Weight: ●●● critical (hard to undo, or touches money, personal data or sig
 - ●●○ ~~D34~~ — Pages and logic deploy together as one app. (replaced by D36)
 - ●○○ ~~D7~~ — v1: outside services stubbed behind seams. (replaced by D22)
 
-### Process (30)
+### Process (31)
 
 - ●●● D18 — Restarted from scratch on a milestone branch with the gated workflow.
 - ●●● D22 — The v1 build in main is set aside: never read, cited or reused.
@@ -80,6 +80,7 @@ Weight: ●●● critical (hard to undo, or touches money, personal data or sig
 - ●●○ D63 — Versions in design decisions cite a registry check.
 - ●●○ D65 — A generated topic-and-weight review sits beside the chronological ledger, checked by make check.
 - ●●○ D70 — Every push runs make check on the MacBook shell runner; merge only on green.
+- ●●○ D73 — The design caught up with M4's code before M5 builds on it.
 - ●○○ D19 — Docs-only rules until the stack was designed.
 - ●○○ D20 — Harness findings F1–F3 routed at M1 close.
 - ●○○ D23 — Full track for the M1 brief.
@@ -124,6 +125,7 @@ Decisions that adopted a software-factory-kit change (H) and the finding (F) beh
 
 ### 2026-10-10
 
+- D73 · Process · ●●○ — The design caught up with M4's code before M5 builds on it.
 - D72 · Security · ●○○ — Session and notice tokens come straight from randomBytes; no test seam.
 - D71 · Process · ●○○ — Cerbo's MR template asks for the green pipeline link.
 - D70 · Process · ●●○ — Every push runs make check on the MacBook shell runner; merge only on green.
