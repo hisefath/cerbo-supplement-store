@@ -23,7 +23,7 @@ several harnesses read it and the repo is public.
 | M1-S01 | repo setup: backup, init-repo, AGENTS commands, make check, remotes, journal import (human's kickoff message) | Full / phase 0 (G-init) | supervisor (claude-opus-5-5) | done | 2026-10-08 22:33 CDT | scaffold paths, AGENTS.md Commands, Makefile, .gitignore, docs/decisions/DECISION_JOURNAL.md | 1ed9fd1 (G-init) |
 | M5-R01 | F20: design-lld catch-up before M5 (Q-1 to Q-4, D47 SM-1 guard, FM-3 new-key retry, pagination wording, EP-23 429, pay_rate_attempts) | Standard / design-lld | supervisor | done | 2026-10-10 18:31 CDT | docs/architecture/lld.md, contracts/openapi.yaml | — |
 | M5-R02 | F21: acceptance tests for review-fixed behaviours (key release, stuck attempt, parallel limits, cancel states) | Standard / define-acceptance | supervisor | done | 2026-10-10 18:31 CDT | specs/M4-tracer-bullet/acceptance.md, tests/acceptance/** | — |
-| M5-R03 | F22: M5 scope in the PRD (patient order list /orders 404, provider view of EP-4, needs-review amounts, copy gaps) | Standard / clarify-spec | supervisor | working | 2026-10-10 18:31 CDT | docs/product/prd.md | — |
+| M5-R03 | F22: M5 scope in the PRD (patient order list /orders 404, provider view of EP-4, needs-review amounts, copy gaps) | Standard / clarify-spec | supervisor | done | 2026-10-10 18:31 CDT | docs/product/prd.md | — |
 | M5-R04 | define-acceptance re-run: review pins (pass2 R3, pass3 R1, pass4 R1-R3, pass6 R5) | Standard / define-acceptance | supervisor | done | 2026-10-10 23:05 CDT | specs/M5-prices-and-stock/acceptance.md, tests/acceptance/M5 | 44fed80 |
 | M5-T007 | abandoned payments never block; hold_ended | Standard / build | claude-subagent | done | 2026-10-10 23:16 CDT | see task file | 3d759da |
 | M5-T008 | S2 hold-ended banner | Standard / build | claude-subagent | done | 2026-10-10 23:16 CDT | see task file | 0b79027 |
@@ -250,6 +250,7 @@ several harnesses read it and the repo is public.
 | 2026-10-11 14:17 CDT | M6.1 review pass 1 dispositions: R1 fix (M5.2 AT-001 tightened by define-acceptance); R2, R3, R4, R5, R6, R7 file | .handoff/reviews/M6.1-pass1.md | STANDING row 2026-10-10 23:09 CDT |
 | 2026-10-11 14:27 CDT | G5 SEC-18 | docs/security/CHECKLIST.md@b1c30da | accept — STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
 | 2026-10-11 14:27 CDT | G5 security part (M6.1): approve checklist (0 reachable critical/high) | docs/security/CHECKLIST.md@b1c30da | STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
+| 2026-10-11 14:35 CDT | G5 Merge (M6.1 report recommendation; 4 clauses yes; 0 open P0/P1; 0 unaccepted high/critical) | docs/milestones/M6.1.md@8656f8b | STANDING row 2026-10-10 23:09 CDT |
 
 ## Log
 
