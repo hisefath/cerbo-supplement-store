@@ -28,7 +28,7 @@ several harnesses read it and the repo is public.
 | M5-T007 | abandoned payments never block; hold_ended | Standard / build | claude-subagent | done | 2026-10-10 23:16 CDT | see task file | 3d759da |
 | M5-T008 | S2 hold-ended banner | Standard / build | claude-subagent | done | 2026-10-10 23:16 CDT | see task file | 0b79027 |
 | M5-T009 | S7 stock page fixes | Standard / build | claude-subagent | done | 2026-10-10 23:16 CDT | see task file | 12acb25 |
-| M5-T010 | S6 dashboard fixes | Standard / build | claude-subagent | working | 2026-10-10 23:16 CDT | see task file | — |
+| M5-T010 | S6 dashboard fixes | Standard / build | claude-subagent | done | 2026-10-10 23:16 CDT | see task file | 635d015 |
 | M4-CI01 | CI on the MacBook runner: enable runner 245, .gitlab-ci.yml running make check | Fix / supervisor | supervisor (claude-opus-5-5) | done | 2026-10-10 19:05 CDT | .gitlab-ci.yml | — |
 | M5-T001 | Provider changes a practice price (specs/M5-prices-and-stock/tasks/T001.md) | Standard / implement-task | claude-subagent | done | 2026-10-10 21:09 CDT | see task file | 135b9ca |
 | M5-T002 | Payment reserves and releases stock (specs/M5-prices-and-stock/tasks/T002.md) | Standard / implement-task | claude-subagent | done | 2026-10-10 21:09 CDT | see task file | f5bb975 |
@@ -418,3 +418,5 @@ several harnesses read it and the repo is public.
 2026-10-10 23:37 CDT DISPATCH M5-T009 harness=claude-subagent why=S7 stock page fixes (serial); worktree .claude/worktrees/m5-t009
 2026-10-10 23:45 CDT VERIFY M5-T009 squashed 12acb25: result done; scope-guard OK (2 paths); supervisor make check exit 0 (216/43/42); diff read; verifier at milestone review
 2026-10-10 23:45 CDT DISPATCH M5-T010 harness=claude-subagent why=S6 dashboard fixes (serial); worktree .claude/worktrees/m5-t010
+2026-10-10 23:51 CDT VERIFY M5-T010 squashed 635d015: result done; scope-guard OK (1 path); supervisor make check exit 0 (216/43/42); Q1 practice name has no EP field → design catch-up (EP-17 Me practice_name)
+2026-10-10 23:51 CDT REVIEW M5 milestone: diff main..milestone written to .handoff/reviews/M5-diff.patch; verifier pass 7 dispatched
