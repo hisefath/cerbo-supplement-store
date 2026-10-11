@@ -1,0 +1,761 @@
+diff --git a/app/components/practice-prices/PriceChangeDialog.vue b/app/components/practice-prices/PriceChangeDialog.vue
+new file mode 100644
+index 0000000..6afc36c
+--- /dev/null
++++ b/app/components/practice-prices/PriceChangeDialog.vue
+@@ -0,0 +1,136 @@
++<!-- FE-14 PriceChangeDialog (S5): stateless. The draft (ST-6) is lifted to FE-13, which sends it (EP-28). Shows the
++     lowest allowed price, the price a margin makes, and the field errors under their fields. -->
++<script lang="ts">
++/** "37.50" → 3750; "60" → 6000. Two decimals at most; null when it is not a number. No floats (AGENTS.md). */
++export function toHundredths(s: string): number | null {
++  const m = /^\s*(\d{1,7})(?:\.(\d{1,2}))?\s*$/.exec(s)
++  return m ? Number(m[1]) * 100 + Number((m[2] ?? '').padEnd(2, '0')) : null
++}
++</script>
++
++<script setup lang="ts">
++import { priceFromMargin } from '~~/server/services/money'
++
++export interface PracticePrice {
++  product_id: number
++  name: string
++  unit_cost_cents: number
++  price_cents: number
++  margin_basis_points: number
++  is_default: boolean
++  set_by_display_name: string | null
++  lowest_allowed_price_cents: number
++}
++export interface PriceDraft {
++  mode: 'price' | 'margin'
++  price: string
++  margin: string
++  reason: string
++}
++export interface DraftErrors {
++  price?: string
++  reason?: string
++  form?: string
++}
++
++const props = defineProps<{ price: PracticePrice; draft: PriceDraft; errors: DraftErrors; saving: boolean; slow: boolean }>()
++const emit = defineEmits<{ change: [draft: PriceDraft]; save: []; cancel: [] }>()
++
++const dollars = (c: number) => `$${(c / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
++const set = (patch: Partial<PriceDraft>) => emit('change', { ...props.draft, ...patch })
++const marginPreview = computed(() => {
++  if (props.draft.mode !== 'margin') return null
++  const bp = toHundredths(props.draft.margin)
++  return bp === null || bp > 9999 ? null : priceFromMargin(props.price.unit_cost_cents, bp)
++})
++const dialog = ref<HTMLElement | null>(null)
++onMounted(() => dialog.value?.querySelector<HTMLInputElement>('input')?.focus())
++</script>
++
++<template>
++  <div class="backdrop">
++    <section
++      ref="dialog"
++      class="dialog"
++      role="dialog"
++      aria-modal="true"
++      aria-labelledby="price-dialog-title"
++      @keydown.esc="emit('cancel')"
++    >
++      <h2 id="price-dialog-title">Change price: {{ price.name }}</h2>
++      <form novalidate @submit.prevent="emit('save')">
++        <fieldset>
++          <legend>Enter one:</legend>
++          <div class="choice">
++            <input id="mode-price" type="radio" name="mode" :checked="draft.mode === 'price'" @change="set({ mode: 'price' })" />
++            <label for="mode-price">New price</label>
++            <input
++              id="new-price"
++              :value="draft.price"
++              inputmode="decimal"
++              aria-label="New price"
++              aria-describedby="new-price-help price-error"
++              :disabled="draft.mode !== 'price'"
++              @input="set({ price: ($event.target as HTMLInputElement).value })"
++            />
++            <p id="new-price-help" class="helper">In dollars, like 37.50.</p>
++          </div>
++          <div class="choice">
++            <input id="mode-margin" type="radio" name="mode" :checked="draft.mode === 'margin'" @change="set({ mode: 'margin' })" />
++            <label for="mode-margin">Margin %</label>
++            <input
++              id="margin"
++              :value="draft.margin"
++              inputmode="decimal"
++              aria-label="Margin %"
++              aria-describedby="margin-help price-error"
++              :disabled="draft.mode !== 'margin'"
++              @input="set({ margin: ($event.target as HTMLInputElement).value })"
++            />
++            <p id="margin-help" class="helper">Share of the patient price you keep before the platform fee.</p>
++          </div>
++        </fieldset>
++        <p v-if="marginPreview !== null" role="status">
++          A {{ draft.margin }}% margin makes the price {{ dollars(marginPreview) }}. Check before saving.
++        </p>
++        <p class="floor">Lowest allowed price: {{ dollars(price.lowest_allowed_price_cents) }}</p>
++        <p v-if="errors.price" id="price-error" class="error" role="alert">{{ errors.price }}</p>
++
++        <label for="reason">Reason (required)</label>
++        <input
++          id="reason"
++          :value="draft.reason"
++          maxlength="200"
++          aria-describedby="reason-help reason-error"
++          @input="set({ reason: ($event.target as HTMLInputElement).value })"
++        />
++        <p id="reason-help" class="helper">Shown in the price history.</p>
++        <p v-if="errors.reason" id="reason-error" class="error" role="alert">{{ errors.reason }}</p>
++
++        <p v-if="errors.form" class="error" role="alert">{{ errors.form }}</p>
++        <p v-if="saving" role="status">{{ slow ? "Still saving. Don't close this window." : 'Saving…' }}</p>
++        <div class="actions">
++          <button type="submit" :disabled="saving">Save new price</button>
++          <button type="button" @click="emit('cancel')">Cancel</button>
++        </div>
++      </form>
++    </section>
++  </div>
++</template>
++
++<style scoped>
++.backdrop { position: fixed; inset: 0; background: rgb(0 0 0 / 40%); display: flex; align-items: center; justify-content: center; }
++.dialog { background: #fff; padding: 16px 20px; max-width: 480px; width: 100%; }
++fieldset { border: 0; padding: 0; margin: 0; }
++.choice { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 4px 0; }
++.choice input[type='radio'] { width: 24px; height: 24px; }
++.helper { flex-basis: 100%; margin: 0; color: #444; font-size: 14px; }
++.floor { color: #1a1a1a; }
++.error { color: #b00020; }
++#reason { display: block; width: 100%; }
++.actions { display: flex; gap: 8px; margin-top: 12px; }
++.actions button { min-height: 32px; }
++@media (max-width: 600px) {
++  .dialog { max-width: none; height: 100%; overflow: auto; }
++}
++</style>
+diff --git a/app/pages/practice/prices.vue b/app/pages/practice/prices.vue
+new file mode 100644
+index 0000000..b9d0864
+--- /dev/null
++++ b/app/pages/practice/prices.vue
+@@ -0,0 +1,190 @@
++<!-- FE-13 PracticePricesPage (S5, EP-7): this practice's prices (EP-27), the change dialog (FE-14, EP-28) and the
++     permanent price history. Owns ST-6, the change draft, and one Idempotency-Key per save, kept for its retries. -->
++<script setup lang="ts">
++import type { DraftErrors, PracticePrice, PriceDraft } from '~/components/practice-prices/PriceChangeDialog.vue'
++import { toHundredths } from '~/components/practice-prices/PriceChangeDialog.vue'
++import type { Problem } from '~/components/ProblemMessage.vue'
++
++interface PriceChange {
++  product_name: string
++  changed_by_display_name: string
++  changed_at: string
++  old_price_cents: number
++  new_price_cents: number
++  reason: string
++}
++interface PriceList {
++  prices: PracticePrice[]
++  history: PriceChange[]
++  history_next_cursor: string | null
++}
++
++useHead({ title: 'Practice prices' })
++const route = useRoute()
++const cursor = computed(() => (typeof route.query.history_cursor === 'string' ? route.query.history_cursor : undefined))
++const { data: list, error, refresh, status } = await useFetch<PriceList>('/api/practice/prices', {
++  query: { history_cursor: cursor },
++}) // ST-8
++
++const editing = ref<PracticePrice | null>(null)
++const draft = ref<PriceDraft>({ mode: 'price', price: '', margin: '', reason: '' }) // ST-6
++const errors = ref<DraftErrors>({})
++const key = ref<string | null>(null)
++const saving = ref(false)
++const slow = ref(false)
++const success = ref('')
++
++const dollars = (c: number) => `$${(c / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
++const percent = (bp: number) => `${(bp / 100).toFixed(bp % 100 === 0 ? 0 : 2)}%`
++const when = (iso: string) =>
++  new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
++
++function open(p: PracticePrice) {
++  editing.value = p
++  draft.value = { mode: 'price', price: (p.price_cents / 100).toFixed(2), margin: '', reason: '' }
++  errors.value = {}
++  key.value = null
++  success.value = ''
++}
++function close() {
++  const id = editing.value?.product_id
++  editing.value = null
++  nextTick(() => document.getElementById(`change-${id}`)?.focus())
++}
++function onChange(d: PriceDraft) {
++  draft.value = d
++  key.value = null // a different request needs its own key
++}
++
++async function save() {
++  const p = editing.value
++  if (!p || saving.value) return
++  const value = toHundredths(draft.value.mode === 'price' ? draft.value.price : draft.value.margin)
++  const next: DraftErrors = {}
++  if (value === null || (draft.value.mode === 'margin' && value > 9999)) {
++    next.price = draft.value.mode === 'price' ? 'Enter a price in dollars, like 37.50.' : 'Enter a margin from 0 to 99.99.'
++  }
++  if (draft.value.reason.trim() === '') next.reason = 'Add a reason so others know why the price changed.'
++  errors.value = next
++  if (next.price || next.reason) return
++
++  saving.value = true
++  const timer = setTimeout(() => (slow.value = true), 10_000)
++  key.value ??= crypto.randomUUID()
++  try {
++    const saved = await $fetch<PracticePrice>(`/api/practice/prices/${p.product_id}`, {
++      method: 'PUT',
++      headers: { 'idempotency-key': key.value },
++      body: {
++        ...(draft.value.mode === 'price' ? { price_cents: value } : { margin_basis_points: value }),
++        reason: draft.value.reason.trim(),
++        expected_current_price_cents: p.price_cents,
++      },
++    })
++    success.value = `${saved.name} is now ${dollars(saved.price_cents)}. Orders not yet in checkout will show the new price.`
++    close()
++    await refresh()
++  } catch (e: unknown) {
++    const data = (e as { data?: Problem & { currentPriceCents?: number; changedBy?: string | null } }).data
++    const slug = data?.type?.replace('/problems/', '')
++    if (slug === 'below-price-floor') {
++      const floor = dollars(data!.lowestAllowedPriceCents ?? p.lowest_allowed_price_cents)
++      errors.value = { price: `That price is below the lowest allowed, ${floor}. Enter ${floor} or more.` }
++    } else if (slug === 'stale-price') {
++      const who = data!.changedBy ?? 'Someone'
++      errors.value = { form: `${who} changed this price to ${dollars(data!.currentPriceCents ?? p.price_cents)} a moment ago. Check it before saving yours.` }
++      await refresh()
++      editing.value = list.value?.prices.find((x) => x.product_id === p.product_id) ?? p
++    } else if (slug === 'validation') {
++      errors.value = { form: 'Enter a new price or a margin, not both.' }
++    } else if (!navigator.onLine) {
++      errors.value = { form: "You're offline. The old price still applies." }
++    } else {
++      errors.value = { form: "We couldn't save the new price. The old price still applies. Try again." }
++    }
++  } finally {
++    clearTimeout(timer)
++    saving.value = false
++    slow.value = false
++  }
++}
++const pageProblem = computed<Problem | null>(() => (error.value ? (error.value.data as Problem) ?? { type: '/problems/internal' } : null))
++</script>
++
++<template>
++  <AppShell>
++    <section class="prices" aria-labelledby="prices-heading">
++      <h1 id="prices-heading">Practice prices</h1>
++      <p v-if="status === 'pending' && !list" role="status">Loading prices…</p>
++      <ProblemMessage
++        v-else-if="pageProblem"
++        :problem="pageProblem"
++        :copy="{ forbidden: 'Only providers at this practice can change its prices.' }"
++        @retry="refresh()"
++      />
++      <template v-else-if="list">
++        <p class="success" role="status">{{ success }}</p>
++        <table class="list">
++          <thead>
++            <tr>
++              <th scope="col">Product</th><th scope="col">Cost</th><th scope="col">Price</th><th scope="col">Margin</th>
++              <th scope="col">Set by</th><th scope="col"><span class="visually-hidden">Actions</span></th>
++            </tr>
++          </thead>
++          <tbody>
++            <tr v-for="p in list.prices" :key="p.product_id">
++              <td>{{ p.name }}</td>
++              <td>{{ dollars(p.unit_cost_cents) }}</td>
++              <td>{{ dollars(p.price_cents) }}</td>
++              <td>{{ percent(p.margin_basis_points) }}</td>
++              <td>{{ p.is_default ? 'Default' : p.set_by_display_name }}</td>
++              <td>
++                <button :id="`change-${p.product_id}`" type="button" :aria-label="`Change price for ${p.name}`" @click="open(p)">
++                  Change price
++                </button>
++              </td>
++            </tr>
++          </tbody>
++        </table>
++
++        <h2>Price history</h2>
++        <p v-if="list.history.length === 0 && !cursor">No changes yet. Every price is the default.</p>
++        <ul v-else class="history">
++          <li v-for="(h, i) in list.history" :key="i">
++            <span>{{ when(h.changed_at) }}</span> <span>{{ h.changed_by_display_name }}</span> <span>{{ h.product_name }}</span>
++            <span>{{ dollars(h.old_price_cents) }} to {{ dollars(h.new_price_cents) }}</span>
++            <q>{{ h.reason }}</q>
++          </li>
++        </ul>
++        <NuxtLink v-if="list.history_next_cursor" :to="{ query: { history_cursor: list.history_next_cursor } }">Show 25 more</NuxtLink>
++      </template>
++
++      <PracticePricesPriceChangeDialog
++        v-if="editing"
++        :price="editing"
++        :draft="draft"
++        :errors="errors"
++        :saving="saving"
++        :slow="slow"
++        @change="onChange"
++        @save="save"
++        @cancel="close"
++      />
++    </section>
++  </AppShell>
++</template>
++
++<style scoped>
++.list { width: 100%; border-collapse: collapse; }
++.list th, .list td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #ddd; overflow-wrap: anywhere; }
++.list button { min-height: 24px; min-width: 24px; }
++.history { list-style: none; padding: 0; }
++.history li { padding: 6px 0; border-bottom: 1px solid #eee; display: flex; flex-wrap: wrap; gap: 8px; }
++.history q { flex-basis: 100%; }
++.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
++@media (max-width: 600px) {
++  .list thead { display: none; }
++  .list tr { display: block; border: 1px solid #ddd; margin-bottom: 8px; padding: 4px; }
++  .list td { display: block; border: 0; padding: 2px 4px; }
++}
++</style>
+diff --git a/db/migrations/1760000012000_price-changes.sql b/db/migrations/1760000012000_price-changes.sql
+new file mode 100644
+index 0000000..706329a
+--- /dev/null
++++ b/db/migrations/1760000012000_price-changes.sql
+@@ -0,0 +1,28 @@
++-- Up Migration
++-- M5-T001 practice prices (lld.md §1, SEQ-4): the append-only price_changes history, and the app's right to set a
++-- practice price. Runs as supplements_owner (Q-3, Q-4).
++
++create table price_changes (
++  id bigint generated always as identity constraint pk_price_changes primary key,
++  practice_id bigint not null constraint fk_price_changes_practice references practices (id) on delete restrict,
++  product_id bigint not null constraint fk_price_changes_product references products (id) on delete restrict,
++  old_price_cents integer not null,
++  new_price_cents integer not null,
++  reason text not null constraint ck_price_changes_reason_len check (char_length(reason) between 1 and 200),
++  changed_by bigint not null constraint fk_price_changes_changed_by references users (id) on delete restrict,
++  changed_at timestamptz not null default now(),
++  constraint ck_price_changes_positive check (old_price_cents > 0 and new_price_cents > 0)
++);
++-- EP-27 history, newest first, cursor pagination.
++create index ix_price_changes_practice_changed on price_changes (practice_id, changed_at desc, id desc);
++-- EP-21 "price changed since sent" lookup (M5-T003).
++create index ix_price_changes_practice_product_changed on price_changes (practice_id, product_id, changed_at);
++
++-- INV-4, FR-021: the app may only add and read history; no UPDATE or DELETE.
++grant select, insert on price_changes to supplements_app;
++-- BE-8 sets a practice price (upsert, row lock for the stale check). Rows are never deleted.
++grant insert, update on practice_prices to supplements_app;
++
++-- Down Migration
++revoke insert, update on practice_prices from supplements_app;
++drop table price_changes;
+diff --git a/server/api/practice/prices/[productId].put.ts b/server/api/practice/prices/[productId].put.ts
+new file mode 100644
+index 0000000..c4c5422
+--- /dev/null
++++ b/server/api/practice/prices/[productId].put.ts
+@@ -0,0 +1,19 @@
++// EP-28 PUT /api/practice/prices/{productId} (changePrice): a provider changes their own practice's price for one
++// product, with a reason. The Idempotency-Key header is required, since each change appends history (BE-5, D41).
++import { getRouterParam } from 'h3'
++import { assertRole } from '../../../services/access-policy'
++import { guard } from '../../../services/idempotency'
++import { changePrice, PriceChangeRequest } from '../../../services/pricing'
++import { requireViewer } from '../../../services/session'
++import { defineApiHandler, parseBody, ProblemError } from '../../../utils/problem'
++
++export default defineApiHandler(async (event) => {
++  const viewer = await requireViewer(event)
++  assertRole(viewer, ['provider'])
++  const id = getRouterParam(event, 'productId') ?? ''
++  if (!/^\d{1,18}$/.test(id)) throw new ProblemError('not-found')
++  const body = await parseBody(event, PriceChangeRequest)
++  return guard(event, viewer.userId, 'PUT /api/practice/prices/{productId}', { product_id: id, ...body }, () =>
++    changePrice(viewer, BigInt(id), body),
++  )
++})
+diff --git a/server/api/practice/prices/index.get.ts b/server/api/practice/prices/index.get.ts
+new file mode 100644
+index 0000000..36b3ab7
+--- /dev/null
++++ b/server/api/practice/prices/index.get.ts
+@@ -0,0 +1,13 @@
++// EP-27 GET /api/practice/prices (listPrices): a provider sees their practice's prices and a page of price history.
++import { getQuery } from 'h3'
++import { assertRole } from '../../../services/access-policy'
++import { listPrices } from '../../../services/pricing'
++import { requireViewer } from '../../../services/session'
++import { defineApiHandler } from '../../../utils/problem'
++
++export default defineApiHandler(async (event) => {
++  const viewer = await requireViewer(event)
++  assertRole(viewer, ['provider'])
++  const cursor = getQuery(event).history_cursor
++  return listPrices(viewer, typeof cursor === 'string' && cursor !== '' ? cursor : undefined)
++})
+diff --git a/server/services/pricing.ts b/server/services/pricing.ts
+new file mode 100644
+index 0000000..8578e21
+--- /dev/null
++++ b/server/services/pricing.ts
+@@ -0,0 +1,213 @@
++// BE-8 PricingService (lld.md §2, SEQ-4): a practice's price changes only through a recorded, floor-checked change.
++// Reads `products`; writes `practice_prices` and the append-only `price_changes` (INV-4) in one transaction.
++import { sql } from 'kysely'
++import { z } from 'zod'
++import { useDb } from '../utils/db'
++import { ProblemError } from '../utils/problem'
++import { defaultPriceCents, lowestAllowedPriceCents, priceFromMargin } from './money'
++import type { Viewer } from './session'
++
++const HISTORY_PAGE = 25
++
++/** EP-28 body (openapi PriceChangeRequest): exactly one of price_cents or margin_basis_points, and a reason. */
++export const PriceChangeRequest = z
++  .strictObject({
++    price_cents: z.int().positive().optional(),
++    margin_basis_points: z.int().min(0).max(9999).optional(),
++    reason: z.string().trim().min(1, 'Add a reason so others know why the price changed.').max(200),
++    expected_current_price_cents: z.int().positive(),
++  })
++  .refine((b) => (b.price_cents === undefined) !== (b.margin_basis_points === undefined), {
++    message: 'Enter a new price or a margin, not both.',
++    path: ['price_cents'],
++  })
++export type PriceChangeInput = z.infer<typeof PriceChangeRequest>
++
++export interface PracticePrice {
++  product_id: number
++  name: string
++  unit_cost_cents: number
++  price_cents: number
++  margin_basis_points: number
++  is_default: boolean
++  set_by_display_name: string | null
++  lowest_allowed_price_cents: number
++}
++
++export interface PriceChange {
++  product_name: string
++  changed_by_display_name: string
++  changed_at: Date
++  old_price_cents: number
++  new_price_cents: number
++  reason: string
++}
++
++export interface PriceList {
++  prices: PracticePrice[]
++  history: PriceChange[]
++  history_next_cursor: string | null
++}
++
++/** (price − cost) ÷ price in basis points, rounded half-up (openapi PracticePrice.margin_basis_points). */
++export function marginBasisPoints(priceCents: number, unitCostCents: number): number {
++  return Math.floor(((priceCents - unitCostCents) * 20000 + priceCents) / (2 * priceCents))
++}
++
++/** The price a change asks for, or /problems/below-price-floor with the lowest allowed price (FR-018, FR-020). */
++export function priceFor(productId: bigint, unitCostCents: number, input: { price_cents?: number; margin_basis_points?: number }): number {
++  const price = input.price_cents ?? priceFromMargin(unitCostCents, input.margin_basis_points!)
++  const lowest = lowestAllowedPriceCents(unitCostCents)
++  if (price < lowest) throw new ProblemError('below-price-floor', { lowestAllowedPriceCents: lowest, productIds: [Number(productId)] })
++  return price
++}
++
++/** Opaque history cursor: the last row's changed_at (PostgreSQL text, microseconds kept) and id. */
++export function encodeCursor(at: string, id: string): string {
++  return Buffer.from(JSON.stringify([at, id])).toString('base64url')
++}
++
++export function decodeCursor(cursor: string): { at: string; id: string } {
++  let v: unknown
++  try {
++    v = JSON.parse(Buffer.from(cursor, 'base64url').toString())
++  } catch {
++    v = undefined
++  }
++  if (
++    Array.isArray(v) &&
++    v.length === 2 &&
++    typeof v[0] === 'string' &&
++    !Number.isNaN(Date.parse(v[0])) &&
++    typeof v[1] === 'string' &&
++    /^\d{1,18}$/.test(v[1])
++  ) {
++    return { at: v[0], id: v[1] }
++  }
++  throw new ProblemError('validation', { errors: [{ pointer: '#/query/history_cursor', detail: 'Unknown cursor.' }] })
++}
++
++function practiceOf(viewer: Viewer): string {
++  if (viewer.practiceId === null) throw new ProblemError('forbidden')
++  return viewer.practiceId.toString()
++}
++
++function toPracticePrice(
++  r: { id: string; name: string; unit_cost_cents: number },
++  price: number | null,
++  setBy: string | null,
++): PracticePrice {
++  const p = price ?? defaultPriceCents(r.unit_cost_cents)
++  return {
++    product_id: Number(r.id),
++    name: r.name,
++    unit_cost_cents: r.unit_cost_cents,
++    price_cents: p,
++    margin_basis_points: marginBasisPoints(p, r.unit_cost_cents),
++    is_default: price === null,
++    set_by_display_name: price === null ? null : setBy,
++    lowest_allowed_price_cents: lowestAllowedPriceCents(r.unit_cost_cents),
++  }
++}
++
++/** EP-27: every product at this practice's price, plus one page of its history, newest first (FR-017, FR-019). */
++export async function listPrices(viewer: Viewer, historyCursor?: string): Promise<PriceList> {
++  const practiceId = practiceOf(viewer)
++  const after = historyCursor ? decodeCursor(historyCursor) : undefined
++  const db = useDb()
++  const rows = await db
++    .selectFrom('products')
++    .leftJoin('practice_prices', (j) => j.onRef('practice_prices.product_id', '=', 'products.id').on('practice_prices.practice_id', '=', practiceId))
++    .leftJoin('users', 'users.id', 'practice_prices.set_by')
++    .select(['products.id', 'products.name', 'products.unit_cost_cents', 'practice_prices.price_cents', 'users.display_name'])
++    .orderBy('products.name')
++    .execute()
++  let history = db
++    .selectFrom('price_changes')
++    .innerJoin('products', 'products.id', 'price_changes.product_id')
++    .innerJoin('users', 'users.id', 'price_changes.changed_by')
++    .select([
++      'price_changes.id',
++      sql<string>`price_changes.changed_at::text`.as('at'),
++      'price_changes.changed_at',
++      'products.name as product_name',
++      'users.display_name as changed_by_display_name',
++      'price_changes.old_price_cents',
++      'price_changes.new_price_cents',
++      'price_changes.reason',
++    ])
++    .where('price_changes.practice_id', '=', practiceId)
++  if (after) history = history.where(sql<boolean>`(price_changes.changed_at, price_changes.id) < (${after.at}::timestamptz, ${after.id}::bigint)`)
++  const page = await history.orderBy('price_changes.changed_at', 'desc').orderBy('price_changes.id', 'desc').limit(HISTORY_PAGE + 1).execute()
++  const more = page.length > HISTORY_PAGE
++  const shown = page.slice(0, HISTORY_PAGE)
++  const last = shown.at(-1)
++  return {
++    prices: rows.map((r) => toPracticePrice(r, r.price_cents, r.display_name)),
++    history: shown.map(({ id: _id, at: _at, ...h }) => h),
++    history_next_cursor: more && last ? encodeCursor(last.at, last.id) : null,
++  }
++}
++
++/** EP-28: sets the practice price and records the change, or refuses (floor, stale form, unknown product). */
++export async function changePrice(viewer: Viewer, productId: bigint, input: PriceChangeInput): Promise<PracticePrice> {
++  const practiceId = practiceOf(viewer)
++  const product = await useDb()
++    .selectFrom('products')
++    .select(['id', 'name', 'unit_cost_cents'])
++    .where('id', '=', productId.toString())
++    .executeTakeFirst()
++  if (!product) throw new ProblemError('not-found')
++  const price = priceFor(productId, product.unit_cost_cents, input)
++
++  await useDb().transaction().execute(async (tx) => {
++    const current = async () => {
++      const row = await tx
++        .selectFrom('practice_prices')
++        .select(['price_cents', 'set_by'])
++        .where('practice_id', '=', practiceId)
++        .where('product_id', '=', product.id)
++        .forUpdate()
++        .executeTakeFirst()
++      return row ?? null
++    }
++    const stale = async (): Promise<never> => {
++      const row = await current()
++      const by = row
++        ? await tx.selectFrom('users').select('display_name').where('id', '=', row.set_by).executeTakeFirst()
++        : undefined
++      throw new ProblemError('stale-price', {
++        currentPriceCents: row?.price_cents ?? defaultPriceCents(product.unit_cost_cents),
++        changedBy: by?.display_name ?? null,
++      })
++    }
++    const row = await current()
++    const old = row?.price_cents ?? defaultPriceCents(product.unit_cost_cents)
++    if (old !== input.expected_current_price_cents) await stale()
++    // The row lock covers an existing price; the WHERE covers two first changes racing to insert one.
++    const set = await tx
++      .insertInto('practice_prices')
++      .values({ practice_id: practiceId, product_id: product.id, price_cents: price, set_by: viewer.userId.toString() })
++      .onConflict((oc) =>
++        oc
++          .columns(['practice_id', 'product_id'])
++          .doUpdateSet({ price_cents: price, set_by: viewer.userId.toString(), set_at: sql<Date>`now()` })
++          .where('practice_prices.price_cents', '=', old),
++      )
++      .returning('price_cents')
++      .executeTakeFirst()
++    if (!set) await stale()
++    await tx
++      .insertInto('price_changes')
++      .values({
++        practice_id: practiceId,
++        product_id: product.id,
++        old_price_cents: old,
++        new_price_cents: price,
++        reason: input.reason,
++        changed_by: viewer.userId.toString(),
++      })
++      .execute()
++  })
++  return toPracticePrice(product, price, viewer.displayName)
++}
+diff --git a/server/utils/db-types.ts b/server/utils/db-types.ts
+index 252bc16..0e87c99 100644
+--- a/server/utils/db-types.ts
++++ b/server/utils/db-types.ts
+@@ -49,6 +49,18 @@ export interface PracticePricesTable {
+   set_at: DefaultTimestamp
+ }
+ 
++/** Append-only (INV-4): the app may only insert and select. */
++export interface PriceChangesTable {
++  id: Id
++  practice_id: Int8
++  product_id: Int8
++  old_price_cents: number
++  new_price_cents: number
++  reason: string
++  changed_by: Int8
++  changed_at: DefaultTimestamp
++}
++
+ export interface OrdersTable {
+   id: Id
+   practice_id: Int8
+@@ -144,6 +156,7 @@ export interface Database {
+   sessions: SessionsTable
+   products: ProductsTable
+   practice_prices: PracticePricesTable
++  price_changes: PriceChangesTable
+   orders: OrdersTable
+   order_lines: OrderLinesTable
+   notices: NoticesTable
+diff --git a/tests/unit/pricing.test.ts b/tests/unit/pricing.test.ts
+new file mode 100644
+index 0000000..e7c5b55
+--- /dev/null
++++ b/tests/unit/pricing.test.ts
+@@ -0,0 +1,89 @@
++// BE-8 PricingService pure parts (lld.md §2, SEQ-4): the request shape, the new price and its floor, the margin shown,
++// and the history cursor. The database parts (stale check, history rows, grants) are proved by tests/acceptance/M5.
++import { describe, expect, it } from 'vitest'
++import { decodeCursor, encodeCursor, marginBasisPoints, PriceChangeRequest, priceFor } from '../../server/services/pricing'
++import { ProblemError } from '../../server/utils/problem'
++
++const problem = (fn: () => unknown) => {
++  try {
++    fn()
++  } catch (e) {
++    if (e instanceof ProblemError) return { slug: e.slug, ...e.extensions }
++    throw e
++  }
++  throw new Error('no problem thrown')
++}
++
++describe('PriceChangeRequest (EP-28 body, FR-018)', () => {
++  const ok = { reason: 'new protocol pricing', expected_current_price_cents: 3000 }
++  it('takes a price or a margin', () => {
++    expect(PriceChangeRequest.safeParse({ ...ok, price_cents: 1950 }).success).toBe(true)
++    expect(PriceChangeRequest.safeParse({ ...ok, margin_basis_points: 6000 }).success).toBe(true)
++  })
++  it('refuses both, neither, and a margin outside 0-9999', () => {
++    expect(PriceChangeRequest.safeParse({ ...ok, price_cents: 1950, margin_basis_points: 5000 }).success).toBe(false)
++    expect(PriceChangeRequest.safeParse(ok).success).toBe(false)
++    expect(PriceChangeRequest.safeParse({ ...ok, margin_basis_points: 10000 }).success).toBe(false)
++    expect(PriceChangeRequest.safeParse({ ...ok, margin_basis_points: -1 }).success).toBe(false)
++  })
++  it('needs a reason of 1-200 characters, not just spaces', () => {
++    expect(PriceChangeRequest.safeParse({ ...ok, price_cents: 1950, reason: '' }).success).toBe(false)
++    expect(PriceChangeRequest.safeParse({ ...ok, price_cents: 1950, reason: '   ' }).success).toBe(false)
++    expect(PriceChangeRequest.safeParse({ ...ok, price_cents: 1950, reason: 'x'.repeat(201) }).success).toBe(false)
++    expect(PriceChangeRequest.safeParse({ ...ok, price_cents: 1950, reason: 'x'.repeat(200) }).success).toBe(true)
++    expect(PriceChangeRequest.safeParse({ price_cents: 1950, expected_current_price_cents: 1800 }).success).toBe(false)
++  })
++  it('refuses unknown fields and fractional cents', () => {
++    expect(PriceChangeRequest.safeParse({ ...ok, price_cents: 1950, extra: 1 }).success).toBe(false)
++    expect(PriceChangeRequest.safeParse({ ...ok, price_cents: 19.5 }).success).toBe(false)
++  })
++})
++
++describe('priceFor: the resulting price, floor-checked (FR-018, FR-020)', () => {
++  it('AE-016: a 60% margin on a $15.00 cost is $37.50', () => {
++    expect(priceFor(3n, 1500, { margin_basis_points: 6000 })).toBe(3750)
++  })
++  it('AE-017: a new price is taken as given', () => {
++    expect(priceFor(1n, 900, { price_cents: 1950 })).toBe(1950)
++  })
++  it('EDGE-022: 33.33% on $9.00 rounds half-up to $13.50; 99% on $12.00 is $1,200.00', () => {
++    expect(priceFor(1n, 900, { margin_basis_points: 3333 })).toBe(1350)
++    expect(priceFor(2n, 1200, { margin_basis_points: 9900 })).toBe(120000)
++  })
++  it('AE-018: $12.00 on a $12.00 cost is refused with $12.09 as the lowest allowed; $12.09 passes', () => {
++    expect(problem(() => priceFor(2n, 1200, { price_cents: 1200 }))).toEqual({
++      slug: 'below-price-floor',
++      lowestAllowedPriceCents: 1209,
++      productIds: [2],
++    })
++    expect(problem(() => priceFor(2n, 1200, { price_cents: 1208 })).slug).toBe('below-price-floor')
++    expect(priceFor(2n, 1200, { price_cents: 1209 })).toBe(1209)
++  })
++  it('EDGE-005: a 0% margin is below the floor', () => {
++    expect(problem(() => priceFor(2n, 1200, { margin_basis_points: 0 })).slug).toBe('below-price-floor')
++  })
++})
++
++describe('marginBasisPoints: (price - cost) / price, half-up', () => {
++  it('shows 60%, 50% and 33.33%', () => {
++    expect(marginBasisPoints(3750, 1500)).toBe(6000)
++    expect(marginBasisPoints(1800, 900)).toBe(5000)
++    expect(marginBasisPoints(1350, 900)).toBe(3333)
++  })
++  it('rounds half-up: 2/3 of a basis point goes up', () => {
++    // (300 - 1) / 300 = 9966.67 bp
++    expect(marginBasisPoints(300, 1)).toBe(9967)
++  })
++})
++
++describe('history cursor (EP-27, lld.md §4 Pagination)', () => {
++  it('round-trips the last row time and id', () => {
++    const c = encodeCursor('2026-10-10 21:00:00.123456-05', '42')
++    expect(decodeCursor(c)).toEqual({ at: '2026-10-10 21:00:00.123456-05', id: '42' })
++  })
++  it('refuses a cursor it did not make', () => {
++    expect(problem(() => decodeCursor('not-a-cursor')).slug).toBe('validation')
++    expect(problem(() => decodeCursor(Buffer.from('["x","1"]').toString('base64url'))).slug).toBe('validation')
++    expect(problem(() => decodeCursor(Buffer.from('["2026-10-10 21:00:00-05","1; drop"]').toString('base64url'))).slug).toBe('validation')
++  })
++})
