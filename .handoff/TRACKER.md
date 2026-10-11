@@ -25,7 +25,7 @@ several harnesses read it and the repo is public.
 | M5-R02 | F21: acceptance tests for review-fixed behaviours (key release, stuck attempt, parallel limits, cancel states) | Standard / define-acceptance | supervisor | done | 2026-10-10 18:31 CDT | specs/M4-tracer-bullet/acceptance.md, tests/acceptance/** | — |
 | M5-R03 | F22: M5 scope in the PRD (patient order list /orders 404, provider view of EP-4, needs-review amounts, copy gaps) | Standard / clarify-spec | supervisor | todo | 2026-10-10 18:31 CDT | docs/product/prd.md | — |
 | M4-CI01 | CI on the MacBook runner: enable runner 245, .gitlab-ci.yml running make check | Fix / supervisor | supervisor (claude-opus-5-5) | done | 2026-10-10 19:05 CDT | .gitlab-ci.yml | — |
-| M5-T001 | Provider changes a practice price (specs/M5-prices-and-stock/tasks/T001.md) | Standard / implement-task | claude-subagent | todo | 2026-10-10 21:09 CDT | see task file | — |
+| M5-T001 | Provider changes a practice price (specs/M5-prices-and-stock/tasks/T001.md) | Standard / implement-task | claude-subagent | working | 2026-10-10 21:09 CDT | see task file | — |
 | M5-T002 | Payment reserves and releases stock (specs/M5-prices-and-stock/tasks/T002.md) | Standard / implement-task | claude-subagent | todo | 2026-10-10 21:09 CDT | see task file | — |
 | M5-T003 | Patients see price change notices (specs/M5-prices-and-stock/tasks/T003.md) | Standard / implement-task | claude-subagent | todo | 2026-10-10 21:09 CDT | see task file | — |
 | M5-T004 | Platform staff adjust stock (specs/M5-prices-and-stock/tasks/T004.md) | Standard / implement-task | claude-subagent | todo | 2026-10-10 21:09 CDT | see task file | — |
@@ -366,3 +366,4 @@ several harnesses read it and the repo is public.
 2026-10-10 20:32 CDT GATE G3 approved lld.md@9708841 (M5-R01 catch-up); Q-8 becomes an M5 task; M5-R01 done; next define-acceptance (M5-R02)
 2026-10-10 21:01 CDT GATE G4 (acceptance part) approved specs/M5-prices-and-stock/acceptance.md@f0e77db; M5-R02 done (AT-029 to AT-033 pins); next slice-tasks M5
 2026-10-10 21:09 CDT GATE G4 approved specs/M5-prices-and-stock/tasks@5175bac (option a: 6 tasks, 4 waves); go M5
+2026-10-10 21:09 CDT DISPATCH M5-T001 harness=claude-subagent why=tracer bullet (G4 D74), watched on Claude; worktree .claude/worktrees/m5-t001 from milestone/m5-prices-and-stock@9953146
