@@ -50,3 +50,16 @@ export const PLATFORM_HEALTH_ROLES: Role[] = ['finance_lead', 'operations_specia
 export const FINANCE_ROLES: Role[] = ['finance_lead']
 /** Site reliability: EP-12, EP-14, EP-36, EP-39. */
 export const SRE_ROLES: Role[] = ['sre']
+
+/** The person whose role BE-18 would change (lld.md BE-4). */
+export interface StaffRef {
+  id: bigint
+  role: Role
+  practiceId: bigint | null
+}
+
+/** Only the SRE changes roles, and never their own (FR-055, FR-056): forbidden is checked before self-role-change. */
+export function assertCanChangeRole(actor: Viewer, target: StaffRef): void {
+  if (!SRE_ROLES.includes(actor.role)) throw new ProblemError('forbidden')
+  if (actor.userId === target.id) throw new ProblemError('self-role-change')
+}

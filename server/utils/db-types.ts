@@ -166,6 +166,36 @@ export interface PayRateAttemptsTable {
   attempted_at: DefaultTimestamp
 }
 
+/** Append-only (INV-4): the app may only insert and select. */
+export interface AccessLogTable {
+  id: Id
+  actor_id: Int8
+  target_user_id: Int8
+  /** the target's role when the attempt was made */
+  from_role: string
+  /** the role asked for, also on a refused row */
+  to_role: string
+  reason: string
+  outcome: 'granted' | 'refused'
+  created_at: DefaultTimestamp
+}
+
+/** One row per hour and route group; the app upserts the counts (BE-19). */
+export interface RequestStatsTable {
+  hour: Timestamp
+  route_group: string
+  requests: Generated<number>
+  errors: Generated<number>
+  slow: Generated<number>
+  stock_refusals: Generated<number>
+}
+
+/** One 5-minute slot in which the uptime monitor reached the app (D87). */
+export interface HealthPingsTable {
+  slot: Timestamp
+  first_seen_at: DefaultTimestamp
+}
+
 export interface Database {
   practices: PracticesTable
   users: UsersTable
@@ -182,4 +212,7 @@ export interface Database {
   idempotency_keys: IdempotencyKeysTable
   sign_in_attempts: SignInAttemptsTable
   pay_rate_attempts: PayRateAttemptsTable
+  access_log: AccessLogTable
+  request_stats: RequestStatsTable
+  health_pings: HealthPingsTable
 }
