@@ -158,6 +158,7 @@ several harnesses read it and the repo is public.
 | 2026-10-10 19:25 CDT | CI option A (revised): a macOS shell-executor runner tagged macbook-shell (human creates and registers it; the token stays with the human); .gitlab-ci.yml targets that tag; runner 245 disabled for cerbo | chat card | "a, set up the shell runner" |
 | 2026-10-10 19:46 CDT | G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) | H18@0ee4f6f2422d | "Approve, adopt H18 and H17" |
 | 2026-10-10 19:46 CDT | G-L5 (approval covers apply and project commit) | H17@1730d3f72cea | "Approve, adopt H18 and H17" |
+| 2026-10-10 19:53 CDT | deploy-production (option b: roll back to 1130822 at once if smoke is red) | M4@158fb11 | "yes, deploy 158fb11 to production" |
 
 ## Log
 
@@ -344,3 +345,4 @@ several harnesses read it and the repo is public.
 2026-10-10 18:35 CDT MERGE M4 close-out !5 (c6a9438) to main with a merge commit; main mirrored to GitHub (pre-push checks passed)
 2026-10-10 19:16 CDT CI pipeline 48487 failed: Colima VM disk 100% full (postgres initdb: no space left on device); human declined resizing or touching the VM: "no dont do this route, dont want to mess with that much memory or a vm"
 2026-10-10 19:39 CDT MERGE fix/ci-macbook-runner !6 (d53cdd1): pipeline 48540 on shell runner 299 green (122 unit, 43 acceptance, make check OK); runner 245 disabled for cerbo; M4-CI01 done; H16 superseded by H18 (shell runner reused per project)
+2026-10-10 19:55 CDT DEPLOY production web-v2 158fb11 (deployment 21e295fd SUCCESS); /version = 158fb11f36a3d86d8374a2bb97c4d29a9437038b; SMOKE GREEN 7/0 TLS verified; review link and walkthrough sent
