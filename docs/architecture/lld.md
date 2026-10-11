@@ -908,7 +908,7 @@ classDiagram
 |---|---|---|---|---|
 | `signIn(email: string, password: string, ip: string): Promise<{ viewer: Viewer; cookieToken: string }>` | BE-1 via EP-15 | the viewer and a new random cookie token | `/problems/sign-in-failed`, `/problems/rate-limited` | FR-039 |
 | `resolve(cookieToken: string \| undefined): Promise<Viewer \| null>` | BE-1, BE-2 on every request | the viewer, after moving `last_seen_at` forward; null when missing, ended, idle 15 min or more, or signed in 12 hours ago or more (changed) | — | FR-040, FR-041 |
-| `clientAddress(event: H3Event): string` (new) | BE-3.signIn via EP-15, BE-10.countPayAttempt via EP-23 | the client address the limits count: the last `X-Forwarded-For` entry when `TRUST_PROXY=1` (behind the platform proxy), else the socket address | — | FR-039, SEC-9 |
+| `clientAddress(event: H3Event): string` (new) | BE-1 for EP-15 and EP-23, which passes the address to BE-3.signIn and BE-10.countPayAttempt | the client address the limits count: the last `X-Forwarded-For` entry when `TRUST_PROXY=1` (behind the platform proxy), else the socket address | — | FR-039, SEC-9 |
 | `signOut(cookieToken: string): Promise<void>` | BE-1 via EP-16 | — | — | FR-041 |
 
 ### BE-4 AccessPolicy · policy · CN-1 · new
@@ -1142,7 +1142,7 @@ classDiagram
 
 | Public method (signature only) | Called by | Returns | Raises (problem type) | Covers |
 |---|---|---|---|---|
-| `now(): Date` | BE-3, BE-5, BE-8 to BE-10, BE-13, BE-15 to BE-19 | the current UTC time | — | FR-037, FR-041 |
+| `now(): Date` | BE-3, BE-5, BE-8 to BE-10, BE-13, BE-15 to BE-19, BE-21 (changed) | the current UTC time | — | FR-037, FR-041 |
 
 ### BE-21 PruneAttempts · scheduled task · CN-1 · (new)
 

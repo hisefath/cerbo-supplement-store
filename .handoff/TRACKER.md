@@ -350,3 +350,4 @@ several harnesses read it and the repo is public.
 2026-10-10 20:08 CDT VERIFY M4-SEC2 squashed f7150d3: result done; scope-guard OK (1 path); checklist: secrets 0, unaccepted high/critical 0; 11 pass, 3 fail (all accepted D49-D53)
 2026-10-10 20:23 CDT DISPATCH M5-D01 harness=claude-subagent why=redraw erd after the M5-R01 LLD catch-up
 2026-10-10 20:23 CDT DISPATCH M5-D02 harness=claude-subagent why=redraw be-class after the M5-R01 LLD catch-up
+2026-10-10 20:24 CDT VERIFY M5-D01 squashed c379b02: result done; scope-guard OK (1 path); 18 entities, 27 relationships; render unverified (no mmdc)
