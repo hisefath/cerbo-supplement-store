@@ -42,7 +42,7 @@ several harnesses read it and the repo is public.
 | M5-T004 | Platform staff adjust stock (specs/M5-prices-and-stock/tasks/T004.md) | Standard / implement-task | claude-subagent | done | 2026-10-10 21:09 CDT | see task file | 061cd49 |
 | M5-T005 | Provider opens the practice dashboard (specs/M5-prices-and-stock/tasks/T005.md) | Standard / implement-task | claude-subagent | done | 2026-10-10 21:09 CDT | see task file | 315a1c3 |
 | M5-T006 | M5 joins checks and menu (specs/M5-prices-and-stock/tasks/T006.md) | Standard / implement-task | claude-subagent | done | 2026-10-10 21:09 CDT | see task file | bc2b381 |
-| M5.1-R01 | Visual refresh inspired by cluely.com (Geist + serif display, sky-blue palette, soft glass cards, glow on primary buttons) — after M5 merges; starts with /map-ux-flows | Standard / map-ux-flows | supervisor | todo | 2026-10-10 22:36 CDT | docs/design/screens.md (visual language) | — |
+| M5.1-R01 | Visual refresh inspired by cluely.com (Geist + serif display, sky-blue palette, soft glass cards, glow on primary buttons) — after M5 merges; starts with /map-ux-flows | Standard / map-ux-flows | supervisor | done | 2026-10-10 22:36 CDT | docs/design/screens.md (visual language) | — |
 
 ## Approvals
 
@@ -216,6 +216,7 @@ several harnesses read it and the repo is public.
 | 2026-10-11 08:12 CDT | G3 revise + G4 (M5.1: control-border and pill tokens, site-root paragraph; AT-001/002/004 tightened; M5.1-T005 review-fix task) | lld.md, screens.md, acceptance.md, tasks/T005.md | STANDING row 2026-10-10 23:09 CDT |
 | 2026-10-11 08:18 CDT | G5 security part (M5.1): approve checklist (0 reachable critical/high, no new finding); re-run after M5.1-T005 (Q4) | docs/security/CHECKLIST.md@43215f6 | STANDING row 2026-10-10 23:09 CDT |
 | 2026-10-11 08:25 CDT | G5 security part (M5.1 re-run after T005): approve checklist (0 reachable critical/high, no new finding) | docs/security/CHECKLIST.md@c06a229 | STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-11 08:35 CDT | G5 Revise (M5.1 report recommendation): answer DV-5 with a Log NOTE, correct MILESTONES gate SHAs (DV-6), add the missing T004 VERIFY line, re-run report-milestone | docs/milestones/M5.1.md (draft 08:25) | STANDING row 2026-10-10 23:09 CDT |
 
 ## Log
 
@@ -473,3 +474,7 @@ several harnesses read it and the repo is public.
 2026-10-11 08:12 CDT DISPATCH M5.1-T005 harness=claude-subagent why=pass 1 review fixes
 2026-10-11 08:18 CDT SECURITY M5.1: 0 reachable critical/high; font packages clean; NFR-016 holds; re-run due after T005
 2026-10-11 08:20 CDT VERIFY M5.1-T005 squashed a6ebc86: scope-guard OK (5 paths); supervisor make check on the milestone exit 0 (218/43/44/5)
+2026-10-11 08:35 CDT NOTE DV-5: the M5 ship records (MILESTONES M5 done, deploy history; branch chore/m5-ship-records) could not go straight to protected main, so they were merged into milestone/m5.1-visual-refresh at 0fd7dc5 to reach main with the next MR and avoid a MILESTONES.md conflict; records only, no decision
+2026-10-11 08:35 CDT NOTE DV-6: MILESTONES M5.1 gate SHAs corrected to G3@6faccb4 G4@6bc24f6 (the row had the acceptance commit as G3)
+2026-10-11 08:35 CDT VERIFY M5.1-T004 squashed 7367c5d (recorded late): scope-guard OK (6 paths); supervisor make check on the milestone exit 0 (218/43/44/4) at 2026-10-11 08:00 CDT
+2026-10-11 08:35 CDT NOTE M5.1-T003 VERIFY shares the T002 line (2026-10-11 07:50): scope-guard OK (4 paths); supervisor make check exit 0 in its worktree
