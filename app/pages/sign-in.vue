@@ -35,14 +35,7 @@ async function submit() {
   } catch (err) {
     const { statusCode: status, data } = err as { statusCode?: number; data?: { title?: string } }
     password.value = ''
-    error.value =
-      status === 401 || status === 422
-        ? "That email and password don't match. Check them and try again."
-        : status === 429
-          ? (data?.title ?? 'Too many tries')
-          : status
-            ? "We couldn't sign you in right now. Try again in a moment."
-            : "You're offline. Try again when you're back online."
+    error.value = signInErrorMessage({ status, online: navigator.onLine, title: data?.title })
     pending.value = false
     return
   } finally {
