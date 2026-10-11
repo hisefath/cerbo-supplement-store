@@ -33,6 +33,7 @@ Updated: 2026-10-10 11:05 CDT
 | S13 | Access log | Review every role grant and removal in a period | US-10 | no |
 | S14 | System health | See availability, errors and slow pages for a period | US-10 | no |
 | S15 | Your home | Land somewhere safe after sign-in and see which pages the role can open | US-8 | no |
+| S16 | Your orders | See every order sent to me, newest first, and open one | US-2, US-8 | no |
 
 ## Flows
 
@@ -125,6 +126,7 @@ Actor: any person (patient, provider, reviewer, platform staff) · Trigger: they
 2. [S8] Signs in as herself → lands on the page she asked for, or her role's home: a patient her orders, a provider the practice dashboard, a reviewer Paid orders, staff Stock adjustments
    - 2c. [S15] her role has no work page yet (patient, site reliability, data analyst) → sees her home with what to do instead, never a missing page
    - 2d. [S15] she opens an address with no page → sees "We couldn't find that page" and "Go to your home"
+   - 2e. [S16] she is a patient → lands on Your orders, her orders newest first, each opening its order page (M6.1)
    - 2a. [S8 · Error] sign-in details not recognised → sees what to check, and her typed name is kept
    - 2b. [S8 · Permission denied] she asked for a page her role does not allow → sees that her account can't open it and where her own work is
 3. [S8] Is inactive for 15 minutes → is signed out and sees the sign-in page with "You were signed out after 15 minutes without activity."
@@ -193,7 +195,7 @@ Ends when: he knows whether October met its targets.
 | US-1 | P1 | F1, F2, F5 | S1, S2, S6, S9 |
 | US-2 | P1 | F2 | S2 |
 | US-3 | P1 | F3 | S3, S4 |
-| US-8 | P1 | F1, F2, F3, F7 | S3, S4, S8, S9, S15 |
+| US-8 | P1 | F1, F2, F3, F7 | S3, S4, S8, S9, S15, S16 |
 | US-6 | P3 | F8 | S10 |
 | US-9 | P3 | F9 | S11 |
 | US-10 | P3 | F8, F10, F11, F12 | S10, S12, S13, S14 |
