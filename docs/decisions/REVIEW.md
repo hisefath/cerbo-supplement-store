@@ -38,11 +38,12 @@ Weight: ●●● critical (hard to undo, or touches money, personal data or sig
 - ●○○ D86 — Pay stock refusals are counted hourly beside request stats.
 - ●○○ ~~D11~~ — v1: one stock path through a single method. (replaced by D22)
 
-### Security (15)
+### Security (16)
 
 - ●●● D26 — Sign-in, notices without health details, no patient identity for platform staff.
 - ●●○ D37 — Seeded test accounts with server-side sessions.
-- ●●○ D52 — SameSite cookies plus JSON-only requests as the CSRF defence.
+- ●●○ D91 — Cross-site writes refused by Origin check; token waits for the embed.
+- ●●○ ~~D52~~ — SameSite cookies plus JSON-only requests as the CSRF defence. (replaced by D91)
 - ●○○ D49 — node-forge advisory accepted: Nuxt dev tooling only.
 - ●○○ D50 — braces advisory accepted: build tooling only.
 - ●○○ D51 — simple-git advisory accepted: Nuxt devtools only.
@@ -142,6 +143,7 @@ Decisions that adopted a software-factory-kit change (H) and the finding (F) beh
 
 ### 2026-10-11
 
+- D91 · Security · ●●○ — Cross-site writes refused by Origin check; token waits for the embed.
 - D90 · Security · ●○○ — A year-0000 cursor answers 500; accepted as low.
 - D89 · Security · ●○○ — One database write per counted request is accepted as low.
 - D88 · Security · ●○○ — Refused role-change rows from any caller are accepted as low.
@@ -183,7 +185,7 @@ Decisions that adopted a software-factory-kit change (H) and the finding (F) beh
 - D55 · Infrastructure · ●●○ — Demo deployed from the M4 branch before the merge chain.
 - D54 · Process · ●○○ — M4 keeps 11 tasks as a one-time exception.
 - D53 · Product · ●○○ — Order quantity unbounded until stock limits exist.
-- D52 · Security · ●●○ — SameSite cookies plus JSON-only requests as the CSRF defence.
+- D52 · Security · ●●○ — SameSite cookies plus JSON-only requests as the CSRF defence. (replaced by D91)
 - D51 · Security · ●○○ — simple-git advisory accepted: Nuxt devtools only.
 - D50 · Security · ●○○ — braces advisory accepted: build tooling only.
 - D49 · Security · ●○○ — node-forge advisory accepted: Nuxt dev tooling only.

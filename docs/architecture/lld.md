@@ -1248,6 +1248,18 @@ classDiagram
 | `parseMonth(raw: unknown, pointer: string): YearMonth` | BE-15 to BE-19 | `YYYY-MM`, default the current UTC month from BE-20 | `/problems/validation` ("Pick a month like 2026-10.") | FR-045, FR-048, FR-057, FR-059 |
 | `parsePeriod(query: { month?: unknown; from?: unknown; to?: unknown }): Period` | BE-17 | `{ from: Date; toExclusive: Date }` per BE-17's period rule | `/problems/validation` | FR-060, FR-063 |
 
+### BE-23 OriginGuard · server middleware · CN-1 · (new)
+
+- **Responsibility:** refuse, before any handler runs, every `/api/**` request whose method is not GET, HEAD or OPTIONS when its `Origin` header names a host other than the request's own, or its `Sec-Fetch-Site` is `cross-site` (NFR-017, D91). A request with neither header passes (server-to-server, tests).
+- **Depends on:** h3 (installed); the request's own host from `Host` / `X-Forwarded-Host` (Railway's proxy). Lives in `server/middleware/origin-guard.ts`
+- **Tables:** none · **Transactions:** none
+- **Basis:** D91 (supersedes D52 in part); docs/security/THREAT_MODEL.md T-16
+
+| Public method (signature only) | Called by | Returns | Raises (problem type) | Covers |
+|---|---|---|---|---|
+| `isCrossSiteWrite(method: string, path: string, origin: string \| undefined, fetchSite: string \| undefined, host: string): boolean` | the middleware | true to refuse | — | NFR-017 |
+| middleware handler | Nitro, every request | nothing, or throws | `/problems/forbidden` | NFR-017 |
+
 ## 3. Frontend components
 
 <!-- diagram: fe-components -->
@@ -2991,3 +3003,4 @@ stateDiagram-v2
 | 2026-10-11 09:25 CDT | Delta (M6-measurement-and-operations, job M6-LLD): M6 rows reconciled with the code M4, M5 and M5.1 shipped (route-file handlers, page guard, role lists, `reserveForOrder` as built, SEQ-2 attempt-before-stock order); routed M5 catch-up: attention items carry patient name and total (M5-pass6 R4), 422 for every bad cursor in the contract and one shared paging helper BE-22 (M5-pass1 R5, pass5 R5, R7, pass6 R8), price and stock bounds proposed (D83, against D77), `FOR NO KEY UPDATE` proposed (D84), invalid-transition members proposed (D85, Q-8, M5-pass7 R2); M6 design gaps closed: out-of-stock refusals counted in `request_stats` (D86), availability over 5-minute slots matching the probe (D87), EP-37 refusals reach BE-18, M6 grants; decision statuses synced with the journal (D38 superseded by D44; D39 to D42, D72 accepted); Q-9 to Q-12 | users, access_log, request_stats, health_pings, Database roles, BE-1, BE-2, BE-4, BE-8, BE-10, BE-13 to BE-19, BE-22, FE-15, FE-17 to FE-20, FE-22, FE-23, ST-7, EP-10 to EP-15, EP-25, EP-27 to EP-34, EP-37 to EP-40, Problem types, Pagination, SEQ-2, SEQ-8, SEQ-10, SEQ-12, SM-1, SM-2, FM-8, SEAM-7, D38 to D42, D72, D83 to D87, Q-8 to Q-12 | pending G3 |
 | 2026-10-11 10:36 CDT | Revise (clarify-spec pass 4, CQ-6 to CQ-8): Q-10 and Q-12 answered as recommended; Q-11 answered by keeping M5.2 (role none signs in to S15, pages refuse) — EP-15, BE-3.signIn, the role-none note, FE-2 and the problem registry no longer refuse its sign-in | EP-15, BE-3, FE-2, Q-10, Q-11, Q-12 | G3 by STANDING approval 2026-10-11 10:36 CDT |
 | 2026-10-11 13:47 CDT | Delta (M6.1 patient orders, CQ-9): EP-42, BE-9.listOrdersForPatient, FE-27 (S16), ROLE_PAGES.patient | EP-42, BE-9, FE-27 | G3 by STANDING approval 2026-10-11 13:47 CDT |
+| 2026-10-11 18:27 CDT | Delta (M7.1 hardening, CQ-11): BE-23 OriginGuard (D91, NFR-017) | BE-23 | G3 by STANDING approval 2026-10-11 18:27 CDT |

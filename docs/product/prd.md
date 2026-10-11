@@ -263,6 +263,7 @@ changes made by one person and reviewed by another, so that nobody holds more ac
 - **NFR-014** [Auditability] 100 % of privileged actions (role changes, stock adjustments, price changes, report exports) are logged with who acted and when, and reviewed by someone other than the actor. Source: R15 F2, F4, F5, (Q12). (CQ-6: a report export is logged as one structured line naming the actor, period and row count, which the SRE reviews; the finance lead reviews role changes in the access log.)
 - **NFR-015** [Accessibility] 100 % of text and control colour pairs on every screen meet WCAG 2.2 AA contrast (4.5:1 for normal text, 3:1 for large text and focus rings). Source: CQ-4; screens.md Global conventions (planned, not verified).
 - **NFR-016** [Privacy] Pages shown inside the EHR load 0 scripts, styles or fonts from any origin but the app's own, so no outside party learns who opened a chart. Source: CQ-4; D80.
+- **NFR-017** [Security] A change sent to the app from a page on any other site is refused 100% of the time, with nothing saved, so a hostile page cannot act for a signed-in person. Source: CQ-11; D52 revisit trigger (EP-22 takes no body); docs/security/THREAT_MODEL.md T-16.
 
 ## Success criteria
 
@@ -347,6 +348,9 @@ cost → default patient price): Vitamin D3 $9.00 → $18.00; Magnesium Glycinat
 - **AE-065** (FR-068) Given Ana's order was sent with 2 Vitamin D3, When anyone tries to change the quantity to 3, Then it is refused and the order still holds 2. (CQ-1)
 - **AE-066** (FR-069) Given a paid $3.00 order of three $1.00 items whose platform fee is $0.02, When the fee is shared across the lines, Then the shares are $0.01, $0.01 and $0.00 and add up to $0.02. (CQ-2)
 - **AE-067** (FR-039) Given Ana Ruiz has a sent $60.00 order and a paid $30.00 order, and Ben Ortiz has his own order, When Ana signs in, Then she lands on Your orders and sees her two orders, newest first, each with its practice, total and status, and none of Ben's. (CQ-9)
+- **AE-068** (FR-002) Given Dr. Chen sends Ana a vitamin D3 order, When the request also carries a made-up unit price of $0.01, Then it is refused, no order is saved, and the same request without that field is sent at the practice's own price. (CQ-11)
+- **AE-069** (FR-039) Given Ana has a paid $60.00 order, When she opens it or reads its receipt, Then she sees her lines, prices and total and nowhere the item cost, the provider payout or the platform fee, which a platform reviewer opening the same order does see. (CQ-11)
+- **AE-070** (FR-008) Given Ana's order is in checkout, When she presses Pay while another change already holds the order, Then her payment waits and records nothing until that change finishes, and then completes once. (CQ-11, MUT-1)
 
 ## Edge cases
 
@@ -431,6 +435,7 @@ Answered from sources: Problem → brief Problem, REQ-01, R02, R08, R10 · Users
 | M6 Measurement and operations | Platform health dashboard, volume report, financial report, operations roles, access log and system health | FR-032, FR-048, FR-049, FR-051, FR-052, FR-053, FR-054, FR-055, FR-056, FR-057, FR-058, FR-059, FR-060, FR-061, FR-062, FR-063, FR-064, FR-065 | AE-029, AE-045, AE-046, AE-048 to AE-062, SC-001, SC-002, SC-003 | Fran runs October's report and sees $90.00 = $45.00 + $44.32 + $0.68, balanced; Sam grants Dana a role and Fran sees it in the access log. |
 | M6.1 Patient orders | A patient signs in to a list of her own orders and opens any of them | FR-039, AE-037 (already approved; M5-R03) | AE-067 | Ana signs in and sees her orders, newest first, and opens one in a click. |
 | M7 Defensibility | A reviewer can check every claim: how the slice embeds in Cerbo's EHR, what attacks it resists and which test proves each defence, where each requirement's evidence lives, and that the money tests catch planted bugs | none (docs and test tooling only; no new behaviour) | every FR traced to its evidence | A reviewer opens docs/REVIEWER_GUIDE.md, follows any requirement to its passing test, reads the embedding plan and threat model, and runs the planted-bug check: every planted money bug is caught. |
+| M7.1 Hardening | Close the threat model's cheap gaps: forged prices refused, no cost or fee shown to patients, writes from other sites refused, payment waits for the order lock | FR-002, FR-008, FR-039 (already approved; tests and one guard, NFR-017) | AE-068, AE-069, AE-070, NFR-017 | A reviewer posts to start checkout from another site and gets refused, while Ana's own Pay still works. |
 | Later | Not in this appetite: pricing campaigns and corrections; broader holistic-care products were considered for the future of the product and parked (NG-12, CQ-3) | FR-016, FR-033, FR-034 | — | — |
 
 ## Constraints
@@ -480,6 +485,7 @@ Answered from sources: Problem → brief Problem, REQ-01, R02, R08, R10 · Users
 | 2026-10-11 10:36 CDT | Clarify pass 4 (CQ-6 to CQ-8): NFR-014 export review note; AE-049 reworded | NFR-014, AE-049 | G1 (STANDING) |
 | 2026-10-11 13:47 CDT | Clarify pass 5 (CQ-9): M6.1 Patient orders row; AE-067 | M6.1, AE-067 | G1 (human words in CQ-9) |
 | 2026-10-11 17:27 CDT | Clarify pass 6 (CQ-10): M7 Defensibility row (docs and test tooling, no FRs) | M7 | G1 (human words in CQ-10) |
+| 2026-10-11 18:27 CDT | Clarify pass 7 (CQ-11): M7.1 Hardening row; NFR-017; AE-068 to AE-070 | M7.1, NFR-017, AE-068, AE-069, AE-070 | G1 (human words in CQ-11) |
 
 ## Clarifications
 
@@ -588,4 +594,15 @@ Parked for a later phase: none
 - Applied: Milestone cut row M7
 - Decision candidate: no — docs and test tooling; no FR, table or endpoint changes
 - Scope change: none (database ledger guards were also suggested and already exist: payments-ledger migration)
+
+### Pass 7 · 2026-10-11 18:27 CDT · clarify-spec (Claude Code, claude-opus-5-5) · base 612c5bf
+
+#### CQ-11 · [Scope] · NFR-017, AE-068 to AE-070, Milestone cut › M7.1
+- Question: The M7 threat model and planted-bug check left four cheap gaps: no test that a forged price is refused (T-5), none that a patient never receives cost, payout or fee (T-13), no guard against a write from another site on start checkout, which takes no body or key (T-16, D52 trigger), and no test that Pay waits for the order lock (MUT-1). Add M7.1 for them?
+- Options: A milestone M7.1 with three acceptance examples, NFR-017 and an Origin check · B tests only, no Origin check until embedding · do nothing · recommendation: A
+- Answer (verbatim): "go M7.1"
+- Status: resolved
+- Applied: NFR-017; AE-068, AE-069, AE-070; Milestone cut row M7.1
+- Decision candidate: yes — the Origin check revisits D52 (log-decision)
+- Scope change: none (behaviour already promised by FR-002, FR-008, FR-039; NFR-017 adds the guard)
 
