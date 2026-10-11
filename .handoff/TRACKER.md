@@ -31,11 +31,11 @@ several harnesses read it and the repo is public.
 | M5-T010 | S6 dashboard fixes | Standard / build | claude-subagent | done | 2026-10-10 23:16 CDT | see task file | 635d015 |
 | M5-T011 | review fixes: checkout answers (R2, R3), practice name (R4) | Standard / build | claude-subagent | done | 2026-10-10 23:57 CDT | see task file | 0c4510a |
 | M6-T001 | financial report + export (tracer) | Standard / build | claude-subagent | done | 2026-10-11 11:16 CDT | see task file | c575c9c |
-| M6-T002 | roles, access log, operations-access migration | Standard / build | claude-subagent | working | 2026-10-11 11:16 CDT | see task file | — |
-| M6-T003 | access log screen | Standard / build | claude-subagent | todo | 2026-10-11 11:16 CDT | see task file | — |
-| M6-T004 | system health + uptime pings | Standard / build | claude-subagent | todo | 2026-10-11 11:16 CDT | see task file | — |
+| M6-T002 | roles, access log, operations-access migration | Standard / build | claude-subagent | done | 2026-10-11 11:16 CDT | see task file | 7dd3b96 |
+| M6-T003 | access log screen | Standard / build | claude-subagent | working | 2026-10-11 11:16 CDT | see task file | — |
+| M6-T004 | system health + uptime pings | Standard / build | claude-subagent | working | 2026-10-11 11:16 CDT | see task file | — |
 | M6-T005 | platform health + volume | Standard / build | claude-subagent | todo | 2026-10-11 11:16 CDT | see task file | — |
-| M6-T006 | review list + stock bounds (D83, D84, D86) | Standard / build | claude-subagent | todo | 2026-10-11 11:16 CDT | see task file | — |
+| M6-T006 | review list + stock bounds (D83, D84, D86) | Standard / build | claude-subagent | working | 2026-10-11 11:16 CDT | see task file | — |
 | M6-T007 | ROLE_PAGES + privacy sweep + make check join | Standard / build | claude-subagent | todo | 2026-10-11 11:16 CDT | see task file | — |
 | M5.1-T001 | theme, fonts, sign-in band | Standard / build | claude-subagent | done | 2026-10-11 07:31 CDT | see task file | 9987db7 |
 | M5.1-T002 | provider screens | Standard / build | claude-subagent | done | 2026-10-11 07:31 CDT | see task file | 3880298 |
@@ -523,3 +523,5 @@ several harnesses read it and the repo is public.
 2026-10-11 11:16 CDT DISPATCH M6-T001 harness=claude-subagent why=tracer bullet (financial report)
 2026-10-11 11:34 CDT VERIFY M6-T001 squashed c575c9c (first squash attempt failed on the '+' worktree marker; T002's worktree fast-forwarded onto it before any edit): scope-guard OK (10 paths); supervisor make check exit 0 (267/43/44/5/5); M6 AT-010..017 8/8; repeatable-read transaction at finance-report.ts:130 (EDGE-039 waiver)
 2026-10-11 11:34 CDT DISPATCH M6-T002 harness=claude-subagent why=roles and access log (parallel: false, runs alone)
+2026-10-11 11:47 CDT VERIFY M6-T002 squashed 7dd3b96: worker stopped human_review on an Owns gap (db/seed/demo.ts RESET_TABLES, caught by the M5.2 seed guard); G4 revise widened Owns; supervisor added the one line, scope-guard OK (10 paths), make check exit 0 (289/43/44/5/5), M6 AT 11/11; access_log grant select, insert only; open: no test proves the role-change row lock (verifier to read)
+2026-10-11 11:47 CDT DISPATCH M6-T003, M6-T004, M6-T006 harness=claude-subagent why=wave 3, parallel, disjoint Owns
