@@ -81,7 +81,7 @@ const pageProblem = computed<Problem | null>(() => (error.value ? (error.value.d
 <template>
   <AppShell>
     <header class="chart">{{ catalog?.patient_display_name ?? 'Patient' }} · chart <span>Supplements (selected)</span></header>
-    <h1>Supplement order for {{ patientName }}</h1>
+    <div class="page-band"><h1>Supplement order for {{ patientName }}</h1></div>
     <ProblemMessage
       v-if="pageProblem"
       :problem="pageProblem"
@@ -109,8 +109,8 @@ const pageProblem = computed<Problem | null>(() => (error.value ? (error.value.d
 </template>
 
 <style scoped>
-.chart { display: flex; justify-content: space-between; border-bottom: 1px solid #ccc; padding-bottom: 8px; }
-.builder { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.chart { display: flex; justify-content: space-between; border-bottom: 1px solid var(--color-border); padding-bottom: 8px; margin-bottom: var(--space-card); color: var(--color-ink-muted); }
+.builder { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-card); }
 @media (max-width: 767px) {
   .builder { grid-template-columns: 1fr; }
 }
