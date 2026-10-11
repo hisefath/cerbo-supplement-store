@@ -9,10 +9,16 @@ import { decodeCursor, encodeCursor } from './pricing'
 import type { Viewer } from './session'
 
 const HISTORY_PAGE = 25
+/** D83: the largest stock change, and the largest count it may leave. */
+const MAX_UNITS = 1_000_000
 
 /** EP-32 body (openapi StockAdjustmentRequest). confirm_large_change is the S7 form's own check; the server accepts it. */
 export const StockAdjustmentRequest = z.strictObject({
-  change: z.int().refine((n) => n !== 0, 'Enter a whole number, like 12 or -3.'),
+  change: z
+    .int()
+    .min(-MAX_UNITS, 'Enter a change between -1,000,000 and 1,000,000.')
+    .max(MAX_UNITS, 'Enter a change between -1,000,000 and 1,000,000.')
+    .refine((n) => n !== 0, 'Enter a whole number, like 12 or -3.'),
   reason: z.string().trim().min(1, 'Add a reason so others know why stock changed.').max(200),
   expected_units_in_stock: z.int().min(0),
   confirm_large_change: z.boolean().default(false),
@@ -35,23 +41,25 @@ export interface StockList {
   history_next_cursor: string | null
 }
 
-/** The count after the change, or /problems/stale-stock (the form saw an old count) or /problems/insufficient-stock
- *  (it would go below zero). */
+/** The count after the change, or /problems/stale-stock (the form saw an old count), /problems/validation at #/change
+ *  (it would pass 1,000,000, D83) or /problems/insufficient-stock (it would go below zero). */
 export function checkAdjustment(productId: bigint, unitsInStock: number, input: { change: number; expected_units_in_stock: number }): number {
   if (input.expected_units_in_stock !== unitsInStock) throw new ProblemError('stale-stock', { unitsInStock })
   const after = unitsInStock + input.change
+  if (after > MAX_UNITS)
+    throw new ProblemError('validation', { errors: [{ pointer: '#/change', detail: 'Stock can be at most 1,000,000 units.' }] })
   if (after < 0) throw new ProblemError('insufficient-stock', { productIds: [Number(productId)], unitsAvailable: [unitsInStock] })
   return after
 }
 
-/** EP-32: one transaction locks the product, checks the count, updates it and appends the movement (SEQ-6 step 5). */
+/** EP-32: one transaction locks the product (FOR NO KEY UPDATE, D84), checks the count, updates it and appends the movement (SEQ-6 step 5). */
 export async function adjust(viewer: Viewer, productId: bigint, input: StockAdjustmentInput): Promise<StockMovement> {
   return useDb().transaction().execute(async (tx) => {
     const p = await tx
       .selectFrom('products')
       .select(['id', 'name', 'units_in_stock'])
       .where('id', '=', productId.toString())
-      .forUpdate()
+      .forNoKeyUpdate()
       .executeTakeFirst()
     if (!p) throw new ProblemError('not-found')
     const after = checkAdjustment(productId, p.units_in_stock, input)

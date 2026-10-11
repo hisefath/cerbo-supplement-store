@@ -110,7 +110,7 @@ export async function pay(viewer: Viewer, orderId: bigint, idempotencyKey: strin
     assertIsOrderPatient(viewer, { patientId: BigInt(o.patient_id), practiceId: BigInt(o.practice_id) })
     // The reconcile above already sent an ended hold back to sent: Pay still answers that the hold ended (FR-037).
     if (o.status === 'sent' && o.checkout_started) throw new ProblemError('checkout-expired')
-    if (o.status !== 'in_checkout') throw new ProblemError('invalid-transition')
+    if (o.status !== 'in_checkout') throw new ProblemError('invalid-transition', { from: o.status, event: 'pay' })
     if (!o.hold_live) throw new ProblemError('checkout-expired')
 
     const lines = await trx
@@ -148,7 +148,7 @@ export async function pay(viewer: Viewer, orderId: bigint, idempotencyKey: strin
       .returning('id')
       .executeTakeFirstOrThrow()
       .catch((e: unknown) => {
-        throw (e as { code?: string }).code === '23505' ? new ProblemError('invalid-transition') : e
+        throw (e as { code?: string }).code === '23505' ? new ProblemError('invalid-transition', { from: 'in_checkout', event: 'pay' }) : e
       })
     // FR-026, AE-024: products locked in id order, after the order; short stock refuses here, so the rollback leaves no
     // attempt, no charge.
@@ -238,7 +238,7 @@ async function recordPayment(
     .transaction()
     .execute(async (trx) => {
       const locked = await trx.selectFrom('orders').select('status').where('id', '=', order.id).forUpdate().executeTakeFirst()
-      if (locked?.status !== 'in_checkout') throw new ProblemError('invalid-transition')
+      if (locked?.status !== 'in_checkout') throw new ProblemError('invalid-transition', { from: locked?.status, event: 'pay' })
       for (const [i, l] of lines.entries()) {
         await trx
           .updateTable('order_lines')

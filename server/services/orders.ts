@@ -157,7 +157,7 @@ export async function startCheckout(viewer: Viewer, orderId: bigint): Promise<Ch
           prices_held_until: o.prices_held_until!.toISOString(),
         }
       }
-      if (!['sent', 'payment_failed', 'in_checkout'].includes(o.status)) throw new ProblemError('invalid-transition')
+      if (!['sent', 'payment_failed', 'in_checkout'].includes(o.status)) throw new ProblemError('invalid-transition', { from: o.status, event: 'start_checkout' })
 
       const prices = await currentPrices(BigInt(o.practice_id), lines.map((l) => BigInt(l.product_id)))
       let total = 0
@@ -361,7 +361,11 @@ export async function cancelOrder(viewer: Viewer, orderId: bigint): Promise<Orde
       .where('status', 'in', ['sent', 'payment_failed'])
       .returning('id')
       .executeTakeFirst()
-    if (!done) throw new ProblemError('invalid-transition')
+    if (!done) {
+      // D85: the status that refused it, read after the update lost (a racing checkout may have changed it).
+      const now = await db.selectFrom('orders').select('status').where('id', '=', o.id).executeTakeFirstOrThrow()
+      throw new ProblemError('invalid-transition', { from: now.status, event: 'cancel' })
+    }
   }
 
   const rows = await db
