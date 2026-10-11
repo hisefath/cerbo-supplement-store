@@ -24,7 +24,7 @@ several harnesses read it and the repo is public.
 | M5-R01 | F20: design-lld catch-up before M5 (Q-1 to Q-4, D47 SM-1 guard, FM-3 new-key retry, pagination wording, EP-23 429, pay_rate_attempts) | Standard / design-lld | supervisor | todo | 2026-10-10 18:31 CDT | docs/architecture/lld.md, contracts/openapi.yaml | — |
 | M5-R02 | F21: acceptance tests for review-fixed behaviours (key release, stuck attempt, parallel limits, cancel states) | Standard / define-acceptance | supervisor | todo | 2026-10-10 18:31 CDT | specs/M4-tracer-bullet/acceptance.md, tests/acceptance/** | — |
 | M5-R03 | F22: M5 scope in the PRD (patient order list /orders 404, provider view of EP-4, needs-review amounts, copy gaps) | Standard / clarify-spec | supervisor | todo | 2026-10-10 18:31 CDT | docs/product/prd.md | — |
-| M4-CI01 | CI on the MacBook runner: enable runner 245, .gitlab-ci.yml running make check | Fix / supervisor | supervisor (claude-opus-5-5) | working | 2026-10-10 19:05 CDT | .gitlab-ci.yml | — |
+| M4-CI01 | CI on the MacBook runner: enable runner 245, .gitlab-ci.yml running make check | Fix / supervisor | supervisor (claude-opus-5-5) | done | 2026-10-10 19:05 CDT | .gitlab-ci.yml | — |
 
 ## Approvals
 
@@ -156,6 +156,8 @@ several harnesses read it and the repo is public.
 | 2026-10-10 19:05 CDT | CI decision option A: enable MacBook runner 245 on cerbo-supplement-store; add .gitlab-ci.yml running make check; factory rule to check CI after pushes and send deploy link + walkthrough (factory diff still needs its own G-L5) | chat card | "yes" (to "A (recommended): reuse runner 245.") · "yes" (to "A (recommended): enable your MacBook runner (245) on Cerbo and add a make check pipeline.") |
 | 2026-10-10 19:05 CDT | plan: do every "Left, in order" item (M4 loose ends, M5-R01 to M5-R03, M5, M6, in-EHR hardening); each phase gate is still asked one decision at a time | chat status | "yes, lets do it all" · "lets continue with all of them after the \"left in order\" tasks" |
 | 2026-10-10 19:25 CDT | CI option A (revised): a macOS shell-executor runner tagged macbook-shell (human creates and registers it; the token stays with the human); .gitlab-ci.yml targets that tag; runner 245 disabled for cerbo | chat card | "a, set up the shell runner" |
+| 2026-10-10 19:46 CDT | G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) | H18@0ee4f6f2422d | "Approve, adopt H18 and H17" |
+| 2026-10-10 19:46 CDT | G-L5 (approval covers apply and project commit) | H17@1730d3f72cea | "Approve, adopt H18 and H17" |
 
 ## Log
 
@@ -341,3 +343,4 @@ several harnesses read it and the repo is public.
 2026-10-10 18:12 CDT ROUTE design answer Q3: keep the chronological journal as the AI-usage ledger; topic + weight bucketing is a separate project-review document; embed it in the existing learning/review path (quiz-me) rather than a new one; Cerbo keeps its workflow-improvement history
 2026-10-10 18:35 CDT MERGE M4 close-out !5 (c6a9438) to main with a merge commit; main mirrored to GitHub (pre-push checks passed)
 2026-10-10 19:16 CDT CI pipeline 48487 failed: Colima VM disk 100% full (postgres initdb: no space left on device); human declined resizing or touching the VM: "no dont do this route, dont want to mess with that much memory or a vm"
+2026-10-10 19:39 CDT MERGE fix/ci-macbook-runner !6 (d53cdd1): pipeline 48540 on shell runner 299 green (122 unit, 43 acceptance, make check OK); runner 245 disabled for cerbo; M4-CI01 done; H16 superseded by H18 (shell runner reused per project)
