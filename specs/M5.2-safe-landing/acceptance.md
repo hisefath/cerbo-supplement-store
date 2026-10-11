@@ -42,6 +42,7 @@ Out of scope this milestone: the patient order list (M5-R03); the M6 pages that 
 | AT-002 | FR-039 | FR-039 (as above), flows.md F7 step 2 | **Given** Dr. Chen, Omar and Fran **When** each opens the site root **Then** a redirect to /practice/dashboard, /ops/orders, /ops/orders, and that page answers 200 | example | integration | `tests/acceptance/M5.2/landing.test.ts::M5.2_AT_002` | green: pins the role homes that exist |
 | AT-003 | AE-038, FR-039 | screens.md Global conventions "Page not found (M5.2)" | **Given** Dr. Chen signed in **When** she opens /no-such-page **Then** 404 with "We couldn't find that page" and a "Go to your home" link to /; a stranger gets 303 to sign-in | error-guessing | integration | `tests/acceptance/M5.2/landing.test.ts::M5.2_AT_003` | red @ c956959 |
 | AT-004 | FR-058, FR-039 | screens.md S8 Permission denied "Your account can't open that page. Here is your own work." and Global conventions "Wrong role (M5.2)" | **Given** Ana and Dr. Chen **When** each opens /practice/dashboard **Then** Dr. Chen's page has no home link; Ana's shows the provider-only message and a "Go to your home" link | decision-table | integration | `tests/acceptance/M5.2/landing.test.ts::M5.2_AT_004` | red @ c956959 |
+| AT-005 | FR-039 | FR-039 (as above); screens.md S15 Empty "no role" (M5.2 review R2) | **Given** Nora, whose account has no role **When** she opens the site root **Then** 200, "Welcome, Nora None" and "Your account has no role yet. Contact platform support to get access." | partition | integration | `tests/acceptance/M5.2/landing.test.ts::M5.2_AT_005` | red (review R2) |
 
 ## Edge cases
 
@@ -160,3 +161,4 @@ Ways a test could pass while the feature is wrong (`references/silent-success.md
 | Date | Change | Ids | Why (approved artifact, or the human's exact words) |
 |---|---|---|---|
 | 2026-10-11 09:36 CDT (UTC-0500) | First draft | all | prd.md CQ-5: "also everytime i log in, i get 404s. i dont reroute safely to a homepage, or have any info like i dont have access or get a link to a page i should be reaching, etc. lets fix that" |
+| 2026-10-11 09:51 CDT | Review pass 1: AT-002 checks the landing page is not a refusal (R1); AT-004 adds Fran on stock adjustments (R3, FR-058); AT-005 the no-role account (R2) | AT-002, AT-004, AT-005 | M5.2-pass1 R1, R2, R3; STANDING approval 2026-10-10 23:09 CDT |

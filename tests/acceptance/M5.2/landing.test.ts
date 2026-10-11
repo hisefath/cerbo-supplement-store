@@ -5,8 +5,9 @@
 import { fetch } from '@nuxt/test-utils/e2e'
 import { describe, expect, it } from 'vitest'
 import { useApp } from '../support/app'
+import { q } from '../support/db'
 import { call, signIn } from '../support/http'
-import { EMAIL } from '../support/people'
+import { EMAIL, PASSWORD, scryptHash } from '../support/people'
 
 useApp({ paymentStubMode: 'succeed' })
 
@@ -34,7 +35,10 @@ describe('M5.2 safe landing', () => {
       const r = await call('/', { cookie, redirect: 'manual' })
       expect([302, 303, 307], email).toContain(r.status)
       expect(r.headers.get('location')).toBe(path)
-      expect((await call(path, { cookie, redirect: 'manual' })).status, `${path} for ${email}`).toBe(200)
+      const page = await call(path, { cookie, redirect: 'manual' })
+      expect(page.status, `${path} for ${email}`).toBe(200)
+      // a refused page also answers 200: the landing page must not be a refusal
+      expect(page.text, `${path} for ${email} is not a refusal`).not.toMatch(homeLink)
     }
   })
 
@@ -58,5 +62,18 @@ describe('M5.2 safe landing', () => {
     expect(ana.status).toBe(200)
     expect(ana.text).toMatch(/Only providers/)
     expect(ana.text).toMatch(homeLink)
+    // an operations person on a page their role does not allow (FR-058): Fran, finance lead, on stock adjustments
+    const fran = await call('/ops/stock', { cookie: await signIn(EMAIL.fran), redirect: 'manual' })
+    expect(fran.status).toBe(200)
+    expect(fran.text).toMatch(homeLink)
+    expect(fran.text).not.toContain('Vitamin D3 2000 IU')
+  })
+
+  it('M5.2_AT_005 a person whose account has no role lands on their home with "Your account has no role yet", never back at sign-in (FR-039; S15 Empty, M5.2 review R2)', async () => {
+    await q("insert into users (email, password_hash, display_name, role, practice_id) values ('nora.none@example.test', $1, 'Nora None', 'none', null)", [scryptHash(PASSWORD)])
+    const r = await root('nora.none@example.test')
+    expect(r.status).toBe(200)
+    expect(r.text).toContain('Welcome, Nora None')
+    expect(r.text).toContain('Your account has no role yet. Contact platform support to get access.')
   })
 })

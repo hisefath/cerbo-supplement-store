@@ -219,6 +219,7 @@ several harnesses read it and the repo is public.
 | 2026-10-11 08:35 CDT | G5 Revise (M5.1 report recommendation): answer DV-5 with a Log NOTE, correct MILESTONES gate SHAs (DV-6), add the missing T004 VERIFY line, re-run report-milestone | docs/milestones/M5.1.md (draft 08:25) | STANDING row 2026-10-10 23:09 CDT |
 | 2026-10-11 08:40 CDT | G5 Merge (M5.1 report recommendation; 4 clauses yes; 0 open P0/P1; 0 unaccepted high/critical) | docs/milestones/M5.1.md@c26710a | STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
 | 2026-10-11 09:37 CDT | G1 (clarify CQ-5: M5.2 Safe landing) + G-ux (S15, page-not-found and wrong-role conventions) + G3 (ROLE_PAGES, FE-25, FE-26, FE-23) + G4 (AT-001..004, T001) | prd.md, screens.md, flows.md, lld.md, specs/M5.2-safe-landing on milestone/m5.2-safe-landing | "also everytime i log in, i get 404s. i dont reroute safely to a homepage, or have any info like i dont have access or get a link to a page i should be reaching, etc. lets fix that" · STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-11 09:52 CDT | M5.2 review pass 1 dispositions: R1, R3 fix (tests, supervisor); R2, R5, R6 fix (M5.2-T002; S15 no-role copy added, G-ux); R4 file; R7 keep | .handoff/reviews/M5.2-pass1.md | STANDING row 2026-10-10 23:09 CDT |
 
 ## Log
 
@@ -484,3 +485,5 @@ several harnesses read it and the repo is public.
 2026-10-11 09:37 CDT DISPATCH M5.2-T001 harness=claude-subagent why=safe landing fix (human report: 404s after sign-in)
 2026-10-11 09:48 CDT VERIFY M5.2-T001 squashed 2727f99: scope-guard OK (5 paths); supervisor make check exit 0 (218/43/44/5/4); diff read
 2026-10-11 09:48 CDT REVIEW M5.2: verifier pass 1 dispatched
+2026-10-11 09:52 CDT REVIEW M5.2 pass 1: 0 P0, 0 P1, 3 P2, 4 P3
+2026-10-11 09:52 CDT DISPATCH M5.2-T002 harness=claude-subagent why=pass 1 review fixes
