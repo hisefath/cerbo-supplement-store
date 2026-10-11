@@ -1035,3 +1035,16 @@ Copy this block for each new entry (D-ids increase by one, starting at D1):
 - Cost accepted: slower answers under a flood. · Reversibility: Type 2 two-way · Confidence: high
 - Revisit if: traffic approaches the database pool limit or a request flood is seen. · Evidence: docs/security/CHECKLIST.md SEC-17; approval G5 SEC-17 2026-10-11 12:55 CDT · Interview line: "Counting each request in the database is simple and safe for this load; batching waits until traffic says it is needed."
 - Review: Topic Security · Weight ●○○ · One-liner: One database write per counted request is accepted as low.
+
+### D90 Accept a 500 on a year-0000 paging cursor  [status: accepted]
+- Date 2026-10-11 14:27 CDT · phase 12 check-security (G5) · milestone M6.1 · Decided by: human, G5 SEC-18 2026-10-11 14:27 CDT: STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" · Proposed by: check-security (Claude Code, claude-opus-5-5) · artifact: docs/security/CHECKLIST.md@b1c30da
+- Context and forces: the shared cursor check (server/utils/paging.ts:37) accepts a year-0000 date that JavaScript treats as valid; PostgreSQL has no year 0, so a hand-made cursor on /api/orders or /api/ops/access-log reaches the database cast and answers 500 instead of 422. Only the caller's own request breaks; no data is exposed. Same class as SEC-12 (D77).
+- Options:
+  - Do nothing / simplest (shown as "default: pending G5"): leave it undecided — cost: the milestone cannot merge — rejected: blocks G5
+  - fix: require year 0001 or later in BE-22's key check, or map the out-of-range error to 422, plus a unit test — cost: a fix task before merge — rejected: low under the triage rule
+  - investigate: run the one-line select on the test database first — cost: a minute — rejected: the outcome is low either way
+  - accept (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: a crafted request can log one 500 — chosen
+- Choice: accept · Why: In the context of a hand-crafted cursor that only breaks its sender's own request, we chose to accept the 500 over a fix before merge, accepting an error-log entry per crafted request.
+- Cost accepted: a crafted request produces a 500 and an error-log line. · Reversibility: Type 2 two-way · Confidence: high
+- Revisit if: a real user hits it, or a decoded cursor ever feeds a write. · Evidence: docs/security/CHECKLIST.md SEC-18; approval G5 SEC-18 2026-10-11 14:27 CDT · Interview line: "A tampered cursor only breaks the tamperer's own request with a 500, so it is accepted until a real user hits it."
+- Review: Topic Security · Weight ●○○ · One-liner: A year-0000 cursor answers 500; accepted as low.
