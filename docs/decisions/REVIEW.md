@@ -70,7 +70,7 @@ Weight: ●●● critical (hard to undo, or touches money, personal data or sig
 - ●●○ ~~D34~~ — Pages and logic deploy together as one app. (replaced by D36)
 - ●○○ ~~D7~~ — v1: outside services stubbed behind seams. (replaced by D22)
 
-### Process (32)
+### Process (33)
 
 - ●●● D18 — Restarted from scratch on a milestone branch with the gated workflow.
 - ●●● D22 — The v1 build in main is set aside: never read, cited or reused.
@@ -100,6 +100,7 @@ Weight: ●●● critical (hard to undo, or touches money, personal data or sig
 - ●○○ D68 — log-decision starts the journal from the kit template when none exists.
 - ●○○ D69 — Three product fixes queued for M5; eight one-offs logged, not fixed.
 - ●○○ D71 — Cerbo's MR template asks for the green pipeline link.
+- ●○○ D79 — M5 adds an 11th task for review fixes, like M4.
 - ●○○ ~~D9~~ — v1: diagrams as .mmd sources with embedded copies. (replaced by D22)
 - ●○○ ~~D10~~ — v1: changes from a design-review panel accepted. (replaced by D22)
 - ●○○ ~~D15~~ — v1: repo visibility stays the human's step. (replaced by D22)
@@ -127,6 +128,10 @@ Decisions that adopted a software-factory-kit change (H) and the finding (F) beh
 - 2026-10-10 · D71 · H17 — Cerbo's MR template asks for the green pipeline link.
 
 ## By day
+
+### 2026-10-11
+
+- D79 · Process · ●○○ — M5 adds an 11th task for review fixes, like M4.
 
 ### 2026-10-10
 

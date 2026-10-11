@@ -901,3 +901,15 @@ Copy this block for each new entry (D-ids increase by one, starting at D1):
 - Cost accepted: a GET with side effects, limited to due transitions after the access check · Reversibility: Type 2 two-way · Confidence: high
 - Revisit if: a GET handler gains a write that is not time-driven, or a job runner arrives · Evidence: docs/security/CHECKLIST.md SEC-13; approval G5 SEC-13 2026-10-10 23:59 CDT · Interview line: "Reading an order may finish a transition that was already due, only for people allowed to see it; a job runner can replace it later."
 - Review: Topic Security · Weight ●○○ · One-liner: GET of an order may end a due hold; accepted, access-checked.
+
+### D79 M5 keeps 11 tasks as a review-fix exception  [status: accepted]
+- Date 2026-10-11 00:20 CDT · phase 12 report-milestone (G5) · milestone M5 · Decided by: human, G5 Revise 2026-10-11 00:20 CDT: STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" · Proposed by: supervisor (Claude Code, claude-opus-5-5) · artifact: specs/M5-prices-and-stock/tasks/T011.md
+- Context and forces: slice-tasks caps a milestone at 10 tasks. Verifier pass 7 found two P1 and one P2 user-facing defects after all 10 tasks landed (M5-pass7 R2, R3, R4); D54 allowed the same once for M4 only.
+- Options:
+  - Do nothing / simplest (shown as "default: nothing merges"): leave DV-3 undecided — cost: G5 cannot recommend Merge — rejected: blocks the milestone
+  - split the milestone in the PRD via clarify-spec and move T011 to M5.2 — cost: a PRD edit, a new G1 and a second MR for three small fixes — rejected: overhead larger than the fix
+  - accept an 11th review-fix task (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: the cap is broken twice — chosen
+- Choice: accept · Why: In the context of review fixes found after every task landed, facing a 10-task cap, we chose an 11th review-fix task over splitting the milestone, accepting a second exception to the cap.
+- Cost accepted: the 10-task cap now has two exceptions; route-failure should decide whether review-fix tasks count toward it. · Reversibility: Type 2 two-way · Confidence: high
+- Revisit if: a third milestone needs more than 10 tasks (then the cap rule changes via route-failure). · Evidence: .handoff/reviews/M5-pass7.md R2-R4; Approvals G3+G4 T011 row 2026-10-10 23:57 CDT; D54 · Interview line: "Review found three user-facing bugs after the plan finished, so we added one fix task instead of reopening the PRD; twice now means the cap rule needs revisiting."
+- Review: Topic Process · Weight ●○○ · One-liner: M5 adds an 11th task for review fixes, like M4.
