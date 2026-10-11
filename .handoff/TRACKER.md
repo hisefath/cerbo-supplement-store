@@ -36,7 +36,7 @@ several harnesses read it and the repo is public.
 | M6-T004 | system health + uptime pings | Standard / build | claude-subagent | done | 2026-10-11 11:16 CDT | see task file | 9466b5d |
 | M6-T005 | platform health + volume | Standard / build | claude-subagent | done | 2026-10-11 11:16 CDT | see task file | a75e0ab |
 | M6-T006 | review list + stock bounds (D83, D84, D86) | Standard / build | claude-subagent | done | 2026-10-11 11:16 CDT | see task file | d5fdfbc |
-| M6-T007 | ROLE_PAGES + privacy sweep + make check join | Standard / build | claude-subagent | working | 2026-10-11 11:16 CDT | see task file | — |
+| M6-T007 | ROLE_PAGES + privacy sweep + make check join | Standard / build | claude-subagent | done | 2026-10-11 11:16 CDT | see task file | 5ffe173 |
 | M5.1-T001 | theme, fonts, sign-in band | Standard / build | claude-subagent | done | 2026-10-11 07:31 CDT | see task file | 9987db7 |
 | M5.1-T002 | provider screens | Standard / build | claude-subagent | done | 2026-10-11 07:31 CDT | see task file | 3880298 |
 | M5.1-T003 | patient screens | Standard / build | claude-subagent | done | 2026-10-11 07:31 CDT | see task file | caabf90 |
@@ -532,3 +532,5 @@ several harnesses read it and the repo is public.
 2026-10-11 12:12 CDT DISPATCH M6-T005 harness=claude-subagent why=wave 4 platform health
 2026-10-11 12:25 CDT VERIFY M6-T005 squashed a75e0ab: scope-guard OK (5 paths); supervisor make check exit 0 (337/43/44/5/5); M6 suite 43/44 (AT-030 owned by T007); open: no test pins the even-count median rule (Q-5)
 2026-10-11 12:25 CDT DISPATCH M6-T007 harness=claude-subagent why=last task: ROLE_PAGES, privacy sweep, make check join
+2026-10-11 12:42 CDT VERIFY M6-T007 squashed 5ffe173: scope-guard OK (2 paths); milestone make check exit 0 with M6 joined (all six suites)
+2026-10-11 12:42 CDT REVIEW M6 milestone: verifier pass 1 and check-security dispatched
