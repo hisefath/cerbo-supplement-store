@@ -155,6 +155,7 @@ several harnesses read it and the repo is public.
 | 2026-10-10 18:32 CDT | push + MR + merge to main: M4 close-out (route-failure retro record, D57-D69, REVIEW.md) | milestone/m4-close-retro@1836d05+ | "yes, open the MR and merge to main" |
 | 2026-10-10 19:05 CDT | CI decision option A: enable MacBook runner 245 on cerbo-supplement-store; add .gitlab-ci.yml running make check; factory rule to check CI after pushes and send deploy link + walkthrough (factory diff still needs its own G-L5) | chat card | "yes" (to "A (recommended): reuse runner 245.") · "yes" (to "A (recommended): enable your MacBook runner (245) on Cerbo and add a make check pipeline.") |
 | 2026-10-10 19:05 CDT | plan: do every "Left, in order" item (M4 loose ends, M5-R01 to M5-R03, M5, M6, in-EHR hardening); each phase gate is still asked one decision at a time | chat status | "yes, lets do it all" · "lets continue with all of them after the \"left in order\" tasks" |
+| 2026-10-10 19:25 CDT | CI option A (revised): a macOS shell-executor runner tagged macbook-shell (human creates and registers it; the token stays with the human); .gitlab-ci.yml targets that tag; runner 245 disabled for cerbo | chat card | "a, set up the shell runner" |
 
 ## Log
 
@@ -339,3 +340,4 @@ several harnesses read it and the repo is public.
 2026-10-10 18:06 CDT ROUTE design answer Q2 topic list: "a, project list from the factory default" (default Product, Data, Security, Money, Infrastructure, Process; changes are decisions)
 2026-10-10 18:12 CDT ROUTE design answer Q3: keep the chronological journal as the AI-usage ledger; topic + weight bucketing is a separate project-review document; embed it in the existing learning/review path (quiz-me) rather than a new one; Cerbo keeps its workflow-improvement history
 2026-10-10 18:35 CDT MERGE M4 close-out !5 (c6a9438) to main with a merge commit; main mirrored to GitHub (pre-push checks passed)
+2026-10-10 19:16 CDT CI pipeline 48487 failed: Colima VM disk 100% full (postgres initdb: no space left on device); human declined resizing or touching the VM: "no dont do this route, dont want to mess with that much memory or a vm"
