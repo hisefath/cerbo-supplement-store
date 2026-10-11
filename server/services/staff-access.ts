@@ -1,8 +1,10 @@
 // BE-18 StaffAccessService (lld.md §2, SEQ-10): operations roles change through the SRE alone, and every grant, removal
-// and refused attempt is logged (FR-054 to FR-056, INV-10). Staff are the users with no practice. The access log list
-// (accessLog, EP-38) joins this file in M6-T003.
+// and refused attempt is logged (FR-054 to FR-056, INV-10). Staff are the users with no practice. The finance lead reads
+// the log a month at a time, newest first (accessLog, EP-38, SEQ-11, FR-057).
+import { sql } from 'kysely'
 import { z } from 'zod'
 import { useDb } from '../utils/db'
+import { decodeCursor, encodeCursor, parseLimit, parsePeriod, type YearMonth } from '../utils/paging'
 import { ProblemError } from '../utils/problem'
 import { assertCanChangeRole } from './access-policy'
 import { now } from './clock'
@@ -107,4 +109,61 @@ export async function changeRole(actor: Viewer, targetUserId: bigint, input: Rol
     await tx.insertInto('access_log').values({ ...log, from_role: current.role, outcome: 'granted' }).execute()
     return member(actor, saved)
   })
+}
+
+/** openapi AccessLogEntry. */
+export interface AccessLogEntry {
+  at: string
+  actor_display_name: string
+  target_display_name: string
+  from_role: Role
+  to_role: Role
+  reason: string
+  outcome: 'granted' | 'refused'
+}
+/** openapi AccessLogPage. */
+export interface AccessLogPage {
+  data: AccessLogEntry[]
+  next_cursor: string | null
+}
+
+export const accessLogEntry = (r: { created_at: Date; actor: string; target: string; from_role: string; to_role: string; reason: string; outcome: string }): AccessLogEntry => ({
+  at: r.created_at.toISOString(),
+  actor_display_name: r.actor,
+  target_display_name: r.target,
+  from_role: r.from_role as Role,
+  to_role: r.to_role as Role,
+  reason: r.reason,
+  outcome: r.outcome as AccessLogEntry['outcome'],
+})
+
+/** EP-38: one month's grants, removals and refused attempts, newest first, keyset on (created_at DESC, id DESC) by
+ *  ix_access_log_created (BE-22). The caller checked FINANCE_ROLES; nothing is written. */
+export async function accessLog(_viewer: Viewer, month: YearMonth, cursor?: string, limit = 25): Promise<AccessLogPage> {
+  const { from, toExclusive } = parsePeriod({ month })
+  const n = parseLimit(String(limit), '#/limit')
+  const after = cursor ? decodeCursor(cursor, '#/cursor', true) : undefined
+  let q = useDb()
+    .selectFrom('access_log as l')
+    .innerJoin('users as a', 'a.id', 'l.actor_id')
+    .innerJoin('users as t', 't.id', 'l.target_user_id')
+    .select([
+      'l.id',
+      'l.created_at',
+      // The cursor key in BE-22's form, in UTC whatever the session time zone.
+      sql<string>`to_char(l.created_at at time zone 'UTC', 'YYYY-MM-DD HH24:MI:SS.US"+00"')`.as('key'),
+      'a.display_name as actor',
+      't.display_name as target',
+      'l.from_role',
+      'l.to_role',
+      'l.reason',
+      'l.outcome',
+    ])
+    .where('l.created_at', '>=', from)
+    .where('l.created_at', '<', toExclusive)
+  if (after) q = q.where(sql<boolean>`(l.created_at, l.id) < (${after.key}::timestamptz, ${after.id}::bigint)`)
+  const rows = await q.orderBy('l.created_at', 'desc').orderBy('l.id', 'desc').limit(n + 1).execute()
+  const page = rows.slice(0, n)
+  const last = page[page.length - 1]
+  return { data: page.map(accessLogEntry), next_cursor: rows.length > n && last ? encodeCursor(last.key, last.id) : null }
 }
