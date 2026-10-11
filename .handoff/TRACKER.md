@@ -544,3 +544,5 @@ several harnesses read it and the repo is public.
 2026-10-11 13:07 CDT MIGRATE production (human run, ahead of the merge): scripts/railway-setup.sh --skip-seed from the M6 branch checkout applied 1 migration (1760000014000_operations-access.sql); live code is still M5.2 c9b890d, which ignores the new tables; the M6 deploy needs no further migration
 2026-10-11 13:16 CDT NOTE DV-4: b789a54 (M5.1 ship records: MILESTONES M5.1 done, the c956959 deploy row) sits on the M6 branch because main is protected; records reach main with the next milestone MR (the same pattern as the 2026-10-11 08:35 CDT DV-5 NOTE); records only, no decision
 2026-10-11 13:22 CDT NOTE DV-6: the security checklist was not re-run after 898e55f because that fix touches one .vue file (dashboard cancel copy) and no security path
+2026-10-11 13:34 CDT MERGE M6 MR !12 -> main 18da349 (pipeline #50251 success on 04fbfa3); make check on main exit 0 (337/43/44/5/5/44)
+2026-10-11 13:34 CDT DEPLOY M6 18da349 → production web-v2 (deployment d3719e5b SUCCESS); SMOKE GREEN 7/0; pre-approved by "tell me when M6 is ready to deploy, also deploy it"
