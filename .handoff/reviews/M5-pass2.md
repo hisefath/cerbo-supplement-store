@@ -1,0 +1,39 @@
+# Verifier review — M5 pass 2 (scope: M5-T003 only)
+
+- Date: 2026-10-10 · Diff: `.handoff/reviews/M5-T003.patch` (2 files: `server/services/orders.ts`, `tests/unit/order-notices.test.ts`) · Reviewer: verifier (claude-opus-5-5)
+- Inputs read: `.handoff/reviews/M5-T003.patch`; in worktree `m5-t003`: `specs/M5-prices-and-stock/tasks/T003.md`, `specs/M5-prices-and-stock/tasks/T004.md` (header only, for FM-7 ownership), `specs/M5-prices-and-stock/acceptance.md`, `tests/acceptance/M5/prices.test.ts`, `docs/architecture/lld.md` (§1 price_changes/orders/order_lines/payment_attempts, §2 BE-9/BE-10, SEQ-2, SM-1, SM-2, §7, §8 FM-1..FM-9), `docs/design/screens.md#S2`, `server/services/orders.ts`, `server/services/payments.ts`, `app/pages/orders/[orderId].vue`
+
+## Findings
+
+| id | axis | severity | confidence | file:line | finding | evidence | suggested |
+|---|---|---|---|---|---|---|---|
+| R1 | tests-that-lie | P2 | high | tests/unit/order-notices.test.ts:109,128-132 | The "live hold" case builds held prices equal to the sent prices, so it would still pass if `orderViewLines` showed sent prices instead of held ones. AT-007 (prices.test.ts:157-159) has the same weakness (held = sent = $24.00). No test checks the FR-023 case where held ≠ sent (the price changed before checkout started). | `const held = rows.map((r) => ({ ...r, held_unit_price_cents: r.sent_unit_price_cents }))` … `expect(total(v)).toBe(6000)` | fix |
+| R2 | tests-that-lie | P3 | high | tests/unit/order-notices.test.ts:2 | `expireHoldIfDue` has no test in the suite that `make check` runs. It is proved only by `tests/acceptance/M5`, which `make check` does not run until the last M5 task (acceptance.md "Suites", Q-2). Until then, a regression in the hold ending stays green. | `The hold ending (expireHoldIfDue) is proved by tests/acceptance/M5.`; acceptance.md:59 "M5 is not run" | file |
+| R3 | correctness | P0 | high | server/services/orders.ts:231-245 | Ending a hold ignores a payment that is in flight. Path: `pay` transaction 1 commits while the hold is live (payments.ts:101-102), then the gateway call takes up to 10 s. If any EP-21 read lands after `prices_held_until` during that call, `expireHoldIfDue` sets the order back to `sent` and clears the held prices. `recordPayment` then refuses (`locked?.status !== 'in_checkout'`, payments.ts:217) after the gateway has already charged, and `closeAttempt` marks the attempt failed. Result: the patient is charged, the order is not paid, and there is no ledger. The order is now `sent`, so a provider can also cancel it (orders.ts:316). LLD FM-7 has `expireHoldIfDue` handle `processing` attempts; this code never checks `payment_attempts`. Before this diff, an ended hold left the status `in_checkout` and the payment completed. The window is narrow (gateway latency at the end of the hold), but it is reachable by an ordinary page refresh. | `.set({ status: 'sent', prices_held_until: null })` `.where('status', '=', 'in_checkout')` `.where('prices_held_until', '<=', sql<Date>`now()`)` (no condition on processing attempts); lld.md FM-7 "found by BE-9.expireHoldIfDue" | fix |
+| R4 | spec-fidelity | P2 | high | server/services/orders.ts:251 | This regresses the S2 "hold ended" state. An ended hold now comes back as `status: 'sent'`, so the page's only hold-ended banner (`order.status === 'in_checkout' && !order.prices_held_until`, app/pages/orders/[orderId].vue:60) can never show. screens.md S2 Edge data requires "Your 30-minute price hold ended. These are the current prices." OrderView has no other field that tells "hold ended" apart from "never checked out". The page is outside T003's `Owns:` (`app/components/patient-order/*`), so the fix needs a slicing decision. | `await expireHoldIfDue(orderId)`; [orderId].vue:60 `v-if="order.status === 'in_checkout' && !order.prices_held_until"` | fix |
+| R5 | security | P2 | high | server/services/orders.ts:251,271 | The state change runs before the access check. Any caller of EP-21 with any order id (ids are sequential, D40) triggers an `in_checkout → sent` write on an order they cannot see, and only afterwards gets not-found. BE-4 is described as "deny by default", and SM-1 lists the hold ending as a read side effect but not one an unauthorized caller should be able to cause. Together with R3, an outsider can force the transition at the worst moment. | line 251 `await expireHoldIfDue(orderId)` comes before line 271 `assertCanViewOrder(viewer, …)` | fix |
+| R6 | spec-fidelity | P3 | med | server/services/orders.ts:221-225 | Notices compare the sent price with today's price; the Ask says notices come "from the `price_changes` table", and BE-9 lists `price_changes` as a read table (index `ix_price_changes_practice_product_changed` "serves EP-21"). This matches lld.md order_lines ("the 'old price' of FR-022 notices"), but if the price goes $24 → $26 → $24, no notice shows. | `old_price_cents: r.sent_unit_price_cents, new_price_cents: lines[i]!.unit_price_cents` … `.filter((c) => c.old_price_cents !== c.new_price_cents)` | keep |
+| R7 | simplicity | P3 | high | server/services/orders.ts:210,279 | The "priced" rule is written twice (in `orderViewLines` and again in `getOrderForViewer` to decide whether to load current prices), so the two copies can drift apart. Also, `expireHoldIfDue` opens a transaction on every EP-21 read, even when nothing is due. | `const priced = ['paid', 'cancelled', 'needs_review'].includes(status) / (status === 'in_checkout' && holdLive)` (both lines) | file |
+
+No further correctness findings (checked: startCheckout vs expireHoldIfDue race: startCheckout's FOR UPDATE plus the conditional update's re-check under READ COMMITTED make it safe; null `prices_held_until` gives `hold_live` null, which is handled as not live; integer-cent line totals; cancelled/paid/needs_review prices unchanged from M4).
+
+## Coverage map
+
+| id | delivered by | test | verdict |
+|---|---|---|---|
+| FR-022 / AE-020 | server/services/orders.ts:209-227, 281 | tests/acceptance/M5/prices.test.ts::M5_AT_005; tests/unit/order-notices.test.ts:114-127 | covered |
+| FR-023 | orders.ts:214 (held price on EP-21); startCheckout (M4, unchanged) | M5_AT_006 (receipt only); unit test :128 (held = sent, see R1) | partial |
+| FR-024 / AE-021 | payments.ts (M4, unchanged; reads held prices) | M5_AT_006 | covered |
+| FR-037 / AE-035 | orders.ts:231-245, 251 | M5_AT_007 (not in `make check`, R2) | partial: API covered; S2 hold-ended copy regressed (R4); in-flight payment race (R3) |
+| SM-1 "hold ends" | orders.ts:231-245 | M5_AT_007 | partial: only called from `getOrderForViewer`. LLD BE-9 also lists `startCheckout` and `BE-10.pay` as callers; startCheckout handles an ended hold itself, and pay returns checkout-expired |
+| FM-7 (expireHoldIfDue reconciles processing attempts > 2 min) | — | — | missing in this diff; possibly owned by another M5 task (see Not reviewed) |
+
+## Not reviewed
+
+- `docs/architecture/contracts/openapi.yaml` (OrderView, PriceChangeNotice): not opened. The diff does not touch the `OrderView` interface or field names (orders.ts:184-195 unchanged), so the field-name Must-not-change was checked against the code only.
+- `docs/product/prd.md`: not opened. FR and AE text was taken verbatim from T003.md, which quotes it.
+- `docs/decisions/DECISION_JOURNAL.md`: not read. D-ids were checked only as T003's Must-not-change lists them.
+- Whether FM-7 reconcile belongs to M5-T002 or T005: those task files were not read in full. If neither owns it, the FM-7 row above becomes a fix.
+- `app/components/patient-order/*`: no file in the diff. I could not list the directory (no Glob in this session), so I don't know if it contains anything.
+- Runtime behaviour, including the Done-when count and `make check`: needs running (no Bash).
+- Worker self-reports (`.handoff/runs/**`): never read, as required.

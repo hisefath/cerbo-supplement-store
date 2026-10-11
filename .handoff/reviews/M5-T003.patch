@@ -1,0 +1,140 @@
+diff --git a/server/services/orders.ts b/server/services/orders.ts
+index ab9806a..3c94d92 100644
+--- a/server/services/orders.ts
++++ b/server/services/orders.ts
+@@ -194,10 +194,61 @@ export interface OrderView {
+   is_test_payment: true
+ }
+ 
++export interface OrderLineRow {
++  product_id: string
++  product_name: string
++  quantity: number
++  sent_unit_price_cents: number
++  held_unit_price_cents: number | null
++  paid_unit_price_cents: number | null
++}
++
++/** EP-21 lines (FR-022, FR-023): paid -> the paid prices; cancelled -> the sent prices, frozen (SM-1); a live hold
++ *  (or needs_review) -> the held prices; otherwise `current` (today's practice prices), with a notice for each line
++ *  whose price moved since the order was sent (the sent price is the notice's old price, lld.md order_lines). */
++export function orderViewLines(status: string, holdLive: boolean, rows: OrderLineRow[], current: Map<bigint, number>) {
++  const priced = ['paid', 'cancelled', 'needs_review'].includes(status) || (status === 'in_checkout' && holdLive)
++  const price = (r: OrderLineRow): number => {
++    if (status === 'paid') return r.paid_unit_price_cents ?? r.sent_unit_price_cents
++    if (status === 'cancelled') return r.sent_unit_price_cents
++    if (priced) return r.held_unit_price_cents ?? r.sent_unit_price_cents
++    return current.get(BigInt(r.product_id)) ?? r.sent_unit_price_cents
++  }
++  const lines: OrderLine[] = rows.map((r) => {
++    const unit = price(r)
++    return { product_id: Number(r.product_id), name: r.product_name, quantity: r.quantity, unit_price_cents: unit, line_total_cents: unit * r.quantity }
++  })
++  const price_changes: PriceChangeNotice[] = priced
++    ? []
++    : rows
++        .map((r, i) => ({ product_id: Number(r.product_id), name: r.product_name, old_price_cents: r.sent_unit_price_cents, new_price_cents: lines[i]!.unit_price_cents }))
++        .filter((c) => c.old_price_cents !== c.new_price_cents)
++  return { lines, price_changes }
++}
++
++/** SM-1 "hold ends" (FR-037): an in_checkout order whose hold has passed goes back to sent, its held prices cleared,
++ *  so it follows today's prices again. One conditional update: a payment racing it can't both win. */
++export async function expireHoldIfDue(orderId: bigint): Promise<void> {
++  await useDb()
++    .transaction()
++    .execute(async (trx) => {
++      const expired = await trx
++        .updateTable('orders')
++        .set({ status: 'sent', prices_held_until: null })
++        .where('id', '=', orderId.toString())
++        .where('status', '=', 'in_checkout')
++        .where('prices_held_until', '<=', sql<Date>`now()`)
++        .returning('id')
++        .executeTakeFirst()
++      if (expired) await trx.updateTable('order_lines').set({ held_unit_price_cents: null }).where('order_id', '=', expired.id).execute()
++    })
++}
++
+ /** EP-21 (FR-005, FR-009, FR-022, FR-037): the order's patient or a provider of its practice sees every line.
+  *  Paid: the paid prices. A live hold: the held prices. Otherwise today's prices, with a notice for each line whose
+  *  price moved since the order was sent. Anyone else, or an unknown id, gets not-found. */
+ export async function getOrderForViewer(viewer: Viewer, orderId: bigint): Promise<OrderView> {
++  await expireHoldIfDue(orderId)
+   const db = useDb()
+   const o = await db
+     .selectFrom('orders')
+@@ -225,24 +276,9 @@ export async function getOrderForViewer(viewer: Viewer, orderId: bigint): Promis
+     .where('order_id', '=', o.id)
+     .orderBy('id')
+     .execute()
+-  // A cancelled order shows its sent prices, frozen (SM-1), the same prices cancelOrder returns.
+   const priced = ['paid', 'cancelled', 'needs_review'].includes(o.status) || (o.status === 'in_checkout' && o.hold_live)
+   const current = priced ? new Map<bigint, number>() : await currentPrices(BigInt(o.practice_id), rows.map((r) => BigInt(r.product_id)))
+-  const price = (r: (typeof rows)[number]): number => {
+-    if (o.status === 'paid') return r.paid_unit_price_cents ?? r.sent_unit_price_cents
+-    if (o.status === 'cancelled') return r.sent_unit_price_cents
+-    if (priced) return r.held_unit_price_cents ?? r.sent_unit_price_cents
+-    return current.get(BigInt(r.product_id)) ?? r.sent_unit_price_cents
+-  }
+-  const lines = rows.map((r) => {
+-    const unit = price(r)
+-    return { product_id: Number(r.product_id), name: r.product_name, quantity: r.quantity, unit_price_cents: unit, line_total_cents: unit * r.quantity }
+-  })
+-  const price_changes = priced
+-    ? []
+-    : rows
+-        .map((r, i) => ({ product_id: Number(r.product_id), name: r.product_name, old_price_cents: r.sent_unit_price_cents, new_price_cents: lines[i]!.unit_price_cents }))
+-        .filter((c) => c.old_price_cents !== c.new_price_cents)
++  const { lines, price_changes } = orderViewLines(o.status, o.hold_live, rows, current)
+ 
+   return {
+     order_id: Number(o.id),
+diff --git a/tests/unit/order-notices.test.ts b/tests/unit/order-notices.test.ts
+new file mode 100644
+index 0000000..26f3d9b
+--- /dev/null
++++ b/tests/unit/order-notices.test.ts
+@@ -0,0 +1,42 @@
++// BE-9 OrderService pure part (lld.md §2, SM-1, SEQ-2): which price each line of EP-21 shows and which lines get a
++// price change notice (FR-022, FR-023, FR-037). The hold ending (expireHoldIfDue) is proved by tests/acceptance/M5.
++import { describe, expect, it } from 'vitest'
++import { orderViewLines } from '../../server/services/orders'
++
++// Ana's order: Vitamin D3 x2 at $18.00, Magnesium Glycinate x1 at $24.00; Dr. Chen then moves Magnesium to $26.00.
++const rows = [
++  { product_id: '1', product_name: 'Vitamin D3', quantity: 2, sent_unit_price_cents: 1800, held_unit_price_cents: null, paid_unit_price_cents: null },
++  { product_id: '2', product_name: 'Magnesium Glycinate', quantity: 1, sent_unit_price_cents: 2400, held_unit_price_cents: null, paid_unit_price_cents: null },
++]
++const held = rows.map((r) => ({ ...r, held_unit_price_cents: r.sent_unit_price_cents }))
++const current = new Map([[1n, 1800], [2n, 2600]])
++const total = (v: ReturnType<typeof orderViewLines>) => v.lines.reduce((s, l) => s + l.line_total_cents, 0)
++
++describe('orderViewLines: EP-21 lines and notices', () => {
++  it('a sent order shows today\'s prices and a notice for the changed item (AE-020)', () => {
++    const v = orderViewLines('sent', false, rows, current)
++    expect(total(v)).toBe(6200)
++    expect(v.lines[1]).toEqual({ product_id: 2, name: 'Magnesium Glycinate', quantity: 1, unit_price_cents: 2600, line_total_cents: 2600 })
++    expect(v.price_changes).toEqual([{ product_id: 2, name: 'Magnesium Glycinate', old_price_cents: 2400, new_price_cents: 2600 }])
++  })
++  it('no change, no notice', () => {
++    const v = orderViewLines('sent', false, rows, new Map([[1n, 1800], [2n, 2400]]))
++    expect(total(v)).toBe(6000)
++    expect(v.price_changes).toEqual([])
++  })
++  it('a payment_failed order follows today\'s prices too', () => {
++    expect(orderViewLines('payment_failed', false, rows, current).price_changes).toHaveLength(1)
++  })
++  it('a live hold shows the held prices and no notice (AE-021, FR-023)', () => {
++    const v = orderViewLines('in_checkout', true, held, current)
++    expect(total(v)).toBe(6000)
++    expect(v.price_changes).toEqual([])
++  })
++  it('a paid order shows the paid prices; a cancelled one its sent prices, frozen', () => {
++    const paid = rows.map((r) => ({ ...r, paid_unit_price_cents: r.sent_unit_price_cents + 100 }))
++    expect(total(orderViewLines('paid', false, paid, current))).toBe(6300)
++    expect(orderViewLines('paid', false, paid, current).price_changes).toEqual([])
++    expect(total(orderViewLines('cancelled', false, rows, current))).toBe(6000)
++    expect(orderViewLines('cancelled', false, rows, current).price_changes).toEqual([])
++  })
++})

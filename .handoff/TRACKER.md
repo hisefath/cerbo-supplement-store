@@ -26,10 +26,10 @@ several harnesses read it and the repo is public.
 | M5-R03 | F22: M5 scope in the PRD (patient order list /orders 404, provider view of EP-4, needs-review amounts, copy gaps) | Standard / clarify-spec | supervisor | todo | 2026-10-10 18:31 CDT | docs/product/prd.md | — |
 | M4-CI01 | CI on the MacBook runner: enable runner 245, .gitlab-ci.yml running make check | Fix / supervisor | supervisor (claude-opus-5-5) | done | 2026-10-10 19:05 CDT | .gitlab-ci.yml | — |
 | M5-T001 | Provider changes a practice price (specs/M5-prices-and-stock/tasks/T001.md) | Standard / implement-task | claude-subagent | done | 2026-10-10 21:09 CDT | see task file | 135b9ca |
-| M5-T002 | Payment reserves and releases stock (specs/M5-prices-and-stock/tasks/T002.md) | Standard / implement-task | claude-subagent | working | 2026-10-10 21:09 CDT | see task file | — |
+| M5-T002 | Payment reserves and releases stock (specs/M5-prices-and-stock/tasks/T002.md) | Standard / implement-task | claude-subagent | done | 2026-10-10 21:09 CDT | see task file | f5bb975 |
 | M5-T003 | Patients see price change notices (specs/M5-prices-and-stock/tasks/T003.md) | Standard / implement-task | claude-subagent | working | 2026-10-10 21:09 CDT | see task file | — |
-| M5-T004 | Platform staff adjust stock (specs/M5-prices-and-stock/tasks/T004.md) | Standard / implement-task | claude-subagent | todo | 2026-10-10 21:09 CDT | see task file | — |
-| M5-T005 | Provider opens the practice dashboard (specs/M5-prices-and-stock/tasks/T005.md) | Standard / implement-task | claude-subagent | todo | 2026-10-10 21:09 CDT | see task file | — |
+| M5-T004 | Platform staff adjust stock (specs/M5-prices-and-stock/tasks/T004.md) | Standard / implement-task | claude-subagent | working | 2026-10-10 21:09 CDT | see task file | — |
+| M5-T005 | Provider opens the practice dashboard (specs/M5-prices-and-stock/tasks/T005.md) | Standard / implement-task | claude-subagent | working | 2026-10-10 21:09 CDT | see task file | — |
 | M5-T006 | M5 joins checks and menu (specs/M5-prices-and-stock/tasks/T006.md) | Standard / implement-task | claude-subagent | todo | 2026-10-10 21:09 CDT | see task file | — |
 
 ## Approvals
@@ -170,6 +170,7 @@ several harnesses read it and the repo is public.
 | 2026-10-10 21:01 CDT | G4 acceptance part (Q-2 to Q-5 recommendations taken at G4; Q-6 open) | specs/M5-prices-and-stock/acceptance.md@f0e77db + tests/acceptance/M5 | "Approve, then /slice-tasks" |
 | 2026-10-10 21:09 CDT | G4 | specs/M5-prices-and-stock/tasks@5175bac (6 tasks, option a) + acceptance.md@f0e77db | "Approve, then go M5" |
 | 2026-10-10 21:27 CDT | M5-T001 review dispositions (pass 1), option a: relaunch T001 to fix R1 (dialog focus trap), R4 (validation message), R9 (EDGE labels, toHundredths test); file R2, R3, R5, R6, R8 to design catch-up and milestone review; keep R7 | .handoff/reviews/M5-pass1.md; m5/t001-provider-changes-a-practice-price@28f085e | "a, relaunch T001 with R1, R4, R9" |
+| 2026-10-10 21:51 CDT | M5-T002 review dispositions (pass 3), option a: relaunch T002 to fix R2 (test the FM-3 stock release), R3 (one-in-flight check before reserving stock); R1 to define-acceptance; R5, R6 to design catch-up; keep R7, R8; R4 (FM-7 reconcile) moves into the M5-T003 relaunch | .handoff/reviews/M5-pass3.md; m5/t002-payment-reserves-and-releases-stock@db27aeb | "a, relaunch T002 with R2, R3" |
 
 ## Log
 
@@ -373,3 +374,9 @@ several harnesses read it and the repo is public.
 2026-10-10 21:35 CDT VERIFY M5-T001 squashed 135b9ca: relaunch result done; scope-guard OK; supervisor Done-when exit 0 (10/10 ATs; make check OK 144 unit + 43 M4); no new dependency
 2026-10-10 21:35 CDT DISPATCH M5-T002 harness=claude-subagent why=wave 2 (after M5-T001), parallel with the other wave-2 task (disjoint Owns); worktree .claude/worktrees/m5-t002
 2026-10-10 21:35 CDT DISPATCH M5-T003 harness=claude-subagent why=wave 2 (after M5-T001), parallel with the other wave-2 task (disjoint Owns); worktree .claude/worktrees/m5-t003
+2026-10-10 21:46 CDT REVIEW M5 pass 2 (M5-T003): 7 rows; R3 P0 confirmed by supervisor in code (hold ending during an in-flight payment charges without marking paid)
+2026-10-10 21:49 CDT REVIEW M5 pass 3 (M5-T002): 8 rows, no P0/P1; R4 FM-7 reconcile missing (shared with pass 2 R3)
+2026-10-10 21:51 CDT DISPATCH M5-T002 relaunch harness=claude-subagent why=review pass 3 fixes R2, R3 (resumed run on the same branch)
+2026-10-10 21:58 CDT VERIFY M5-T002 squashed f5bb975: relaunch done; scope-guard OK; supervisor Done-when exit 0 (3/3 ATs; make check OK 154 unit + 43 M4)
+2026-10-10 21:58 CDT DISPATCH M5-T004 harness=claude-subagent why=wave 3 (after M5-T002), parallel with the other wave-3 task (disjoint Owns); worktree .claude/worktrees/m5-t004
+2026-10-10 21:58 CDT DISPATCH M5-T005 harness=claude-subagent why=wave 3 (after M5-T002), parallel with the other wave-3 task (disjoint Owns); worktree .claude/worktrees/m5-t005
