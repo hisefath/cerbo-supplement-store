@@ -150,6 +150,8 @@ describe('US-3 the database refuses bad money (Q-2, Q-3)', () => {
     expect(b.status).toBe(201)
     const set = (cost: number) =>
       `update orders set status = 'paid', paid_at = now(), amount_paid_cents = 6000, item_cost_cents = ${cost}, provider_payout_cents = 2955, platform_fee_cents = 45 where id = $1`
+    // LINV-1 (ct_order_lines_fee_shares_sum): a paid order's line fee shares add up to its fee, so the twin gets its 45 first
+    expect(await sqlError(OWNER_URL, 'update order_lines set fee_share_cents = case when id = (select min(id) from order_lines where order_id = $1) then 45 else 0 end where order_id = $1', [a.body.order_id])).toBeNull()
     expect(await sqlError(OWNER_URL, set(3000), [a.body.order_id])).toBeNull()
     const err = await sqlError(OWNER_URL, set(2999), [b.body.order_id])
     expect(err?.constraint).toBe('ck_orders_split_balances')
