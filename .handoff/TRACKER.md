@@ -415,3 +415,4 @@ several harnesses read it and the repo is public.
 2026-10-10 23:37 CDT FAIL M5-T008 scope-guard exit 1: Owns path app/pages/orders/[orderId].vue read as a glob class (scripts/scope-guard.sh case $f in $p); worker did not commit
 2026-10-10 23:37 CDT VERIFY M5-T008 squashed 0b79027: manual scope check (2 files, both exact Owns paths); worker make check exit 0; diff read by supervisor
 2026-10-10 23:37 CDT FIX pay after an ended hold answered invalid-transition (T007 regression, T008 Q2): AT-042 repro then payments.ts fix; make check exit 0 (M5 42); specs/bugs/pay-after-hold-ended-says-already-paid.md
+2026-10-10 23:37 CDT DISPATCH M5-T009 harness=claude-subagent why=S7 stock page fixes (serial); worktree .claude/worktrees/m5-t009
