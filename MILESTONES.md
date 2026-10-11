@@ -13,7 +13,7 @@ LLD); `slice-tasks` adds each implementation milestone's row at G4; the supervis
 
 | id | goal | tasks | D-ids | MR | status | gate SHAs | merge SHA | main-check SHA | tag |
 |---|---|---|---|---|---|---|---|---|---|
-| M1 | Research: brief + cited research (docs only) | — | D18-D23 | — | in-progress | — | — | — | — |
-| M2 | Product: PRD + clarifications (docs only) | — | — | — | planned | — | — | — | — |
-| M3 | Design: HLD, LLD, DB design, API contract, diagrams (docs only) | — | — | — | planned | — | — | — | — |
-| M4 | Each person signs in; provider sends an order, patient pays once, the split is recorded and shown to the cent | 11 tasks: T001–T011 | D33, D36, D39, D40, D41, D42, D44 | — | in-progress | G1@998ed94 G2@fea2e18 G3@5a984b8 | — | — | — |
+| M1 | Research: brief + cited research (docs only) | — | D18-D24 | !1 | done | G0 (TRACKER Approvals) | 8ddfc80 | c6a9438 | — |
+| M2 | Product: PRD + clarifications (docs only) | — | D25-D31 | !2 | done | G1@998ed94 | 371224a | c6a9438 | — |
+| M3 | Design: HLD, LLD, DB design, API contract, diagrams (docs only) | — | D32-D44 | !3 | done | G2@fea2e18 G3@5a984b8 | 8377ce0 | c6a9438 | — |
+| M4 | Each person signs in; provider sends an order, patient pays once, the split is recorded and shown to the cent | 11 tasks: T001–T011 (+ T901–T903 deploy gaps) | D45-D56 (close-out D57-D69) | !4 (close-out !5) | done | G1@998ed94 G2@fea2e18 G3@5a984b8 G5@2604a27 | 10a020e (close-out c6a9438) | c6a9438 | — |
