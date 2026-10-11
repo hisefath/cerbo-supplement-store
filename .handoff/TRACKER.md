@@ -246,6 +246,7 @@ several harnesses read it and the repo is public.
 | 2026-10-11 13:16 CDT | G5 Revise (M6 report recommendation): answer DV-4 (a) with a Log NOTE; MILESTONES M6 row gets G4 sha and D88, D89 (DV-7); re-run report-milestone | docs/milestones/M6.md (draft 13:12) | STANDING row 2026-10-10 23:09 CDT |
 | 2026-10-11 13:22 CDT | G5 Merge (M6 report recommendation; 4 clauses yes; 0 open P0/P1; 0 unaccepted high/critical) | docs/milestones/M6.md@d4e0da1 | STANDING row 2026-10-10 23:09 CDT |
 | 2026-10-11 13:53 CDT | G1 (clarify CQ-9: M6.1 Patient orders, AE-067) + G-ux (S16) + G3 (EP-42, BE-9.listOrdersForPatient, FE-27, ROLE_PAGES.patient) + G4 (AT-001..005, T001; M5.2 AT-001 accepts S15 or the S16 redirect) | prd.md, screens.md, flows.md, lld.md, openapi.yaml, specs/M6.1-patient-orders on milestone/m6.1-patient-orders | "go ahead with M5-R03, the patient order list" · STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-11 13:58 CDT | deploy (pre-approved): the M6.1 merge commit → Railway production (web-v2), once merged on green CI; no migration | M6.1 MR (not yet opened) | "tell me when M6.1 is ready to deploy, also deploy it" |
 
 ## Log
 
