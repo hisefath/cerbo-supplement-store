@@ -224,6 +224,7 @@ several harnesses read it and the repo is public.
 | 2026-10-11 10:12 CDT | G5 SEC-15 | docs/security/CHECKLIST.md@e94fe57 | accept — STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
 | 2026-10-11 10:12 CDT | G5 security part (M5.2): approve checklist (0 reachable critical/high) | docs/security/CHECKLIST.md@e94fe57 | STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
 | 2026-10-11 10:12 CDT | deploy (pre-approved): the M5.2 merge commit → Railway production (web-v2), once merged on green CI | MR !11 | "tell me when M5.2 is ready to deploy, also deploy it" |
+| 2026-10-11 10:22 CDT | G5 Merge (M5.2 report recommendation; 4 clauses yes; 0 open P0/P1; 0 unaccepted high/critical) | docs/milestones/M5.2.md@8f18a05 | STANDING row 2026-10-10 23:09 CDT |
 
 ## Log
 
