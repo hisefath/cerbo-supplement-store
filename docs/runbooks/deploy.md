@@ -6,7 +6,7 @@
 | Services | v2 demo: a new web service `web-v2` and a new managed PostgreSQL `postgres-v2` in project `cerbo-supplement-store` (to be created, FS-2). The project's existing `app` service and `Postgres` database run the v1 Laravel build and stay untouched (D22) |
 | Environments | production (Railway environment `production`): v2 demo at https://web-v2-production-6640.up.railway.app · v1 at https://supplement-store-slice.up.railway.app (not this release) |
 | Method | clean `git archive` upload of the release SHA with `railway up --path-as-root` |
-| Current release | M5.2 @ c9b890d — see §8 |
+| Current release | M6 @ 18da349 — see §8 |
 | Last updated | 2026-10-10 16:52 CDT |
 | Written by | ship-milestone (Claude Code, claude-opus-5-5) |
 | Approvals | deploy and rollback yes-es live in `.handoff/TRACKER.md ## Approvals` (never in this file) |
@@ -153,6 +153,7 @@ Never add `-y`, `--yes` or `--new` to `railway up`, and never deploy without `--
 | 2026-10-11 06:59 CDT | production (web-v2) | M5 from main | 220a971 | 2026-10-11 ("yes, deploy 220a971 to production") | 220a971f8ea2847d9e680238a2dda0ae55df0f30 | SMOKE GREEN: 7 passed, 0 failed against https://web-v2-production-6640.up.railway.app at 220a971f8ea2847d9e680238a2dda0ae55df0f30 (TLS verified) | live; deployment 373e2d7d; migrations 1760000012000, 1760000013000 applied first by `scripts/railway-setup.sh --skip-seed` (human run); rollback target 21e295fd (158fb11) |
 | 2026-10-11 09:18 CDT | production (web-v2) | M5.1 from main | c956959 | 2026-10-11 ("yes, deploy c956959 to production") | c95695976dc9c0c60423a91cbf82f68a8d2bf063 | SMOKE GREEN: 7 passed, 0 failed against https://web-v2-production-6640.up.railway.app at c95695976dc9c0c60423a91cbf82f68a8d2bf063 (TLS verified) | live; deployment b3c00832; no migrations; self-hosted fonts served 200 font/woff2 from /_nuxt/; rollback target 373e2d7d (220a971) |
 | 2026-10-11 10:31 CDT | production (web-v2) | M5.2 from main | c9b890d | 2026-10-11 ("tell me when M5.2 is ready to deploy, also deploy it") | c9b890d2762ac9d45468811e88218830162d8090 | SMOKE GREEN: 7 passed, 0 failed against https://web-v2-production-6640.up.railway.app at c9b890d2762ac9d45468811e88218830162d8090 (TLS verified) | live; deployment 5224c9ca; no migrations; signed-out / and unknown pages 303 to sign-in; rollback target b3c00832 (c956959) |
+| 2026-10-11 13:34 CDT | production (web-v2) | M6 from main | 18da349 | 2026-10-11 ("tell me when M6 is ready to deploy, also deploy it") | 18da3496c9669d200c8a31e3a6d68422fb6e13e4 | SMOKE GREEN: 7 passed, 0 failed against https://web-v2-production-6640.up.railway.app at 18da3496c9669d200c8a31e3a6d68422fb6e13e4 (TLS verified) | live; deployment d3719e5b; migration 1760000014000 applied earlier by the human-run railway-setup.sh --skip-seed; M6 pages 303 and finance API 401 when signed out; rollback target 5224c9ca (c9b890d) |
 
 ## 9. Open questions
 
