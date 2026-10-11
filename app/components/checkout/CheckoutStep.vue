@@ -7,6 +7,7 @@ import type { Receipt } from './ReceiptView.vue'
 export interface CheckoutOrder {
   order_id: number
   total_cents: number
+  lines: { product_id: number; name: string }[]
 }
 interface Checkout {
   order_id: number
@@ -28,6 +29,15 @@ const heldUntil = computed(() =>
   checkout.value ? new Date(checkout.value.prices_held_until).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '',
 )
 const total = computed(() => checkout.value?.total_cents ?? props.order.total_cents)
+// FR-026, S2: name every item the payment found short of stock, by its name on this order.
+const soldOut = computed(() => {
+  const names = (problem.value?.productIds ?? []).map(
+    (id) => props.order.lines.find((l) => l.product_id === id)?.name ?? 'An item',
+  )
+  if (names.length === 0) names.push('An item')
+  const list = names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`
+  return `${list} sold out before you paid. Nothing was charged. Contact your practice to change your order.`
+})
 
 async function run<T>(fn: () => Promise<T>): Promise<T | undefined> {
   busy.value = true
@@ -59,6 +69,10 @@ async function payNow() {
     }),
   )
   if (r) emit('paid', r)
+  // The hold ended unpaid, or the order already moved on (paid, failed, cancelled): back to the order, which
+  // refetches EP-21 and shows its real state (FE-7, FR-037; M5-pass7 R2).
+  else if (problem.value?.type === '/problems/checkout-expired' || problem.value?.type === '/problems/invalid-transition')
+    emit('back')
   // A refused payment took no money; the next press is a new request (FR-035).
   else if (problem.value?.type && problem.value.type !== '/problems/offline') key.value = null
 }
@@ -84,8 +98,7 @@ async function payNow() {
         :copy="{
           'payment-failed': 'Your payment didn\'t go through. No money was taken. Try again.',
           'order-under-review': 'We couldn\'t complete this payment. No money was taken. Your practice will contact you.',
-          'checkout-expired': 'Your 30-minute price hold ended. These are the current prices.',
-          'invalid-transition': 'This order is already paid.',
+          'insufficient-stock': soldOut,
           internal: 'We couldn\'t complete your payment. No money was taken. Try again.',
           offline: 'You\'re offline. No money was taken. Try again when you\'re back online.',
         }"

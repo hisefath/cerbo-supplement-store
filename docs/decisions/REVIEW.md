@@ -9,7 +9,7 @@ Weight: ●●● critical (hard to undo, or touches money, personal data or sig
 
 ## By topic
 
-### Product (10)
+### Product (11)
 
 - ●●● D25 — Money path first, HIPAA-ready, campaigns later.
 - ●●○ D27 — Live payout builder, two-step patient checkout, equation-first audit.
@@ -19,6 +19,7 @@ Weight: ●●● critical (hard to undo, or touches money, personal data or sig
 - ●○○ D31 — UX contract extended to M6: 14 screens, every key screen demoed.
 - ●○○ D43 — Broader holistic-care products parked as a future non-goal.
 - ●○○ D53 — Order quantity unbounded until stock limits exist.
+- ●○○ D75 — The cluely-inspired restyle is its own milestone, M5.1, after M5.
 - ●○○ ~~D12~~ — v1: order cancel added to scope. (replaced by D22)
 - ●○○ ~~D14~~ — v1: neutral branding on the public demo. (replaced by D22)
 
@@ -33,7 +34,7 @@ Weight: ●●● critical (hard to undo, or touches money, personal data or sig
 - ●○○ D56 — Demo database runs PostgreSQL 18 while tests run 16.
 - ●○○ ~~D11~~ — v1: one stock path through a single method. (replaced by D22)
 
-### Security (6)
+### Security (10)
 
 - ●●● D26 — Sign-in, notices without health details, no patient identity for platform staff.
 - ●●○ D37 — Seeded test accounts with server-side sessions.
@@ -41,6 +42,10 @@ Weight: ●●● critical (hard to undo, or touches money, personal data or sig
 - ●○○ D49 — node-forge advisory accepted: Nuxt dev tooling only.
 - ●○○ D50 — braces advisory accepted: build tooling only.
 - ●○○ D51 — simple-git advisory accepted: Nuxt devtools only.
+- ●○○ D72 — Session and notice tokens come straight from randomBytes; no test seam.
+- ●○○ D76 — Stock limits now cap quantity; the overflow 500 stays accepted.
+- ●○○ D77 — Absurd staff input gives a 500, not a 422; accepted, no harm.
+- ●○○ D78 — GET of an order may end a due hold; accepted, access-checked.
 
 ### Money (8)
 
@@ -65,7 +70,7 @@ Weight: ●●● critical (hard to undo, or touches money, personal data or sig
 - ●●○ ~~D34~~ — Pages and logic deploy together as one app. (replaced by D36)
 - ●○○ ~~D7~~ — v1: outside services stubbed behind seams. (replaced by D22)
 
-### Process (30)
+### Process (33)
 
 - ●●● D18 — Restarted from scratch on a milestone branch with the gated workflow.
 - ●●● D22 — The v1 build in main is set aside: never read, cited or reused.
@@ -79,6 +84,8 @@ Weight: ●●● critical (hard to undo, or touches money, personal data or sig
 - ●●○ D63 — Versions in design decisions cite a registry check.
 - ●●○ D65 — A generated topic-and-weight review sits beside the chronological ledger, checked by make check.
 - ●●○ D70 — Every push runs make check on the MacBook shell runner; merge only on green.
+- ●●○ D73 — The design caught up with M4's code before M5 builds on it.
+- ●●○ D74 — M5 is six vertical slices: price change first, stock at payment second.
 - ●○○ D19 — Docs-only rules until the stack was designed.
 - ●○○ D20 — Harness findings F1–F3 routed at M1 close.
 - ●○○ D23 — Full track for the M1 brief.
@@ -93,6 +100,7 @@ Weight: ●●● critical (hard to undo, or touches money, personal data or sig
 - ●○○ D68 — log-decision starts the journal from the kit template when none exists.
 - ●○○ D69 — Three product fixes queued for M5; eight one-offs logged, not fixed.
 - ●○○ D71 — Cerbo's MR template asks for the green pipeline link.
+- ●○○ D79 — M5 adds an 11th task for review fixes, like M4.
 - ●○○ ~~D9~~ — v1: diagrams as .mmd sources with embedded copies. (replaced by D22)
 - ●○○ ~~D10~~ — v1: changes from a design-review panel accepted. (replaced by D22)
 - ●○○ ~~D15~~ — v1: repo visibility stays the human's step. (replaced by D22)
@@ -121,8 +129,19 @@ Decisions that adopted a software-factory-kit change (H) and the finding (F) beh
 
 ## By day
 
+### 2026-10-11
+
+- D79 · Process · ●○○ — M5 adds an 11th task for review fixes, like M4.
+
 ### 2026-10-10
 
+- D78 · Security · ●○○ — GET of an order may end a due hold; accepted, access-checked.
+- D77 · Security · ●○○ — Absurd staff input gives a 500, not a 422; accepted, no harm.
+- D76 · Security · ●○○ — Stock limits now cap quantity; the overflow 500 stays accepted.
+- D75 · Product · ●○○ — The cluely-inspired restyle is its own milestone, M5.1, after M5.
+- D74 · Process · ●●○ — M5 is six vertical slices: price change first, stock at payment second.
+- D73 · Process · ●●○ — The design caught up with M4's code before M5 builds on it.
+- D72 · Security · ●○○ — Session and notice tokens come straight from randomBytes; no test seam.
 - D71 · Process · ●○○ — Cerbo's MR template asks for the green pipeline link.
 - D70 · Process · ●●○ — Every push runs make check on the MacBook shell runner; merge only on green.
 - D69 · Process · ●○○ — Three product fixes queued for M5; eight one-offs logged, not fixed.

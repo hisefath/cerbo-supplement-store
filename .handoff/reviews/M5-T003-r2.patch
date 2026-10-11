@@ -1,0 +1,270 @@
+diff --git a/server/services/orders.ts b/server/services/orders.ts
+index 3c94d92..3bc8f13 100644
+--- a/server/services/orders.ts
++++ b/server/services/orders.ts
+@@ -8,6 +8,7 @@ import { currentPrices, loadPatient } from './catalog'
+ import { sendOrderNotice } from './messaging'
+ import { belowFloorProductIds, lowestAllowedPriceCents, payoutCents, platformFeeCents } from './money'
+ import type { Viewer } from './session'
++import { releaseForOrder } from './stock'
+ 
+ export interface SendOrderInput {
+   patientId: bigint
+@@ -227,20 +228,44 @@ export function orderViewLines(status: string, holdLive: boolean, rows: OrderLin
+ }
+ 
+ /** SM-1 "hold ends" (FR-037): an in_checkout order whose hold has passed goes back to sent, its held prices cleared,
+- *  so it follows today's prices again. One conditional update: a payment racing it can't both win. */
++ *  so it follows today's prices again. The order row is locked first, as BE-10.pay locks it, so the two take turns.
++ *  A payment in flight keeps the hold (R3): once the gateway has charged, recordPayment needs in_checkout. One that
++ *  has been processing for 2 minutes is abandoned (FM-7, SM-2): the process died between pay's two transactions, so
++ *  in the stub it is treated as no answer: attempt failed, stock returned, order payment_failed ("Try again"). */
+ export async function expireHoldIfDue(orderId: bigint): Promise<void> {
++  const id = orderId.toString()
+   await useDb()
+     .transaction()
+     .execute(async (trx) => {
+-      const expired = await trx
+-        .updateTable('orders')
+-        .set({ status: 'sent', prices_held_until: null })
+-        .where('id', '=', orderId.toString())
+-        .where('status', '=', 'in_checkout')
+-        .where('prices_held_until', '<=', sql<Date>`now()`)
+-        .returning('id')
++      const o = await trx
++        .selectFrom('orders')
++        .select(['status', sql<boolean>`prices_held_until <= now()`.as('hold_over')])
++        .where('id', '=', id)
++        .forUpdate()
++        .executeTakeFirst()
++      if (o?.status !== 'in_checkout') return
++      const attempt = await trx
++        .selectFrom('payment_attempts')
++        .select(['id', sql<boolean>`created_at <= now() - interval '2 minutes'`.as('abandoned')])
++        .where('order_id', '=', id)
++        .where('status', '=', 'processing')
+         .executeTakeFirst()
+-      if (expired) await trx.updateTable('order_lines').set({ held_unit_price_cents: null }).where('order_id', '=', expired.id).execute()
++      if (attempt?.abandoned) {
++        const closed = await trx
++          .updateTable('payment_attempts')
++          .set({ status: 'failed', failure_reason: 'no_answer', finished_at: sql`now()` })
++          .where('id', '=', attempt.id)
++          .where('status', '=', 'processing')
++          .executeTakeFirst()
++        if (closed.numUpdatedRows !== 1n) return
++        await releaseForOrder(trx, orderId)
++        await trx.updateTable('orders').set({ status: 'payment_failed' }).where('id', '=', id).execute()
++        console.warn('abandoned payment attempt reconciled as failed (FM-7)', { orderId: id, attemptId: attempt.id, reason: 'abandoned' })
++        return
++      }
++      if (attempt || !o.hold_over) return
++      await trx.updateTable('orders').set({ status: 'sent', prices_held_until: null }).where('id', '=', id).execute()
++      await trx.updateTable('order_lines').set({ held_unit_price_cents: null }).where('order_id', '=', id).execute()
+     })
+ }
+ 
+@@ -248,27 +273,33 @@ export async function expireHoldIfDue(orderId: bigint): Promise<void> {
+  *  Paid: the paid prices. A live hold: the held prices. Otherwise today's prices, with a notice for each line whose
+  *  price moved since the order was sent. Anyone else, or an unknown id, gets not-found. */
+ export async function getOrderForViewer(viewer: Viewer, orderId: bigint): Promise<OrderView> {
+-  await expireHoldIfDue(orderId)
+   const db = useDb()
+-  const o = await db
+-    .selectFrom('orders')
+-    .innerJoin('practices', 'practices.id', 'orders.practice_id')
+-    .innerJoin('users as provider', 'provider.id', 'orders.provider_id')
+-    .select([
+-      'orders.id',
+-      'orders.patient_id',
+-      'orders.practice_id',
+-      'orders.status',
+-      'orders.prices_held_until',
+-      'orders.paid_at',
+-      'practices.name as practice_name',
+-      'provider.display_name as provider_display_name',
+-      sql<boolean>`orders.prices_held_until > now()`.as('hold_live'),
+-    ])
+-    .where('orders.id', '=', orderId.toString())
+-    .executeTakeFirst()
++  const load = () =>
++    db
++      .selectFrom('orders')
++      .innerJoin('practices', 'practices.id', 'orders.practice_id')
++      .innerJoin('users as provider', 'provider.id', 'orders.provider_id')
++      .select([
++        'orders.id',
++        'orders.patient_id',
++        'orders.practice_id',
++        'orders.status',
++        'orders.prices_held_until',
++        'orders.paid_at',
++        'practices.name as practice_name',
++        'provider.display_name as provider_display_name',
++        sql<boolean>`orders.prices_held_until > now()`.as('hold_live'),
++      ])
++      .where('orders.id', '=', orderId.toString())
++      .executeTakeFirst()
++  let o = await load()
+   if (!o) throw new ProblemError('not-found')
++  // R5: only someone who may see the order sets off the hold ending or the FM-7 reconcile, which write.
+   assertCanViewOrder(viewer, { patientId: BigInt(o.patient_id), practiceId: BigInt(o.practice_id) })
++  if (o.status === 'in_checkout') {
++    await expireHoldIfDue(orderId)
++    o = (await load())!
++  }
+ 
+   const rows = await db
+     .selectFrom('order_lines')
+diff --git a/tests/unit/order-notices.test.ts b/tests/unit/order-notices.test.ts
+index 26f3d9b..52593f7 100644
+--- a/tests/unit/order-notices.test.ts
++++ b/tests/unit/order-notices.test.ts
+@@ -1,7 +1,129 @@
+ // BE-9 OrderService pure part (lld.md §2, SM-1, SEQ-2): which price each line of EP-21 shows and which lines get a
+-// price change notice (FR-022, FR-023, FR-037). The hold ending (expireHoldIfDue) is proved by tests/acceptance/M5.
+-import { describe, expect, it } from 'vitest'
+-import { orderViewLines } from '../../server/services/orders'
++// price change notice (FR-022, FR-023, FR-037). The hold ending itself is proved by tests/acceptance/M5 (AT-007); its
++// guards (a payment in flight keeps the hold, FM-7 reconciles an abandoned one, EP-21 checks access before any write)
++// run here against a fake Kysely driver holding one in-memory order, as in stock.test.ts.
++import { Kysely, PostgresAdapter, PostgresIntrospector, PostgresQueryCompiler, type CompiledQuery } from 'kysely'
++import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
++import { expireHoldIfDue, getOrderForViewer, orderViewLines } from '../../server/services/orders'
++import type { Viewer } from '../../server/services/session'
++
++const fake = vi.hoisted(() => ({
++  order: { status: 'in_checkout', hold_over: true },
++  attempt: null as null | { id: string; status: string; failure_reason?: unknown; abandoned: boolean },
++  moves: [] as { product_id: string; change: number; kind: string }[],
++  sqls: [] as string[],
++}))
++
++function run(q: CompiledQuery): { rows: any[]; numAffectedRows?: bigint } {
++  const s = q.sql
++  const p = q.parameters as unknown[]
++  fake.sqls.push(s)
++  if (s.startsWith('select') && s.includes('from "orders" inner join "practices"'))
++    return { rows: [{ id: '41', patient_id: '5', practice_id: '2', status: fake.order.status, prices_held_until: null, paid_at: null, practice_name: 'Chen Clinic', provider_display_name: 'Dr. Chen', hold_live: false }] }
++  if (s.startsWith('select') && s.includes('from "orders"')) return { rows: [{ id: '41', ...fake.order }] }
++  if (s.startsWith('update "orders"')) {
++    fake.order.status = p[0] as string
++    return { rows: [{ id: '41' }], numAffectedRows: 1n }
++  }
++  if (s.startsWith('select') && s.includes('from "payment_attempts"'))
++    return { rows: fake.attempt?.status === 'processing' ? [fake.attempt] : [] }
++  if (s.startsWith('update "payment_attempts"')) {
++    const ok = fake.attempt?.status === 'processing'
++    if (ok) Object.assign(fake.attempt!, { status: p[0], failure_reason: p[1] })
++    return { rows: [], numAffectedRows: ok ? 1n : 0n }
++  }
++  // the order reserved 2 units of product 7 in pay's transaction 1
++  if (s.startsWith('select') && s.includes('from "stock_movements"')) return { rows: [{ product_id: '7', change: -2 }, ...fake.moves] }
++  if (s.startsWith('select') && s.includes('from "products"')) return { rows: [{ id: '7', units_in_stock: 0 }] }
++  if (s.startsWith('update "products"')) return { rows: [{ units_in_stock: p[0] }] }
++  if (s.startsWith('insert into "stock_movements"')) {
++    fake.moves.push({ product_id: p[0] as string, change: p[1] as number, kind: p[2] as string })
++    return { rows: [] }
++  }
++  return { rows: [], numAffectedRows: 1n }
++}
++
++vi.mock('../../server/utils/db', () => ({
++  useDb: () =>
++    new Kysely<any>({
++      dialect: {
++        createAdapter: () => new PostgresAdapter(),
++        createQueryCompiler: () => new PostgresQueryCompiler(),
++        createIntrospector: (db) => new PostgresIntrospector(db),
++        createDriver: () => ({
++          init: async () => {},
++          acquireConnection: async () => ({
++            executeQuery: async (q: CompiledQuery) => run(q) as any,
++            streamQuery: () => {
++              throw new Error('not used')
++            },
++          }),
++          beginTransaction: async () => {},
++          commitTransaction: async () => {},
++          rollbackTransaction: async () => {},
++          releaseConnection: async () => {},
++          destroy: async () => {},
++        }),
++      },
++    }),
++}))
++
++const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
++beforeEach(() => {
++  fake.order = { status: 'in_checkout', hold_over: true }
++  fake.attempt = null
++  fake.moves.length = 0
++  fake.sqls.length = 0
++  warn.mockClear()
++})
++afterEach(() => warn.mockClear())
++
++describe('expireHoldIfDue: SM-1 hold ends, unless a payment is in flight (R3, FM-7)', () => {
++  it('an ended hold with no payment in flight goes back to sent and clears the held prices (FR-037)', async () => {
++    await expireHoldIfDue(41n)
++    expect(fake.order.status).toBe('sent')
++    expect(fake.sqls.some((s) => s.startsWith('update "order_lines" set "held_unit_price_cents"'))).toBe(true)
++  })
++  it('a live hold is left alone', async () => {
++    fake.order.hold_over = false
++    await expireHoldIfDue(41n)
++    expect(fake.order.status).toBe('in_checkout')
++  })
++  it('R3: a processing attempt under 2 minutes old keeps the ended hold, so the charged payment can still be recorded', async () => {
++    fake.attempt = { id: '90', status: 'processing', abandoned: false }
++    await expireHoldIfDue(41n)
++    expect(fake.order.status).toBe('in_checkout')
++    expect(fake.attempt.status).toBe('processing')
++    expect(fake.sqls.some((s) => s.startsWith('update'))).toBe(false)
++    expect(fake.moves).toEqual([])
++  })
++  it('FM-7: a processing attempt 2 minutes old fails, gives its 2 units back once, and the order shows payment failed', async () => {
++    fake.order.hold_over = false
++    fake.attempt = { id: '90', status: 'processing', abandoned: true }
++    await expireHoldIfDue(41n)
++    expect(fake.attempt).toMatchObject({ status: 'failed', failure_reason: 'no_answer' })
++    expect(fake.moves).toEqual([{ product_id: '7', change: 2, kind: 'sale_release' }])
++    expect(fake.order.status).toBe('payment_failed')
++    expect(warn).toHaveBeenCalledWith(expect.any(String), { orderId: '41', attemptId: '90', reason: 'abandoned' })
++    await expireHoldIfDue(41n) // read again: nothing more to reconcile
++    expect(fake.moves).toHaveLength(1)
++  })
++  it('an order no longer in checkout is left alone', async () => {
++    fake.order.status = 'paid'
++    await expireHoldIfDue(41n)
++    expect(fake.sqls.some((s) => s.startsWith('update'))).toBe(false)
++  })
++})
++
++describe('getOrderForViewer: access is checked before any write (R5)', () => {
++  const stranger: Viewer = { userId: 9n, displayName: 'Someone', role: 'patient', practiceId: 2n, idleExpiresAt: new Date('2026-10-10T12:15:00Z') }
++  it('someone who may not see the order gets not-found and changes nothing, even with a due hold and an abandoned attempt', async () => {
++    fake.attempt = { id: '90', status: 'processing', abandoned: true }
++    await expect(getOrderForViewer(stranger, 41n)).rejects.toMatchObject({ slug: 'not-found' })
++    expect(fake.sqls.some((s) => s.startsWith('update') || s.startsWith('insert'))).toBe(false)
++    expect(fake.order.status).toBe('in_checkout')
++  })
++})
+ 
+ // Ana's order: Vitamin D3 x2 at $18.00, Magnesium Glycinate x1 at $24.00; Dr. Chen then moves Magnesium to $26.00.
+ const rows = [
+@@ -32,6 +154,14 @@ describe('orderViewLines: EP-21 lines and notices', () => {
+     expect(total(v)).toBe(6000)
+     expect(v.price_changes).toEqual([])
+   })
++  it('a live hold shows the prices held at checkout start, not the sent ones (FR-023: the price moved before checkout)', () => {
++    // Magnesium went $24.00 -> $25.00 before Ana started checkout (held $25.00), then to $26.00 during it
++    const heldAt25 = rows.map((r) => ({ ...r, held_unit_price_cents: r.product_id === '2' ? 2500 : r.sent_unit_price_cents }))
++    const v = orderViewLines('in_checkout', true, heldAt25, current)
++    expect(v.lines[1]!.unit_price_cents).toBe(2500)
++    expect(total(v)).toBe(6100)
++    expect(v.price_changes).toEqual([])
++  })
+   it('a paid order shows the paid prices; a cancelled one its sent prices, frozen', () => {
+     const paid = rows.map((r) => ({ ...r, paid_unit_price_cents: r.sent_unit_price_cents + 100 }))
+     expect(total(orderViewLines('paid', false, paid, current))).toBe(6300)

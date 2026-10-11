@@ -1,0 +1,305 @@
+diff --git a/db/migrations/1760000013000_stock-movements.sql b/db/migrations/1760000013000_stock-movements.sql
+new file mode 100644
+index 0000000..a6e7cfa
+--- /dev/null
++++ b/db/migrations/1760000013000_stock-movements.sql
+@@ -0,0 +1,32 @@
++-- Up Migration
++-- M5-T002 stock reserve and release (lld.md §1 stock_movements, BE-13, SEQ-2): the append-only stock history, and the
++-- app's right to change a product's stock count. Runs as supplements_owner (Q-3, Q-4).
++
++create table stock_movements (
++  id bigint generated always as identity constraint pk_stock_movements primary key,
++  product_id bigint not null constraint fk_stock_movements_product references products (id) on delete restrict,
++  change integer not null constraint ck_stock_movements_change_nonzero check (change <> 0),
++  kind varchar(20) not null constraint ck_stock_movements_kind check (kind in ('sale', 'sale_release', 'adjustment')),
++  reason text not null constraint ck_stock_movements_reason_len check (char_length(reason) between 1 and 200),
++  order_id bigint constraint fk_stock_movements_order references orders (id) on delete restrict,
++  actor_id bigint constraint fk_stock_movements_actor references users (id) on delete restrict,
++  units_after integer not null constraint ck_stock_movements_units_after_nonneg check (units_after >= 0),
++  created_at timestamptz not null default now(),
++  -- a sale or sale_release names its order and no actor; an adjustment names its actor and no order
++  constraint ck_stock_movements_kind_refs check (
++    (kind in ('sale', 'sale_release') and order_id is not null and actor_id is null)
++    or (kind = 'adjustment' and actor_id is not null and order_id is null)
++  )
++);
++-- EP-31 history, newest first, cursor pagination.
++create index ix_stock_movements_created on stock_movements (created_at desc, id desc);
++create index ix_stock_movements_product on stock_movements (product_id);
++
++-- INV-4: the app may only add and read stock history; no UPDATE or DELETE.
++grant select, insert on stock_movements to supplements_app;
++-- BE-13 changes the count only through a recorded movement; ck_products_stock_nonneg keeps it at or above zero (INV-5).
++grant update (units_in_stock) on products to supplements_app;
++
++-- Down Migration
++revoke update (units_in_stock) on products from supplements_app;
++drop table stock_movements;
+diff --git a/server/services/payments.ts b/server/services/payments.ts
+index 6ef171e..e01efd0 100644
+--- a/server/services/payments.ts
++++ b/server/services/payments.ts
+@@ -1,6 +1,6 @@
+ // BE-10 PaymentService (lld.md §2, SEQ-2, SM-1, SM-2): take one test payment for a held order and record its split
+ // and ledger. Two short transactions around the gateway call, so a slow answer never holds a lock (D42). Stock is
+-// reserved and released only in M5 (D42).
++// reserved in transaction 1 and given back when the payment fails (BE-13, FR-026, FR-027).
+ import { sql } from 'kysely'
+ import { useDb } from '../utils/db'
+ import { errorFacts, ProblemError } from '../utils/problem'
+@@ -10,6 +10,7 @@ import { allocateFee, assertSplitBalances, payoutCents, platformFeeCents, SplitM
+ import type { OrderLine } from './orders'
+ import { charge } from './payment-gateway'
+ import type { Viewer } from './session'
++import { releaseForOrder, reserveForOrder } from './stock'
+ 
+ export interface Receipt {
+   order_id: number
+@@ -88,7 +89,7 @@ export async function countPayAttempt(userId: bigint, ip: string): Promise<void>
+ export async function pay(viewer: Viewer, orderId: bigint, idempotencyKey: string): Promise<Receipt> {
+   const db = useDb()
+ 
+-  // Transaction 1: lock the order, check the hold and the split, record the attempt as processing.
++  // Transaction 1: lock the order, check the hold and the split, reserve the stock, record the attempt as processing.
+   const prepared = await db.transaction().execute(async (trx) => {
+     const o = await trx
+       .selectFrom('orders')
+@@ -128,6 +129,8 @@ export async function pay(viewer: Viewer, orderId: bigint, idempotencyKey: strin
+       await trx.updateTable('orders').set({ status: 'needs_review' }).where('id', '=', o.id).execute()
+       return null
+     }
++    // FR-026, AE-024: products locked in id order; short stock refuses here, so the rollback leaves no attempt, no charge.
++    await reserveForOrder(trx, orderId)
+     // LINV-6: a second payment while one is processing loses on uq_payment_attempts_one_processing.
+     const attempt = await trx
+       .insertInto('payment_attempts')
+@@ -156,7 +159,7 @@ export async function pay(viewer: Viewer, orderId: bigint, idempotencyKey: strin
+     }
+     paidAt = await recordPayment(order, lines, split, feeSharesCents, attemptId)
+   } catch (e) {
+-    await closeAttempt(attemptId).catch((err) => console.error('could not close payment attempt', attemptId, errorFacts(err)))
++    await closeAttempt(attemptId, order.id).catch((err) => console.error('could not close payment attempt', attemptId, errorFacts(err)))
+     throw e
+   }
+ 
+@@ -175,30 +178,38 @@ export async function pay(viewer: Viewer, orderId: bigint, idempotencyKey: strin
+   }
+ }
+ 
+-/** SM-2 processing -> failed, SM-1 in_checkout -> payment_failed: no money recorded (FR-035). */
++/** SM-2 processing -> failed, SM-1 in_checkout -> payment_failed: no money recorded, stock returned (FR-035, FM-1). */
+ async function failAttempt(attemptId: string, orderId: string, reason: 'declined' | 'no_answer'): Promise<void> {
+   await useDb()
+     .transaction()
+     .execute(async (trx) => {
+       await trx.selectFrom('orders').select('id').where('id', '=', orderId).forUpdate().execute()
+-      await trx
++      const closed = await trx
+         .updateTable('payment_attempts')
+         .set({ status: 'failed', failure_reason: reason, finished_at: sql`now()` })
+         .where('id', '=', attemptId)
+         .where('status', '=', 'processing')
+-        .execute()
++        .executeTakeFirst()
++      if (closed.numUpdatedRows === 1n) await releaseForOrder(trx, BigInt(orderId))
+       await trx.updateTable('orders').set({ status: 'payment_failed' }).where('id', '=', orderId).where('status', '=', 'in_checkout').execute()
+     })
+ }
+ 
+-/** SM-2 processing -> failed with no failure_reason: not the gateway's answer, so the order is left alone (FM-3). */
+-async function closeAttempt(attemptId: string): Promise<void> {
++/** SM-2 processing -> failed with no failure_reason: not the gateway's answer, so the order is left alone (FM-3), but
++ *  the stock transaction 1 reserved is given back, or the next Pay would reserve it a second time. */
++async function closeAttempt(attemptId: string, orderId: string): Promise<void> {
+   await useDb()
+-    .updateTable('payment_attempts')
+-    .set({ status: 'failed', finished_at: sql`now()` })
+-    .where('id', '=', attemptId)
+-    .where('status', '=', 'processing')
+-    .execute()
++    .transaction()
++    .execute(async (trx) => {
++      await trx.selectFrom('orders').select('id').where('id', '=', orderId).forUpdate().execute()
++      const closed = await trx
++        .updateTable('payment_attempts')
++        .set({ status: 'failed', finished_at: sql`now()` })
++        .where('id', '=', attemptId)
++        .where('status', '=', 'processing')
++        .executeTakeFirst()
++      if (closed.numUpdatedRows === 1n) await releaseForOrder(trx, BigInt(orderId))
++    })
+ }
+ 
+ /** Transaction 2: the split, the paid lines, four ledger entries, attempt succeeded, order paid. The order row is
+diff --git a/server/services/stock.ts b/server/services/stock.ts
+new file mode 100644
+index 0000000..4c99b27
+--- /dev/null
++++ b/server/services/stock.ts
+@@ -0,0 +1,75 @@
++// BE-13 StockService (lld.md §2, SEQ-2, INV-5): stock counts change only through recorded movements that never go
++// below zero. reserveForOrder and releaseForOrder run inside BE-10's payment transactions; product rows are always
++// locked in id order, so two payments for the same products wait on each other instead of deadlocking (AE-024).
++import type { Transaction } from 'kysely'
++import type { Database } from '../utils/db-types'
++import { ProblemError } from '../utils/problem'
++
++export interface StockNeed {
++  productId: string
++  quantity: number
++  unitsInStock: number
++}
++
++/** The lines that want more than is in stock, named as /problems/insufficient-stock names them; null when none. */
++export function shortOfStock(needs: StockNeed[]): { productIds: number[]; unitsAvailable: number[] } | null {
++  const short = needs.filter((n) => n.quantity > n.unitsInStock)
++  if (short.length === 0) return null
++  return { productIds: short.map((n) => Number(n.productId)), unitsAvailable: short.map((n) => n.unitsInStock) }
++}
++
++/** Units of each product an order's sale movements took and its releases have not yet given back. */
++export function outstandingByProduct(moves: { product_id: string; change: number }[]): Map<string, number> {
++  const out = new Map<string, number>()
++  for (const m of moves) out.set(m.product_id, (out.get(m.product_id) ?? 0) - m.change)
++  for (const [id, n] of out) if (n <= 0) out.delete(id)
++  return out
++}
++
++const byId = (a: string, b: string) => (BigInt(a) < BigInt(b) ? -1 : BigInt(a) > BigInt(b) ? 1 : 0)
++
++async function lockProducts(tx: Transaction<Database>, productIds: string[]) {
++  return tx.selectFrom('products').select(['id', 'units_in_stock']).where('id', 'in', productIds).orderBy('id').forUpdate().execute()
++}
++
++async function move(tx: Transaction<Database>, orderId: string, productId: string, change: number, kind: 'sale' | 'sale_release') {
++  const p = await tx
++    .updateTable('products')
++    .set((eb) => ({ units_in_stock: eb('units_in_stock', '+', change) }))
++    .where('id', '=', productId)
++    .returning('units_in_stock')
++    .executeTakeFirstOrThrow()
++  await tx
++    .insertInto('stock_movements')
++    .values({ product_id: productId, change, kind, reason: `Order ${orderId}`, order_id: orderId, units_after: p.units_in_stock })
++    .execute()
++}
++
++/** FR-026, FR-027: lowers stock by each line's quantity with a `sale` movement, or refuses the whole order with
++ *  /problems/insufficient-stock naming the short items (the caller's transaction then rolls back: no charge). */
++export async function reserveForOrder(tx: Transaction<Database>, orderId: bigint): Promise<void> {
++  const id = orderId.toString()
++  const lines = await tx.selectFrom('order_lines').select(['product_id', 'quantity']).where('order_id', '=', id).execute()
++  if (lines.length === 0) return
++  const stock = new Map((await lockProducts(tx, lines.map((l) => l.product_id))).map((p) => [p.id, p.units_in_stock]))
++  const short = shortOfStock(lines.map((l) => ({ productId: l.product_id, quantity: l.quantity, unitsInStock: stock.get(l.product_id) ?? 0 })))
++  if (short) throw new ProblemError('insufficient-stock', short)
++  for (const l of [...lines].sort((a, b) => byId(a.product_id, b.product_id))) await move(tx, id, l.product_id, -l.quantity, 'sale')
++}
++
++/** FR-035, FM-1, FM-3: gives back what the order reserved and has not yet returned, with `sale_release` movements.
++ *  Returns nothing when nothing is out, so calling it twice for one reservation is harmless. */
++export async function releaseForOrder(tx: Transaction<Database>, orderId: bigint): Promise<void> {
++  const id = orderId.toString()
++  const moves = await tx
++    .selectFrom('stock_movements')
++    .select(['product_id', 'change'])
++    .where('order_id', '=', id)
++    .where('kind', 'in', ['sale', 'sale_release'])
++    .execute()
++  const out = outstandingByProduct(moves)
++  if (out.size === 0) return
++  const productIds = [...out.keys()].sort(byId)
++  await lockProducts(tx, productIds)
++  for (const p of productIds) await move(tx, id, p, out.get(p)!, 'sale_release')
++}
+diff --git a/server/utils/db-types.ts b/server/utils/db-types.ts
+index 0e87c99..0a387f0 100644
+--- a/server/utils/db-types.ts
++++ b/server/utils/db-types.ts
+@@ -122,6 +122,22 @@ export interface LedgerEntriesTable {
+   occurred_at: Timestamp
+ }
+ 
++/** Append-only (INV-4): the app may only insert and select. */
++export interface StockMovementsTable {
++  id: Id
++  product_id: Int8
++  /** negative for sales and write-offs */
++  change: number
++  kind: 'sale' | 'sale_release' | 'adjustment'
++  reason: string
++  /** present exactly for sales and releases */
++  order_id: Int8 | null
++  /** present exactly for adjustments */
++  actor_id: Int8 | null
++  units_after: number
++  created_at: DefaultTimestamp
++}
++
+ export interface IdempotencyKeysTable {
+   user_id: Int8
+   key: string
+@@ -162,6 +178,7 @@ export interface Database {
+   notices: NoticesTable
+   payment_attempts: PaymentAttemptsTable
+   ledger_entries: LedgerEntriesTable
++  stock_movements: StockMovementsTable
+   idempotency_keys: IdempotencyKeysTable
+   sign_in_attempts: SignInAttemptsTable
+   pay_rate_attempts: PayRateAttemptsTable
+diff --git a/tests/unit/stock.test.ts b/tests/unit/stock.test.ts
+new file mode 100644
+index 0000000..67b0e52
+--- /dev/null
++++ b/tests/unit/stock.test.ts
+@@ -0,0 +1,49 @@
++// BE-13 StockService pure parts (lld.md §2, SEQ-2): which lines are short of stock, and how much of an order's
++// reservation is still out. The locked database parts are proved by tests/acceptance/M5 (AT-015, AT-016, AT-034).
++import { describe, expect, it } from 'vitest'
++import { outstandingByProduct, shortOfStock } from '../../server/services/stock'
++
++describe('shortOfStock: lines whose quantity exceeds stock (FR-026, INV-5)', () => {
++  it('AE-023: 2 Vitamin D3 wanted with 1 in stock names Vitamin D3 and the 1 available', () => {
++    expect(shortOfStock([{ productId: '7', quantity: 2, unitsInStock: 1 }])).toEqual({ productIds: [7], unitsAvailable: [1] })
++  })
++  it('exactly the stock left is enough (boundary)', () => {
++    expect(shortOfStock([{ productId: '7', quantity: 1, unitsInStock: 1 }])).toBeNull()
++  })
++  it('names only the short lines, in the order given', () => {
++    expect(
++      shortOfStock([
++        { productId: '3', quantity: 4, unitsInStock: 0 },
++        { productId: '5', quantity: 1, unitsInStock: 9 },
++        { productId: '8', quantity: 3, unitsInStock: 2 },
++      ]),
++    ).toEqual({ productIds: [3, 8], unitsAvailable: [0, 2] })
++  })
++  it('no lines, nothing short', () => {
++    expect(shortOfStock([])).toBeNull()
++  })
++})
++
++describe("outstandingByProduct: an order's reserved units not yet returned (FR-035, FM-1)", () => {
++  it('one sale of 2 with no release: 2 to return', () => {
++    expect(outstandingByProduct([{ product_id: '7', change: -2 }])).toEqual(new Map([['7', 2]]))
++  })
++  it('a sale already released: nothing to return (release runs at most once per reservation)', () => {
++    expect(
++      outstandingByProduct([
++        { product_id: '7', change: -2 },
++        { product_id: '7', change: 2 },
++      ]),
++    ).toEqual(new Map())
++  })
++  it('a second reservation after an earlier released one: only the new one is out', () => {
++    expect(
++      outstandingByProduct([
++        { product_id: '7', change: -2 },
++        { product_id: '7', change: 2 },
++        { product_id: '7', change: -2 },
++        { product_id: '9', change: -1 },
++      ]),
++    ).toEqual(new Map([['7', 2], ['9', 1]]))
++  })
++})

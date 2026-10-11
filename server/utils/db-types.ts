@@ -49,6 +49,18 @@ export interface PracticePricesTable {
   set_at: DefaultTimestamp
 }
 
+/** Append-only (INV-4): the app may only insert and select. */
+export interface PriceChangesTable {
+  id: Id
+  practice_id: Int8
+  product_id: Int8
+  old_price_cents: number
+  new_price_cents: number
+  reason: string
+  changed_by: Int8
+  changed_at: DefaultTimestamp
+}
+
 export interface OrdersTable {
   id: Id
   practice_id: Int8
@@ -110,6 +122,22 @@ export interface LedgerEntriesTable {
   occurred_at: Timestamp
 }
 
+/** Append-only (INV-4): the app may only insert and select. */
+export interface StockMovementsTable {
+  id: Id
+  product_id: Int8
+  /** negative for sales and write-offs */
+  change: number
+  kind: 'sale' | 'sale_release' | 'adjustment'
+  reason: string
+  /** present exactly for sales and releases */
+  order_id: Int8 | null
+  /** present exactly for adjustments */
+  actor_id: Int8 | null
+  units_after: number
+  created_at: DefaultTimestamp
+}
+
 export interface IdempotencyKeysTable {
   user_id: Int8
   key: string
@@ -144,11 +172,13 @@ export interface Database {
   sessions: SessionsTable
   products: ProductsTable
   practice_prices: PracticePricesTable
+  price_changes: PriceChangesTable
   orders: OrdersTable
   order_lines: OrderLinesTable
   notices: NoticesTable
   payment_attempts: PaymentAttemptsTable
   ledger_entries: LedgerEntriesTable
+  stock_movements: StockMovementsTable
   idempotency_keys: IdempotencyKeysTable
   sign_in_attempts: SignInAttemptsTable
   pay_rate_attempts: PayRateAttemptsTable

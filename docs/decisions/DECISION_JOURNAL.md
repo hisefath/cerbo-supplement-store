@@ -815,3 +815,101 @@ Copy this block for each new entry (D-ids increase by one, starting at D1):
 - Cost accepted: one checklist line per MR. · Reversibility: Type 2 two-way — revert the commit · Confidence: high
 - Revisit if: an MR merges without a pipeline link. · Evidence: HARNESS_CHANGELOG.md H17; .gitlab/merge_request_templates/Default.md; D70; approval G-L5 (approval covers apply and project commit) 2026-10-10 19:46 CDT · Interview line: "Each Cerbo MR shows its CI pipeline before it merges."
 - Review: Topic Process · Weight ●○○ · One-liner: Cerbo's MR template asks for the green pipeline link.
+
+### D72 No test seam for random tokens  [status: accepted]
+- Date 2026-10-10 20:32 CDT · phase 6 design-lld (G3, M5-R01 catch-up) · milestone M5 · Decided by: human, G3 D72 2026-10-10 20:32 CDT: "Approve, drop the seam" · Proposed by: design-lld (Claude Code, claude-opus-5-5) · artifact: docs/architecture/lld.md@9708841
+- Context and forces: the first LLD planned SEAM-2, a token module tests could replace; M4 built BE-3 and BE-12 calling Node's randomBytes directly (review M4-pass1 R5). Tokens are opaque and stored or compared only by SHA-256 hash, so no test needs to predict one.
+- Options:
+  - Do nothing / simplest: leave the LLD saying "token module" while the code calls randomBytes — cost: design and code disagree; the next reviewer flags it again — rejected: the design must match the code
+  - Drop the seam: tokens come from randomBytes directly; SEAM-2 says "not faked" (agent's recommendation) — cost: none now (document only) — chosen
+  - Build the token module now and replace it in tests (agent's first proposal) — cost: about 1 hour for code no test uses — rejected: no current test needs a known token
+- Choice: drop the seam · Why: In the context of opaque tokens compared only by hash, facing a design that asked for a seam no test uses, we chose to drop SEAM-2's module over building it, to keep the design true to the code, accepting that a test needing a known token would bring it back.
+- Cost accepted: a future test that must know a token in advance needs the seam added then. · Reversibility: Type 2 two-way — add the module later · Confidence: high
+- Revisit if: a test needs a known token value, or tokens start carrying meaning. · Evidence: docs/architecture/lld.md SEAM-2, BE-3, BE-12; .handoff/reviews/M4-pass1.md R5; proposed as docs/architecture/lld.md D72; approval G3 D72 2026-10-10 20:32 CDT · Interview line: "Tokens are random and only compared by hash, so I dropped the planned test seam instead of building code no test needed."
+- Review: Topic Security · Weight ●○○ · One-liner: Session and notice tokens come straight from randomBytes; no test seam.
+
+### D73 Design catch-up: the LLD matches what M4 shipped  [status: accepted]
+- Date 2026-10-10 20:32 CDT · phase 6 design-lld (G3, M5-R01 catch-up) · milestone M5 · Decided by: human, G3 2026-10-10 20:32 CDT: "Approve, then /define-acceptance" · Proposed by: design-lld (Claude Code, claude-opus-5-5) · artifact: docs/architecture/lld.md@9708841
+- Context and forces: the M4 retro routed design drift to design-lld (FINDINGS F20): acceptance Q-1 to Q-4, D47's guard, the FM-3 retry path, the rate-limit tables, the 429 on EP-23, /healthz and /version, EP-25 paging, review rows M4-pass1 R4 to R6, pass6 R5, R6, R8, R9, R11 and pass7 R3.
+- Options:
+  - Do nothing / simplest (shown as "Stop"): leave the LLD as approved before M4 — cost: M5's tests and tasks would build on a design that disagrees with the code — rejected: the human approved the catch-up
+  - Approve the catch-up: 37 rows (changed) or (new), D72, diagrams erd and be-class redrawn, Q-8 kept as an M5 task (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: none now — chosen
+  - Revise named rows before M5 migrations exist — cost: another design round — rejected: no row named
+- Choice: approve the catch-up · Why: In the context of a design that drifted while M4 was built and reviewed, facing M5 work that must build on it, we chose to bring the LLD in line with the shipped code over leaving it stale, to give M5 one true design, accepting that Q-8 (invalid-transition members) waits for an M5 task.
+- Cost accepted: Q-8 stays open until an M5 task adds from and event to /problems/invalid-transition. · Reversibility: Type 2 two-way — later revise passes · Confidence: high
+- Revisit if: an M5 review finds the LLD and code disagree again. · Evidence: docs/architecture/lld.md Change log revise row; software-factory-kit FINDINGS.md F20; approval G3 2026-10-10 20:32 CDT · Interview line: "After the first slice shipped, I brought the design back in line with the code before building the next slice, so the next tests start from the truth."
+- Review: Topic Process · Weight ●●○ · One-liner: The design caught up with M4's code before M5 builds on it.
+
+### D74 Build M5 as six vertical slices, price change first  [status: accepted]
+- Date 2026-10-10 21:09 CDT · phase 9 slice-tasks (G4) · milestone M5 · Decided by: human, G4 2026-10-10 21:09 CDT: "Approve, then go M5" · Proposed by: slice-tasks (Claude Code, claude-opus-5-5) · artifact: specs/M5-prices-and-stock/tasks@5175bac
+- Context and forces: M5 has 19 FRs and 18 AEs across prices, notices, stock and the dashboard, plus regression pins for M4 (acceptance Q-1); two tasks share server/utils/db-types.ts; the stock-at-payment slice is the riskiest (money, row locks).
+- Options:
+  - Do nothing / simplest (shown as "d) Do nothing"): build M5 in one session without task files — cost: no scope-guard, no per-step pass/fail check — rejected: done would rest on one long self-report
+  - a) six vertical slices, price change as the tracer bullet, stock at payment second, four in parallel, one seam (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: 510 min of agent time and a merge per parallel slice — chosen
+  - b) the same tasks all serial — cost: about 510 min wall-clock — rejected: slower with no fewer risks
+  - c) fewer, bigger tasks — cost: larger diffs, more work lost on a failure — rejected: harder to verify
+- Choice: a · Why: In the context of a milestone with four user-visible behaviours, facing one shared type file and a risky money slice, we chose six vertical slices with the price change first and stock at payment second over serial or bigger tasks, to get early end-to-end proof and fail early on the risky part, accepting a seam task and per-slice merges.
+- Cost accepted: one seam task (M5-T006) and a merge per parallel slice; T005 may run past its 120-minute budget. · Reversibility: Type 2 two-way — re-slice before dispatch · Confidence: med
+- Revisit if: T001 takes far longer than 120 minutes, or a parallel pair conflicts. · Evidence: specs/M5-prices-and-stock/tasks/T001.md to T006.md; analyze RESULT: PASS; approval G4 2026-10-10 21:09 CDT · Interview line: "I sliced M5 by user-visible behaviour with the price change as a tracer bullet and the stock-at-payment slice second, so the riskiest work fails early."
+- Review: Topic Process · Weight ●●○ · One-liner: M5 is six vertical slices: price change first, stock at payment second.
+
+### D75 Visual refresh as its own milestone after M5  [status: accepted]
+- Date 2026-10-10 22:36 CDT · supervisor (route) · milestone M5.1 · Decided by: human, decision: visual refresh placement 2026-10-10 22:36 CDT: "a, M5.1 visual refresh after M5 merges" · Proposed by: supervisor (Claude Code, claude-opus-5-5) · artifact: chat options card
+- Context and forces: the human asked to restyle the front end after cluely.com's design language (Geist with a serif display face, a soft sky-blue palette, rounded glassy cards, glowing primary buttons, generous whitespace). The app has no shared visual system today, it will be embedded inside Cerbo's EHR, and M5 is mid-build.
+- Options:
+  - Do nothing / simplest (shown as "d) Do nothing"): keep the plain style — cost: none — rejected: the human wants a modern look
+  - a) a separate milestone M5.1 after M5 merges: visual language in screens.md at G-ux, then slices for tokens and fonts and per-screen restyles (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: about 3 to 4 agent runs plus G-ux and G4; M6 starts later — chosen
+  - b) fold it into M5's close-out task — cost: a larger, murkier M5 review — rejected: mixes styling with logic fixes
+  - c) after M6 — cost: M6 screens built in the old style, then restyled — rejected: more work overall
+- Choice: a · Why: In the context of a restyle that touches every page but changes no behaviour, facing M5 mid-build and M6 still to come, we chose a separate milestone between them over folding it into M5 or deferring it, to get a clean review and one-revert rollback and to build M6 in the new style, accepting a later M6 start.
+- Cost accepted: M6 starts after M5.1; the inspiration stays a design language only (no Cluely branding, images or name), and dense clinical screens keep their contrast. · Reversibility: Type 2 two-way — revert the milestone merge · Confidence: high
+- Revisit if: Cerbo supplies its own design system for embedded apps, or the restyle hurts readability on the dense screens. · Evidence: https://cluely.com/ (computed styles read 2026-10-10: Geist and EB Garamond, 12px buttons with blue glow, 16-32px cards); .handoff/TRACKER.md M5.1-R01; approval decision: visual refresh placement 2026-10-10 22:36 CDT · Interview line: "I took a modern design language as inspiration, not a brand, and shipped it as its own milestone so the restyle is reviewed and reversible on its own."
+- Review: Topic Product · Weight ●○○ · One-liner: The cluely-inspired restyle is its own milestone, M5.1, after M5.
+
+### D76 Keep quantity uncapped now that stock caps it  [status: accepted]
+- Date 2026-10-10 23:59 CDT · phase 12 check-security (G5) · milestone M5 · Decided by: human, G5 SEC-10 2026-10-10 23:59 CDT: STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" · Proposed by: check-security (Claude Code, claude-opus-5-5) · artifact: docs/security/CHECKLIST.md@adfd6fa
+- Context and forces: D53's revisit trigger fired: M5 caps quantity by stock at send (server/services/orders.ts:60), so the overflow 500 needs an absurd stock count.
+- Options:
+  - Do nothing / simplest (shown as "default: pending G5"): leave it undecided — cost: the milestone cannot merge — rejected: blocks G5
+  - fix: add an explicit quantity maximum — rejected: cost outweighs a low, harmless finding
+  - accept (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: a 500 instead of a 422 only with absurd stock counts; no data harm — chosen
+- Choice: accept · Why: In the context of stock now limiting quantity, facing a 500 only at absurd stock counts, we chose to accept it over a new cap, accepting a poor error in an unreachable case.
+- Cost accepted: a 500 instead of a 422 only with absurd stock counts; no data harm · Reversibility: Type 2 two-way · Confidence: high
+- Revisit if: a real user hits the 500, or stock limits are removed · Evidence: docs/security/CHECKLIST.md SEC-10; approval G5 SEC-10 2026-10-10 23:59 CDT · Interview line: "Stock already caps quantity, so the leftover overflow needs absurd stock; we accepted it rather than invent a limit."
+- Review: Topic Security · Weight ●○○ · One-liner: Stock limits now cap quantity; the overflow 500 stays accepted.
+
+### D77 Accept 500s on out-of-range price and stock input  [status: accepted]
+- Date 2026-10-10 23:59 CDT · phase 12 check-security (G5) · milestone M5 · Decided by: human, G5 SEC-12 2026-10-10 23:59 CDT: STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" · Proposed by: check-security (Claude Code, claude-opus-5-5) · artifact: docs/security/CHECKLIST.md@adfd6fa
+- Context and forces: Signed-in providers or operations staff can send a price or stock change beyond the 32-bit integer column, or an odd cursor, and get a 500 instead of a 422 (server/services/pricing.ts:15). Nothing is exposed and the transaction rolls back.
+- Options:
+  - Do nothing / simplest (shown as "default: pending G5"): leave it undecided — cost: the milestone cannot merge — rejected: blocks G5
+  - fix: add upper bounds and cursor validation — rejected: cost outweighs a low, harmless finding
+  - accept (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: a 500 instead of a 422 for absurd staff input; no data harm — chosen
+- Choice: accept · Why: In the context of privileged staff-only inputs, facing a 500 with no data harm, we chose to accept it over bounds now, accepting a confusing error for absurd input.
+- Cost accepted: a 500 instead of a 422 for absurd staff input; no data harm · Reversibility: Type 2 two-way · Confidence: high
+- Revisit if: a real user hits one, or the routes open to patients · Evidence: docs/security/CHECKLIST.md SEC-12; approval G5 SEC-12 2026-10-10 23:59 CDT · Interview line: "Only staff can send absurd numbers, the database refuses them, and nothing leaks, so a nicer error waits."
+- Review: Topic Security · Weight ●○○ · One-liner: Absurd staff input gives a 500, not a 422; accepted, no harm.
+
+### D78 Accept that reading an order can end a due hold  [status: accepted]
+- Date 2026-10-10 23:59 CDT · phase 12 check-security (G5) · milestone M5 · Decided by: human, G5 SEC-13 2026-10-10 23:59 CDT: STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" · Proposed by: check-security (Claude Code, claude-opus-5-5) · artifact: docs/security/CHECKLIST.md@adfd6fa
+- Context and forces: GET EP-21 now writes: it ends a due checkout hold or closes an abandoned payment (server/services/orders.ts:312), only transitions already due, and only after the access check.
+- Options:
+  - Do nothing / simplest (shown as "default: pending G5"): leave it undecided — cost: the milestone cannot merge — rejected: blocks G5
+  - fix: move the transitions to a scheduled job — rejected: cost outweighs a low, harmless finding
+  - accept (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: a GET with side effects, limited to due transitions after the access check — chosen
+- Choice: accept · Why: In the context of time-driven transitions that are already due, facing a GET that writes, we chose to accept it over a job runner, accepting a read with side effects.
+- Cost accepted: a GET with side effects, limited to due transitions after the access check · Reversibility: Type 2 two-way · Confidence: high
+- Revisit if: a GET handler gains a write that is not time-driven, or a job runner arrives · Evidence: docs/security/CHECKLIST.md SEC-13; approval G5 SEC-13 2026-10-10 23:59 CDT · Interview line: "Reading an order may finish a transition that was already due, only for people allowed to see it; a job runner can replace it later."
+- Review: Topic Security · Weight ●○○ · One-liner: GET of an order may end a due hold; accepted, access-checked.
+
+### D79 M5 keeps 11 tasks as a review-fix exception  [status: accepted]
+- Date 2026-10-11 00:20 CDT · phase 12 report-milestone (G5) · milestone M5 · Decided by: human, G5 Revise 2026-10-11 00:20 CDT: STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" · Proposed by: supervisor (Claude Code, claude-opus-5-5) · artifact: specs/M5-prices-and-stock/tasks/T011.md
+- Context and forces: slice-tasks caps a milestone at 10 tasks. Verifier pass 7 found two P1 and one P2 user-facing defects after all 10 tasks landed (M5-pass7 R2, R3, R4); D54 allowed the same once for M4 only.
+- Options:
+  - Do nothing / simplest (shown as "default: nothing merges"): leave DV-3 undecided — cost: G5 cannot recommend Merge — rejected: blocks the milestone
+  - split the milestone in the PRD via clarify-spec and move T011 to M5.2 — cost: a PRD edit, a new G1 and a second MR for three small fixes — rejected: overhead larger than the fix
+  - accept an 11th review-fix task (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: the cap is broken twice — chosen
+- Choice: accept · Why: In the context of review fixes found after every task landed, facing a 10-task cap, we chose an 11th review-fix task over splitting the milestone, accepting a second exception to the cap.
+- Cost accepted: the 10-task cap now has two exceptions; route-failure should decide whether review-fix tasks count toward it. · Reversibility: Type 2 two-way · Confidence: high
+- Revisit if: a third milestone needs more than 10 tasks (then the cap rule changes via route-failure). · Evidence: .handoff/reviews/M5-pass7.md R2-R4; Approvals G3+G4 T011 row 2026-10-10 23:57 CDT; D54 · Interview line: "Review found three user-facing bugs after the plan finished, so we added one fix task instead of reopening the PRD; twice now means the cap rule needs revisiting."
+- Review: Topic Process · Weight ●○○ · One-liner: M5 adds an 11th task for review fixes, like M4.

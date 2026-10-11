@@ -15,6 +15,7 @@ interface OrderView {
   prices_held_until: string | null
   paid_at: string | null
   is_test_payment: true
+  hold_ended: boolean
 }
 
 const route = useRoute()
@@ -57,7 +58,7 @@ async function back() {
           <p>From {{ order.provider_display_name }}, {{ order.practice_name }}</p>
           <p v-if="order.status === 'cancelled'" role="status">This order was cancelled by your practice.</p>
           <p v-if="order.status === 'needs_review'" role="status">We couldn't complete this payment. No money was taken. Your practice will contact you.</p>
-          <p v-if="order.status === 'in_checkout' && !order.prices_held_until" role="status">Your 30-minute price hold ended. These are the current prices.</p>
+          <p v-if="order.hold_ended" role="status">Your 30-minute price hold ended. These are the current prices.</p>
           <ul class="notices">
             <li v-for="c in order.price_changes" :key="c.product_id">
               <span aria-hidden="true">(i)</span> {{ c.name }} price changed: {{ dollars(c.old_price_cents) }} to {{ dollars(c.new_price_cents) }}.

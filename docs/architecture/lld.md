@@ -7,10 +7,10 @@
 | UX | `docs/design/screens.md`, `docs/design/flows.md` @ 675f650 |
 | Milestone | M4-M6 (M4 tracer bullet, M5 prices and stock, M6 measurement and operations), one pass by the human's choice (Q1 of this run) |
 | Mode | greenfield — from `specs/M1-in-ehr-supplement-orders/brief.md` ## Track ("Greenfield or brownfield: greenfield") |
-| Pass | first |
+| Pass | first; revise 2026-10-10 20:10 CDT (M5-R01 catch-up to the code M4 shipped, FINDINGS F20) |
 | Stack | TypeScript 5 on Node.js 22.22 or later (D32; Nuxt 4 needs 22.22+, 24.15+ or 26+), Nuxt 4 with Vue 3 server rendering and server API routes in one app (D34, proposed D38), PostgreSQL 16 (D33) through Kysely with plain SQL migrations (proposed D39), tests in Vitest against a real PostgreSQL 16 |
 | Contract | `docs/architecture/contracts/openapi.yaml` (OpenAPI 3.1) |
-| Last updated | 2026-10-10 11:30 CDT |
+| Last updated | 2026-10-10 20:10 CDT |
 | Written by | design-lld (Claude Code, claude-opus-5-5) |
 | Approval | G3 — recorded in `.handoff/TRACKER.md ## Approvals` (never in this file); decisions in `docs/decisions/DECISION_JOURNAL.md` |
 
@@ -25,6 +25,7 @@
 | `docs/decisions/DECISION_JOURNAL.md` | e9e63bc | accepted D32 (TypeScript, server-rendered Vue), D33 (PostgreSQL), D35 (split + append-only ledger), D36 (one deployable, API-first), D37 (seeded accounts, server sessions) |
 | `docs/research/R05-basis-point-fee-and-split.md`, `R14-financial-reports-and-reconciliation.md`, `R15-ops-roles-and-separation.md` | 8c5081c | fee rounding, report shape, separation of duties |
 | design-lld interview (this run) | 2026-10-09 23:4x | Q1 scope M4-M6 ("lets do this one"), Q-1 cancel ("yes"), Q-2 fee split ("b") |
+| M4 code on main @ 158fb11 (server/services, db/migrations, server/routes, server/tasks); `specs/M4-tracer-bullet/acceptance.md` Q-1 to Q-4; `.handoff/reviews/M4-pass1`, `pass6`, `pass7` | 2026-10-10 | M5-R01 catch-up: rows marked (changed) or (new) match what M4 built and the review rows routed to design-lld (Approvals 2026-10-10 18:31 CDT, "Approve, accept all as listed"; F20) |
 
 **Not read:** `main@778e788` — set aside by D22, never an input; `docs/audit/AUDIT.md` — does not exist (greenfield).
 
@@ -115,8 +116,8 @@
 <!-- diagram: erd -->
 ```mermaid
 %% diagram: erd
-%% source: docs/architecture/lld.md#1-data-model @ 2e4e445
-%% drawn: 2026-10-10T05:04:43Z by draw-diagrams (claude, claude-opus-5-5)
+%% source: docs/architecture/lld.md#1-data-model @ 4d0903b
+%% drawn: 2026-10-11T01:23:45Z by draw-diagrams (claude, claude-opus-5-5)
 %% render: unverified
 %% render-check: mmdc not on PATH
 %% missing: 0
@@ -296,6 +297,18 @@ erDiagram
         timestamptz minute PK "not null"
         timestamptz first_seen_at "not null"
     }
+    sign_in_attempts {
+        bigint id PK "not null · identity"
+        text email "not null"
+        text ip "not null"
+        timestamptz attempted_at "not null"
+    }
+    pay_rate_attempts {
+        bigint id PK "not null · identity"
+        bigint user_id "not null"
+        text ip "not null"
+        timestamptz attempted_at "not null"
+    }
 ```
 <!-- /diagram -->
 
@@ -324,8 +337,8 @@ All money columns are whole US cents in `integer` (max about $21 million per val
 | Column | Type | Null | Default | Constraint | Notes |
 |---|---|---|---|---|---|
 | `id` | bigint identity | no | generated | PK `pk_users` | |
-| `email` | text | no | — | UNIQUE `uq_users_email_lower` | stored lower-case; fictional `@example.test` addresses only |
-| `password_hash` | text | no | — | — | slow salted hash (scrypt, Node's built-in crypto); never logged |
+| `email` | text | no | — | UNIQUE `uq_users_email_lower` | (changed) compared case-insensitively through `uq_users_email_lower` (lower(email)), so `Maya@…` and `maya@…` are one account; seeded lower-case; fictional `@example.test` addresses only |
+| `password_hash` | text | no | — | — | (changed) `scrypt$<N>$<r>$<p>$<salt base64>$<hash base64>` from Node's built-in scrypt, 16-byte salt, 64-byte hash; the stored value carries its own cost, so SEAM-6 can lower it in tests (acceptance Q-1); never logged |
 | `display_name` | text | no | — | CHECK `ck_users_display_name_len` | fictional names only |
 | `role` | varchar(30) | no | — | CHECK `ck_users_role` | patient, provider, finance_lead, operations_specialist, sre, data_analyst, none |
 | `practice_id` | bigint | yes | null | FK `fk_users_practice`; CHECK `ck_users_practice_matches_role` | null for operations staff, required for patients and providers |
@@ -347,7 +360,7 @@ All money columns are whole US cents in `integer` (max about $21 million per val
 | `id` | bigint identity | no | generated | PK `pk_sessions` | |
 | `token_hash` | bytea | no | — | UNIQUE `uq_sessions_token_hash` | SHA-256 of the random cookie value; the raw token is never stored |
 | `user_id` | bigint | no | — | FK `fk_sessions_user` | |
-| `created_at` | timestamptz | no | now() | — | |
+| `created_at` | timestamptz | no | now() | — | (changed) absolute limit: a session also ends 12 hours after sign-in however active it is (SEC-6, M4-T011) |
 | `last_seen_at` | timestamptz | no | now() | — | idle limit: a session is live only while now() − last_seen_at < 15 min (NFR-008) |
 | `ended_at` | timestamptz | yes | null | — | set on sign-out or idle expiry |
 
@@ -478,7 +491,7 @@ All money columns are whole US cents in `integer` (max about $21 million per val
 | `idempotency_key` | text | no | — | UNIQUE `uq_payment_attempts_order_key` | the patient's Idempotency-Key for this pay press |
 | `status` | varchar(20) | no | `'processing'` | CHECK `ck_payment_attempts_status` | state machine SM-2 |
 | `amount_cents` | integer | no | — | CHECK `ck_payment_attempts_amount_positive` | the held total |
-| `failure_reason` | varchar(40) | yes | null | — | declined, no_answer; never card or personal data |
+| `failure_reason` | varchar(40) | yes | null | — | (changed) declined or no_answer: the gateway's answer, which moves the order to payment_failed; null on a failed attempt means the failure was not the gateway's (FM-3) and the order was left as it was; never card or personal data |
 | `created_at` | timestamptz | no | now() | — | |
 | `finished_at` | timestamptz | yes | null | — | |
 
@@ -629,6 +642,40 @@ All money columns are whole US cents in `integer` (max about $21 million per val
 - **Sensitive data:** none
 - **Basis:** FR-059; HLD L-5
 
+#### `sign_in_attempts` — one sign-in try, kept for the rate-limit window · owner BE-3 · (new)
+
+| Column | Type | Null | Default | Constraint | Notes |
+|---|---|---|---|---|---|
+| `id` | bigint identity | no | generated | PK `pk_sign_in_attempts` | |
+| `email` | text | no | — | — | the email as typed (lower-cased); may name nobody |
+| `ip` | text | no | — | — | the client address from BE-3.clientAddress |
+| `attempted_at` | timestamptz | no | now() | — | |
+
+- **Primary key:** `id`
+- **Foreign keys:** none — a typed email may match no account
+- **Indexes:** `ix_sign_in_attempts_email` (email, attempted_at) and `ix_sign_in_attempts_ip` (ip, attempted_at) — the EP-15 count per email and per address; `ix_sign_in_attempts_attempted_at` (attempted_at) — pruning
+- **Unique:** none · **Checks:** none
+- **Retention:** rows older than 15 minutes are deleted by BE-3 on each attempt and by BE-21 every 15 minutes (SEC-11)
+- **Sensitive data:** `email`, `ip` — personal data class; never shown on any screen
+- **Basis:** EP-15 rate limit (10 tries per 15 minutes per email or per address), FR-039, SEC-11
+
+#### `pay_rate_attempts` — one payment try, kept for the rate-limit window · owner BE-10 · (new)
+
+| Column | Type | Null | Default | Constraint | Notes |
+|---|---|---|---|---|---|
+| `id` | bigint identity | no | generated | PK `pk_pay_rate_attempts` | |
+| `user_id` | bigint | no | — | — | the patient who pressed Pay |
+| `ip` | text | no | — | — | the client address from BE-3.clientAddress |
+| `attempted_at` | timestamptz | no | now() | — | |
+
+- **Primary key:** `id`
+- **Foreign keys:** none — rows live at most 15 minutes
+- **Indexes:** `ix_pay_rate_attempts_user` (user_id, attempted_at) and `ix_pay_rate_attempts_ip` (ip, attempted_at) — the EP-23 count per person and per address; `ix_pay_rate_attempts_attempted_at` (attempted_at) — pruning
+- **Unique:** none · **Checks:** none
+- **Retention:** as `sign_in_attempts` (BE-10 on each attempt, BE-21 every 15 minutes)
+- **Sensitive data:** `ip` — personal data class
+- **Basis:** EP-23 rate limit (SEC-9, threat TH-3), FR-006
+
 ### Relationships
 
 | From | To | Cardinality | Via | Required? | Basis |
@@ -668,7 +715,7 @@ All money columns are whole US cents in `integer` (max about $21 million per val
 | `uq_payment_attempts_one_success` | `payment_attempts` | INV-2 | partial unique index: supported in PostgreSQL |
 | `uq_payment_attempts_one_processing` | `payment_attempts` | LINV-6 | partial unique index |
 | all `integer` money columns | every money table | INV-3 | integer type; no fractions possible |
-| `tg_orders_paid_frozen`, `tg_order_lines_paid_frozen` + database grants (INSERT and SELECT only on `ledger_entries`, `price_changes`, `stock_movements`, `access_log`; no DELETE on orders or lines) | `orders`, `order_lines`, history tables | INV-4 | triggers and grants: supported; migrations run as a separate owner user |
+| `tg_orders_paid_frozen`, `tg_order_lines_paid_frozen` + database grants to `supplements_app` (INSERT and SELECT only on `ledger_entries`, `price_changes`, `stock_movements`, `access_log`; no DELETE on orders or lines) (changed) | `orders`, `order_lines`, history tables | INV-4 | triggers and grants: supported; migrations run as a separate owner user |
 | `ck_products_stock_nonneg` | `products` | INV-5 | CHECK |
 | `ck_orders_payout_nonneg` | `orders` | INV-6 (at payment) | CHECK |
 | `ck_orders_hold_when_in_checkout` | `orders` | INV-8 (a hold exists in checkout) | CHECK |
@@ -677,13 +724,19 @@ All money columns are whole US cents in `integer` (max about $21 million per val
 | `uq_order_lines_order_product` | `order_lines` | LINV-4 | unique |
 | `ck_order_lines_fee_share_nonneg` + `ct_order_lines_fee_shares_sum` | `order_lines` | LINV-1 | constraint trigger at commit: a paid order's fee shares add up to its platform fee |
 
+### Database roles and migrations (new)
+
+- **Roles (acceptance Q-3):** `supplements_owner` owns every table and runs the migrations; the app connects as `supplements_app`, which may only SELECT and INSERT on the history tables (`ledger_entries`, `price_changes`, `stock_movements`, `access_log`), may never DELETE from `orders` or `order_lines`, and may SELECT, INSERT and DELETE on the two attempt tables.
+- **Migrations (acceptance Q-4, D39):** plain SQL files in `db/migrations/*.sql`, applied with `npx node-pg-migrate up -m db/migrations` as `supplements_owner`; each file has an up and a down part; a migration that already ran in production is never edited.
+- **Split proof at the database (acceptance Q-2):** FR-013 is proved by direct writes against `ck_orders_split_balances` and the commit-time `ct_ledger_entries_balance` (LINV-2), because no API can write an unbalanced order.
+
 ## 2. Backend components
 
 <!-- diagram: be-class -->
 ```mermaid
 %% diagram: be-class
-%% source: docs/architecture/lld.md#2-backend-components @ 2e4e445
-%% drawn: 2026-10-10T05:06:07Z by draw-diagrams (claude, claude-opus-5-5)
+%% source: docs/architecture/lld.md#2-backend-components @ 42461ba
+%% drawn: 2026-10-11T01:26:07Z by draw-diagrams (claude, claude-opus-5-5)
 %% render: unverified
 %% render-check: mmdc not on PATH
 %% missing: 0
@@ -699,6 +752,7 @@ classDiagram
     <<service>> BE3
     BE3 : +signIn(email: string, password: string, ip: string) Promise~{ viewer: Viewer#59; cookieToken: string }~
     BE3 : +resolve(cookieToken: string | undefined) Promise~Viewer | null~
+    BE3 : +clientAddress(event: H3Event) string
     BE3 : +signOut(cookieToken: string) Promise~void~
     class BE4["BE-4 AccessPolicy"]
     <<policy>> BE4
@@ -719,6 +773,8 @@ classDiagram
     BE6 : +defaultPriceCents(unitCostCents: number) number
     BE6 : +priceFromMargin(unitCostCents: number, marginBasisPoints: number) number
     BE6 : +lowestAllowedPriceCents(unitCostCents: number) number
+    BE6 : +belowFloorProductIds~T~(lines: { id: T#59; unitPriceCents: number#59; unitCostCents: number#59; quantity: number }[]) T[]
+    BE6 : +unitCostFromLowestAllowedPrice(lowestAllowedCents: number) number
     BE6 : +assertSplitBalances(split: Split) void
     class BE7["BE-7 CatalogService"]
     <<service>> BE7
@@ -737,6 +793,7 @@ classDiagram
     BE9 : +expireHoldIfDue(orderId: bigint) Promise~void~
     class BE10["BE-10 PaymentService"]
     <<service>> BE10
+    BE10 : +countPayAttempt(userId: bigint, ip: string) Promise~void~
     BE10 : +pay(viewer: Viewer, orderId: bigint, idempotencyKey: string) Promise~Receipt~
     class BE11["BE-11 PaymentGateway"]
     <<adapter (stub)>> BE11
@@ -779,6 +836,9 @@ classDiagram
     class BE20["BE-20 Clock"]
     <<seam>> BE20
     BE20 : +now() Date
+    class BE21["BE-21 PruneAttempts"]
+    <<scheduled task>> BE21
+    BE21 : +run() Promise~{ result: 'ok' }~
     BE1 ..> BE3 : depends on
     BE1 ..> BE4 : depends on
     BE1 ..> BE5 : depends on
@@ -797,7 +857,7 @@ classDiagram
     BE2 ..> BE3 : depends on
     BE2 ..> BE4 : depends on
     BE3 ..> BE20 : depends on
-    note for BE3 "depends on: SEAM-2 random tokens, scrypt from Node's crypto"
+    note for BE3 "depends on: Node's crypto (randomBytes for tokens, scrypt for passwords#59; D72)"
     BE5 ..> BE20 : depends on
     BE7 ..> BE4 : depends on
     BE7 ..> BE6 : depends on
@@ -828,6 +888,8 @@ classDiagram
     BE18 ..> BE4 : depends on
     BE18 ..> BE20 : depends on
     BE19 ..> BE20 : depends on
+    BE21 ..> BE20 : depends on
+    note for BE21 "depends on: the Nitro task scheduler (cron */15 * * * *, in the same process#59; no new container)"
 ```
 <!-- /diagram -->
 
@@ -857,16 +919,17 @@ classDiagram
 
 ### BE-3 SessionService · service · CN-1 · new
 
-- **Responsibility:** prove who is making each request through server-side sessions with a 15-minute idle limit.
-- **Depends on:** BE-20 Clock, SEAM-2 random tokens, scrypt from Node's crypto
-- **Tables:** reads `users`; writes `sessions`
+- **Responsibility:** prove who is making each request through server-side sessions with a 15-minute idle limit and a 12-hour absolute limit (changed, SEC-6), and limit sign-in tries.
+- **Depends on:** BE-20 Clock, Node's crypto (`randomBytes` for tokens, `scrypt` for passwords; D72) (changed)
+- **Tables:** reads `users`; writes `sessions`, `sign_in_attempts` (changed)
 - **Transactions:** none (each write is one statement)
 - **Basis:** FR-039 to FR-042, NFR-007, NFR-008, D37
 
 | Public method (signature only) | Called by | Returns | Raises (problem type) | Covers |
 |---|---|---|---|---|
 | `signIn(email: string, password: string, ip: string): Promise<{ viewer: Viewer; cookieToken: string }>` | BE-1 via EP-15 | the viewer and a new random cookie token | `/problems/sign-in-failed`, `/problems/rate-limited` | FR-039 |
-| `resolve(cookieToken: string \| undefined): Promise<Viewer \| null>` | BE-1, BE-2 on every request | the viewer, after moving `last_seen_at` forward; null when missing, ended or idle 15 min or more | — | FR-040, FR-041 |
+| `resolve(cookieToken: string \| undefined): Promise<Viewer \| null>` | BE-1, BE-2 on every request | the viewer, after moving `last_seen_at` forward; null when missing, ended, idle 15 min or more, or signed in 12 hours ago or more (changed) | — | FR-040, FR-041 |
+| `clientAddress(event: H3Event): string` (new) | BE-1 for EP-15 and EP-23, which passes the address to BE-3.signIn and BE-10.countPayAttempt | the client address the limits count: the last `X-Forwarded-For` entry when `TRUST_PROXY=1` (behind the platform proxy), else the socket address | — | FR-039, SEC-9 |
 | `signOut(cookieToken: string): Promise<void>` | BE-1 via EP-16 | — | — | FR-041 |
 
 ### BE-4 AccessPolicy · policy · CN-1 · new
@@ -912,6 +975,8 @@ classDiagram
 | `defaultPriceCents(unitCostCents: number): number` | BE-7, BE-8 | cost plus a 50% margin of the price, i.e. 2 × cost | — | FR-017 |
 | `priceFromMargin(unitCostCents: number, marginBasisPoints: number): number` | BE-8 | cost ÷ (1 − margin), rounded half-up to a cent | — | FR-018 |
 | `lowestAllowedPriceCents(unitCostCents: number): number` | BE-7, BE-8 | the smallest price whose payout on one unit after its fee is ≥ 0 | — | FR-020 |
+| `belowFloorProductIds<T>(lines: { id: T; unitPriceCents: number; unitCostCents: number; quantity: number }[]): T[]` (new) | BE-9.sendOrder | the products priced below their own floor (per unit, `lowestAllowedPriceCents`); when every product is at or above its floor but the one order fee still rounds the order's payout below $0.00, every product (none is singly at fault) | — | FR-004, FR-020 |
+| `unitCostFromLowestAllowedPrice(lowestAllowedCents: number): number` (new) | FE-4 (live payout from the Catalog) | the unit cost behind a floor: floor − its fee, because the payout at the floor is exactly $0.00 | — | FR-002 |
 | `assertSplitBalances(split: Split): void` | BE-10 | — | `SplitMismatch` (mapped to `/problems/order-under-review`) | FR-013 |
 
 ### BE-7 CatalogService · service · CN-1 · new
@@ -951,7 +1016,7 @@ classDiagram
 | Public method (signature only) | Called by | Returns | Raises (problem type) | Covers |
 |---|---|---|---|---|
 | `sendOrder(viewer: Viewer, input: SendOrderInput): Promise<Order>` | BE-1 via EP-19 | the sent order | `/problems/validation`, `/problems/below-price-floor`, `/problems/insufficient-stock`, `/problems/not-found` | FR-002 to FR-005, FR-025, FR-031, FR-043 |
-| `getOrderForViewer(viewer: Viewer, orderId: bigint): Promise<OrderView>` | BE-1 via EP-21 | lines at current or held prices, price-change notices, hold time | `/problems/not-found` | FR-005, FR-009, FR-022, FR-037 |
+| `getOrderForViewer(viewer: Viewer, orderId: bigint): Promise<OrderView>` | BE-1 via EP-21 | lines at current or held prices, price-change notices, hold time, `hold_ended` (changed: true when the order is `sent` and `checkout_started_at` is set, i.e. a hold ended unpaid; S2 "Your 30-minute price hold ended") | `/problems/not-found` | FR-005, FR-009, FR-022, FR-037 |
 | `startCheckout(viewer: Viewer, orderId: bigint): Promise<Checkout>` | BE-1 via EP-22 | the hold (same hold when repeated while live) | `/problems/invalid-transition`, `/problems/not-found` | FR-023, FR-024, FR-037 |
 | `cancelOrder(viewer: Viewer, orderId: bigint): Promise<Order>` | BE-1 via EP-20 | the cancelled order | `/problems/invalid-transition`, `/problems/not-found` | FR-066, FR-067 (changed) |
 | `expireHoldIfDue(orderId: bigint): Promise<void>` | `getOrderForViewer`, `startCheckout`, BE-10.pay | — | — | FR-037 |
@@ -960,13 +1025,16 @@ classDiagram
 
 - **Responsibility:** take one payment for a held order and record its split, ledger, stock and status as one unit.
 - **Depends on:** BE-6, BE-9, BE-11, BE-13, BE-20
-- **Tables:** reads `orders`, `order_lines`, `products`; writes `payment_attempts`, `orders`, `order_lines`, `ledger_entries`, `stock_movements`, `products`
+- **Tables:** reads `orders`, `order_lines`, `products`; writes `payment_attempts`, `orders`, `order_lines`, `ledger_entries`, `stock_movements`, `products`, `pay_rate_attempts` (changed)
 - **Transactions:** `pay` uses two short transactions around the gateway call: (1) lock the order row, check the hold and the split, lock the product rows in id order and reserve the stock (BE-13.reserveForOrder), insert the `processing` attempt — so a patient who can't get the stock is refused before any charge (AE-024); (2a) on success, write the split, unit costs, fee shares and ledger entries, mark the attempt succeeded and the order paid; (2b) on failure, return the stock (BE-13.releaseForOrder), mark the attempt failed and the order `payment_failed`. The gateway call sits outside any transaction so a slow answer never holds locks
-- **Basis:** FR-006 to FR-013, FR-026, FR-027, FR-035, FR-036; D35; INV-1, INV-2, INV-5
+- **Before charging (changed, D47):** a split that balances but leaves a payout below $0.00 (unit costs rose since the order was sent) moves the order to `needs_review` in transaction (1) with no attempt and no charge, as a split mismatch does (FM-5); `ck_orders_payout_nonneg` stays the backstop.
+- **Failures that are not the gateway's (changed, FM-3):** any throw after transaction (1) closes the `processing` attempt as `failed` with no `failure_reason` and leaves the order as it was, so the next Pay is not blocked by `uq_payment_attempts_one_processing`.
+- **Basis:** FR-006 to FR-013, FR-026, FR-027, FR-035, FR-036; D35; D47; INV-1, INV-2, INV-5; SEC-9
 
 | Public method (signature only) | Called by | Returns | Raises (problem type) | Covers |
 |---|---|---|---|---|
-| `pay(viewer: Viewer, orderId: bigint, idempotencyKey: string): Promise<Receipt>` | BE-1 via EP-23 | the receipt | `/problems/invalid-transition`, `/problems/checkout-expired`, `/problems/insufficient-stock`, `/problems/order-under-review`, `/problems/payment-failed`, `/problems/not-found` | FR-006 to FR-013, FR-026, FR-027, FR-035, FR-036 |
+| `countPayAttempt(userId: bigint, ip: string): Promise<void>` (new) | BE-1 via EP-23, inside BE-5's guarded work (replays and in-flight duplicates are not counted) | — after recording the attempt in `pay_rate_attempts`, under per-person then per-address advisory locks | `/problems/rate-limited` (more than 10 tries in 15 minutes for one person or one address; `retryAfterSeconds`) | FR-006, SEC-9 |
+| `pay(viewer: Viewer, orderId: bigint, idempotencyKey: string): Promise<Receipt>` | BE-1 via EP-23 | the receipt | `/problems/invalid-transition`, `/problems/checkout-expired`, `/problems/insufficient-stock`, `/problems/order-under-review`, `/problems/payment-failed`, `/problems/not-found`, `/problems/rate-limited` (changed) | FR-006 to FR-013, FR-026, FR-027, FR-035, FR-036 |
 
 ### BE-11 PaymentGateway · adapter (stub) · CN-1 · new
 
@@ -1095,7 +1163,19 @@ classDiagram
 
 | Public method (signature only) | Called by | Returns | Raises (problem type) | Covers |
 |---|---|---|---|---|
-| `now(): Date` | BE-3, BE-5, BE-8 to BE-10, BE-13, BE-15 to BE-19 | the current UTC time | — | FR-037, FR-041 |
+| `now(): Date` | BE-3, BE-5, BE-8 to BE-10, BE-13, BE-15 to BE-19, BE-21 (changed) | the current UTC time | — | FR-037, FR-041 |
+
+### BE-21 PruneAttempts · scheduled task · CN-1 · (new)
+
+- **Responsibility:** delete sign-in and payment attempt rows older than the 15-minute rate-limit window, even when nobody signs in or pays.
+- **Depends on:** BE-20 Clock; the Nitro task scheduler (cron `*/15 * * * *`, in the same process; no new container)
+- **Tables:** writes (DELETE) `sign_in_attempts`, `pay_rate_attempts`
+- **Transactions:** none (one DELETE per table)
+- **Basis:** SEC-11; Q-5 (partly: attempt tables only)
+
+| Public method (signature only) | Called by | Returns | Raises (problem type) | Covers |
+|---|---|---|---|---|
+| `run(): Promise<{ result: 'ok' }>` | the scheduler every 15 minutes | `{ result: 'ok' }` after both deletes | — | SEC-11 |
 
 ## 3. Frontend components
 
@@ -1358,9 +1438,9 @@ FE-12, FE-22 and FE-23 are shared, stateless components; each appears under ever
 | **EP-20** | POST | `/api/orders/{orderId}/cancel` | session + provider of the order's practice | path: orderId | 200 `Order` | 401 `/problems/unauthenticated`; 404 `/problems/not-found`; 409 `/problems/invalid-transition` | natural: cancelling a cancelled order returns it unchanged | — | FR-066, FR-067 (changed) |
 | **EP-21** | GET | `/api/orders/{orderId}` | session + the order's patient, or a provider of its practice | path: orderId | 200 `OrderView` | 401 `/problems/unauthenticated`; 404 `/problems/not-found` | n/a (safe) | — | FR-005, FR-009, FR-022, FR-037 |
 | **EP-22** | POST | `/api/orders/{orderId}/checkout` | session + the order's patient | path: orderId | 200 `Checkout` | 401 `/problems/unauthenticated`; 404 `/problems/not-found`; 409 `/problems/invalid-transition` | natural: while the hold is live a repeat returns the same hold | — | FR-023, FR-024, FR-037 |
-| **EP-23** | POST | `/api/orders/{orderId}/payments` | session + the order's patient | path: orderId; no body | 201 `Receipt` | 400 `/problems/idempotency-key-missing`; 401 `/problems/unauthenticated`; 404 `/problems/not-found`; 409 `/problems/idempotency-in-flight`; 409 `/problems/invalid-transition`; 409 `/problems/checkout-expired`; 422 `/problems/insufficient-stock`; 422 `/problems/order-under-review`; 422 `/problems/idempotency-mismatch`; 502 `/problems/payment-failed` | `Idempotency-Key` required; plus at most one succeeded payment per order (`uq_payment_attempts_one_success`) | — | FR-006, FR-007, FR-008, FR-010, FR-011, FR-012, FR-013, FR-026, FR-027, FR-035, FR-036 |
+| **EP-23** | POST | `/api/orders/{orderId}/payments` | session + the order's patient | path: orderId; no body | 201 `Receipt` | 400 `/problems/idempotency-key-missing`; 401 `/problems/unauthenticated`; 404 `/problems/not-found`; 409 `/problems/idempotency-in-flight`; 409 `/problems/invalid-transition`; 409 `/problems/checkout-expired`; 422 `/problems/insufficient-stock`; 422 `/problems/order-under-review`; 422 `/problems/idempotency-mismatch`; 429 `/problems/rate-limited` (changed); 502 `/problems/payment-failed` | `Idempotency-Key` required; plus at most one succeeded payment per order (`uq_payment_attempts_one_success`) | — | FR-006, FR-007, FR-008, FR-010, FR-011, FR-012, FR-013, FR-026, FR-027, FR-035, FR-036 |
 | **EP-24** | GET | `/api/notices/{token}` | public | path: token | 200 `Notice` | 404 `/problems/not-found` | n/a (safe) | — | FR-043, FR-044 |
-| **EP-25** | GET | `/api/ops/orders` | session + role operations_specialist or finance_lead | query: status (paid or needs_review), number, cursor, limit | 200 `OpsOrderPage` | 401 `/problems/unauthenticated`; 403 `/problems/forbidden`; 422 `/problems/validation` | n/a (safe) | cursor, default 25, max 100 | FR-013, FR-014, FR-050, FR-052 |
+| **EP-25** | GET | `/api/ops/orders` | session + role operations_specialist or finance_lead | query: status (paid or needs_review), number, cursor, limit | 200 `OpsOrderPage` | 401 `/problems/unauthenticated`; 403 `/problems/forbidden`; 422 `/problems/validation` | n/a (safe) | cursor on id DESC (changed: the order number is the id, D40), default 25, max 100 | FR-013, FR-014, FR-050, FR-052 |
 | **EP-26** | GET | `/api/ops/orders/{orderId}` | session + role operations_specialist or finance_lead | path: orderId | 200 `OrderBreakdown` | 401 `/problems/unauthenticated`; 403 `/problems/forbidden`; 404 `/problems/not-found` | n/a (safe) | — | FR-014, FR-036, FR-050, FR-058 |
 | **EP-27** | GET | `/api/practice/prices` | session + role provider | query: history_cursor | 200 `PriceList` | 401 `/problems/unauthenticated`; 403 `/problems/forbidden` | n/a (safe) | history: cursor, default 25, max 100 | FR-017, FR-019 |
 | **EP-28** | PUT | `/api/practice/prices/{productId}` | session + role provider | `PriceChangeRequest` | 200 `PracticePrice` | 400 `/problems/idempotency-key-missing`; 401 `/problems/unauthenticated`; 403 `/problems/forbidden`; 404 `/problems/not-found`; 409 `/problems/idempotency-in-flight`; 409 `/problems/stale-price`; 422 `/problems/validation`; 422 `/problems/below-price-floor`; 422 `/problems/idempotency-mismatch` | `Idempotency-Key` required (each change appends history, so a blind repeat would double it) | — | FR-018, FR-019, FR-020, FR-022 |
@@ -1375,7 +1455,8 @@ FE-12, FE-22 and FE-23 are shared, stateless components; each appears under ever
 | **EP-37** | PUT | `/api/ops/staff/{userId}/role` | session + role sre; never the caller's own account | `RoleChangeRequest` | 200 `StaffMember` | 400 `/problems/idempotency-key-missing`; 401 `/problems/unauthenticated`; 403 `/problems/forbidden`; 403 `/problems/self-role-change`; 404 `/problems/not-found`; 409 `/problems/idempotency-in-flight`; 409 `/problems/stale-role`; 422 `/problems/validation`; 422 `/problems/last-finance-lead`; 422 `/problems/idempotency-mismatch` | `Idempotency-Key` required | — | FR-054, FR-055, FR-056 |
 | **EP-38** | GET | `/api/ops/access-log` | session + role finance_lead | query: month, cursor, limit | 200 `AccessLogPage` | 401 `/problems/unauthenticated`; 403 `/problems/forbidden`; 422 `/problems/validation` | n/a (safe) | cursor, default 25, max 100 | FR-057 |
 | **EP-39** | GET | `/api/ops/system-health` | session + role sre | query: month | 200 `SystemHealth` | 401 `/problems/unauthenticated`; 403 `/problems/forbidden`; 422 `/problems/validation` | n/a (safe) | — | FR-059 |
-| **EP-40** | GET | `/health` | public; reveals only up or down and the version | none | 200 `Health` | — | n/a (safe) | — | FR-059 |
+| **EP-40** | GET | `/healthz` (changed) | public; reveals only up or down | none | 200 text `ok` after one `select 1` within 2 s; 503 text `unavailable`; `Cache-Control: no-store` | — | n/a (safe) | — | FR-059 |
+| **EP-41** | GET | `/version` (new) | public; reveals only the build identity | none | 200 `BuildInfo` (`commit`, `built_at`, read from `build-info.json` written at deploy); 503 text `unknown build`; `Cache-Control: no-store` | — | n/a (safe) | — | FR-059 |
 
 ### Problem types (RFC 9457)
 
@@ -1386,7 +1467,7 @@ FE-12, FE-22 and FE-23 are shared, stateless components; each appears under ever
 | `/problems/forbidden` | You can't open this | 403 | signed in, but the role does not allow the page or action (FR-058) | none |
 | `/problems/not-found` | We can't find this | 404 | the record doesn't exist, or exists but isn't the viewer's (same answer, FR-009) | none |
 | `/problems/sign-in-failed` | That email and password don't match | 401 | wrong email or password (one message for both) | none |
-| `/problems/rate-limited` | Too many tries | 429 | more than 10 sign-in attempts in 15 minutes for one email or one address | `retryAfterSeconds` |
+| `/problems/rate-limited` | Too many tries | 429 | (changed) more than 10 sign-in attempts in 15 minutes for one email or one address (EP-15), or more than 10 payment attempts in 15 minutes for one person or one address (EP-23) | `retryAfterSeconds` |
 | `/problems/idempotency-key-missing` | Idempotency-Key is required | 400 | a guarded mutation arrives without its key | none |
 | `/problems/idempotency-in-flight` | This request is still being processed | 409 | the same key's first request has not finished | none |
 | `/problems/idempotency-mismatch` | This key was used for a different request | 422 | same key, different body | none |
@@ -1411,7 +1492,7 @@ FE-12, FE-22 and FE-23 are shared, stateless components; each appears under ever
 
 ### Pagination
 
-- cursor (keyset) for every list that can grow: EP-25, EP-27 history, EP-30, EP-31 history, EP-38 · default 25, max 100 · order (time DESC, id DESC) with id as the unique tie-breaker · response carries `next_cursor` (an opaque base64url of the last row's time and id), null on the last page. Cursor keeps pages correct while new orders arrive and stays fast deep into history (design-rules §API). Small fixed lists (catalog, staff, per-product sales) are unpaginated with their size limit stated in the row.
+- cursor (keyset) for every list that can grow: EP-25, EP-27 history, EP-30, EP-31 history, EP-38 · default 25, max 100 · order (time DESC, id DESC) with id as the unique tie-breaker · response carries `next_cursor` (an opaque base64url of the last row's time and id), null on the last page. Cursor keeps pages correct while new orders arrive and stays fast deep into history (design-rules §API). Small fixed lists (catalog, staff, per-product sales) are unpaginated with their size limit stated in the row. (changed) EP-25 is the exception: it orders by id DESC alone, because the order number is the id (D40) and the paid list reads newest number first; its cursor is the last id.
 
 ## 5. Core journeys
 
@@ -2359,7 +2440,7 @@ stateDiagram-v2
 | `in_checkout` | hold ends (BE-9.expireHoldIfDue, on any read or action after `prices_held_until`) | now ≥ prices_held_until | `sent` | clear held prices | — |
 | `in_checkout` | payment succeeds (EP-23 → BE-10.pay) | hold live; stock enough; split balances | `paid` | split, fee shares, ledger, stock movements, paid_at | 409 `/problems/checkout-expired` or `/problems/invalid-transition` |
 | `in_checkout` | payment fails (BE-11 declined or no answer) | — | `payment_failed` | attempt failed | — |
-| `in_checkout` | split mismatch (BE-10.pay, before charging) | split doesn't balance | `needs_review` | none; no charge | — |
+| `in_checkout` | split mismatch (BE-10.pay, before charging) | split doesn't balance, or (changed, D47) it balances but the payout would be below $0.00 | `needs_review` | none; no charge | — |
 | `sent` | cancel (EP-20 → BE-9.cancelOrder) | viewer is a provider of the practice | `cancelled` | cancelled_at | 409 `/problems/invalid-transition` |
 | `payment_failed` | cancel (EP-20) | viewer is a provider of the practice | `cancelled` | cancelled_at | 409 `/problems/invalid-transition` |
 
@@ -2474,11 +2555,11 @@ stateDiagram-v2
 |---|---|---|---|---|---|---|---|
 | **FM-1** | payment provider declines | L-3, BE-11 | `failed`/`declined` outcome | no automatic retry; the patient may press Pay again with a new key | "Your payment didn't go through. No money was taken. Try again." | attempt failed; stock released; order payment_failed | info log with order number |
 | **FM-2** | payment provider doesn't answer | L-3, BE-11 | 10 s timeout | no blind retry (not safe); later, ask the provider for the key's status before retrying | same as FM-1 | as FM-1; later integration voids any authorisation by key | warn log + error count in request stats |
-| **FM-3** | database fails during either payment transaction | L-2, BE-10 | driver error or 5 s statement timeout | transaction rolls back; BE-5.release lets the patient retry the same key | "We couldn't complete your payment. No money was taken. Try again." (Our failure copy) | nothing half-written: each transaction is all or nothing | error log + 5xx count |
+| **FM-3** | database fails during either payment transaction | L-2, BE-10 | driver error or 5 s statement timeout | transaction rolls back; (changed) the attempt closes as `failed` with no `failure_reason` and the order stays as it was; BE-5.release lets the patient retry the same key | "We couldn't complete your payment. No money was taken. Try again." (Our failure copy) | nothing half-written: each transaction is all or nothing | error log + 5xx count |
 | **FM-4** | messaging fails when sending an order | L-4, BE-12 | stub can't fail; later a provider error | later: send after commit with 3 retries, backoff 1 s, 4 s, 16 s plus jitter | the provider still sees "Sent"; later the dashboard marks the notice undelivered | order sent; notice row present | warn log |
 | **FM-5** | split doesn't add up | BE-10 before charging | BE-6.assertSplitBalances | none | "We couldn't complete this payment" | order needs_review; no attempt | review count alert (line 1, A-11) |
 | **FM-6** | a request dies holding an in-flight idempotency key | BE-5 | in-flight row older than 60 s on the next begin | the next request with that key takes it over | normal result on retry | at most one stale in-flight row | info log |
-| **FM-7** | the process dies between payment transaction 1 and 2 | BE-10 | a `processing` attempt older than 2 minutes, found by BE-9.expireHoldIfDue or the next pay on that order | reconcile: in the stub treat as no answer; later ask the provider by key first | the order shows payment failed; "Try again" | stock returned with sale_release movements; attempt failed | warn log |
+| **FM-7** | the process dies between payment transaction 1 and 2 | BE-10 | a `processing` attempt older than 2 minutes, found by BE-9.expireHoldIfDue (changed: called at the start of BE-10.pay and BE-9.startCheckout as well as on EP-21 reads) or the next pay on that order | reconcile: in the stub treat as no answer; later ask the provider by key first | the order shows payment failed; "Try again" | stock returned with sale_release movements; attempt failed | warn log |
 | **FM-8** | request statistics write fails | BE-19 | driver error | none; the request still succeeds | nothing | one hour's counts slightly low | warn log |
 | **FM-9** | export fails part-way | EP-35, BE-17 | stream error | none | "We couldn't prepare the export. Nothing was downloaded. Try again." | nothing written | error log |
 
@@ -2487,7 +2568,7 @@ stateDiagram-v2
 | Id | Seam (what varies) | Real implementation | Fake in tests | Swapped where | Test levels |
 |---|---|---|---|---|---|
 | **SEAM-1** | clock | BE-20 returning the system time | a frozen, steppable clock | BE-20 provided through the Nitro app context; tests install the fake | unit, integration, API |
-| **SEAM-2** | random tokens and keys (session tokens, notice tokens) | Node `crypto.randomBytes` | a seeded sequence | a token module imported by BE-3 and BE-12, replaced in the test setup | unit, integration |
+| **SEAM-2** | random tokens and keys (session tokens, notice tokens) | Node `crypto.randomBytes`, called directly by BE-3 and BE-12 | not faked (changed, D72): tokens are opaque and stored or compared only by hash, so no test needs a known value | none | unit, integration |
 | **SEAM-3** | payment provider | BE-11 stub with modes succeed, decline, no_answer (real provider later) | BE-11 set to the mode each test needs | environment value `PAYMENT_STUB_MODE` per test, or a direct override in integration tests | integration, API, acceptance |
 | **SEAM-4** | messaging | BE-12 writing `notices` (real email or text later) | the same stub; tests read the `notices` row | none needed in the slice | integration, acceptance |
 | **SEAM-5** | signed-in person | BE-3 with a real session | a test helper that signs in a seeded account through EP-15 | test fixtures | API, acceptance |
@@ -2622,6 +2703,26 @@ stateDiagram-v2
 - **Interview line:** "Locks live for milliseconds on either side of the card call, never across it; the patient waits for a definite answer because uncertainty about money is the one thing they won't forgive, and in production I'd add a pending state settled by the provider's webhook."
 - **Default if you don't answer:** stays proposed; nothing downstream may build on it.
 
+### D72 No test seam for random tokens  [status: proposed]
+
+- **Question:** do session and notice tokens need a replaceable token module (SEAM-2), as the first draft said?
+- **Forces:** M4 built BE-3 and BE-12 calling Node's `randomBytes` directly (review M4-pass1 R5); tokens are opaque and stored or compared only by SHA-256 hash; tests find tokens through the API or the database, never by predicting them
+- **Reversibility:** Type 2 two-way · **Confidence:** high
+
+| Option | Pros | Cons | Cost (build + run) | Basis |
+|---|---|---|---|---|
+| Do nothing / simplest: leave the LLD saying "token module" while the code calls `randomBytes` | no work now | the design and the code disagree; the next reviewer flags it again | none | M4-pass1 R5 |
+| Drop the seam: tokens come from `randomBytes` directly; SEAM-2 says "not faked" | the LLD matches the shipped code; nothing to maintain | a future test that must know a token in advance would need the seam back | none (document only) | M4 code |
+| Build the token module now and replace it in tests (first proposal) | tests could predict tokens | code and tests to write for no current test need | about 1 hour | design-rules §Test seams |
+
+- **Recommendation:** drop the seam
+- **Why (Y-statement):** In the context of opaque tokens compared only by hash, facing a design that asked for a seam no test uses, we choose to drop SEAM-2's module over building it, to keep the design true to the code, accepting that a test needing a known token would bring it back.
+- **In plain words:** nobody needs to guess a token in a test, so a swappable token maker is extra code with no job.
+- **First proposal (instead of):** build the token module (the first draft's SEAM-2).
+- **Revisit if:** a test needs a known token value, or tokens start carrying meaning.
+- **Interview line:** "Tokens are random and only compared by hash, so I dropped the planned test seam instead of building code no test needed."
+- **Default if you don't answer:** stays proposed; nothing downstream may build on it.
+
 ## Open questions
 
 | Id | ⚠ Question | Blocks | Recommended answer | Who answers |
@@ -2633,6 +2734,7 @@ stateDiagram-v2
 | **Q-5** | ⚠ How are expired `idempotency_keys` and ended `sessions` rows removed, with no scheduler container in the HLD? | `idempotency_keys`, `sessions` | delete a user's expired rows on their next write (no scheduler); `request_stats` and `health_pings` stay (about 9,000 small rows a year) | design: confirm at G3 |
 | **Q-6** | ⚠ Which fictional accounts and products are seeded? | seed data, demo, acceptance tests | 2 practices (Willow Creek Wellness, one more), Dr. Maya Chen and Dr. Sam Lee, patients Ana Ruiz and Ben Ortiz, Fran Fields, Omar Ortega, Sam Reyes, Dana Ito, and the 3 PRD products plus 5 more; all `@example.test` | human at G3 |
 | **Q-7** | ⚠ Broader holistic care (prescriptions through a partner pharmacy, medical supplies, services such as gym memberships or IV sessions, recurring charges) would need product types, a payee per order line and asynchronous work (D42 revisit-if). Should the PRD record these as Later scope? | future PRD scope; `products`, `order_lines`, `ledger_entries` categories | yes: add them to the PRD's Later row as a parked idea so they are not built now; design them when a milestone takes them | write-prd (Later scope), human |
+| **Q-8** | ⚠ The registry gives `/problems/invalid-transition` the members `from` and `event`, but M4's code sends neither (review M4-pass6 R9). Keep the contract and add them, or drop them from the registry? | `/problems/invalid-transition`, FE-15, FE-8 | keep the contract and add `from` and `event` in an M5 task: the screens can then explain why ("This order was already paid") without guessing | supervisor (M5 slice) |
 
 ## Change log
 
@@ -2643,3 +2745,6 @@ stateDiagram-v2
 | 2026-10-10 10:44 CDT | Revise per G3 row 2026-10-10 10:44 CDT ("a, add D42"): D42 Payment timing records options A-D, the lock analysis, the tolerance by persona and the revisit triggers; Q-7 broader holistic-care scope | D42, Q-7 | pending G3 |
 | 2026-10-10 11:12 CDT | Revise per G3 row 2026-10-10 11:11 CDT ("approve, then /design-lld"): trace FR-066 to FR-069 from the PRD clarify pass (prd.md@998ed94); EP-20 and BE-9 cover FR-066, FR-067; BE-6.allocateFee covers FR-069; S6 cancel in FE-15, ST-12 and SEQ-5 | Requirement trace, EP-20, BE-9, BE-6, FE-15, ST-12, SEQ-5 | pending G3 |
 | 2026-10-10 11:30 CDT | Revise per G3 row 2026-10-10 11:30 CDT ("a"): D38 now Nuxt 4 (current major per the npm registry, checked 2026-10-10; Nuxt 3 is the previous major); Stack line notes Node 22.22+ | D38, Stack | pending G3 |
+| 2026-10-10 20:10 CDT | Revise (M5-R01 catch-up, F20; Approvals 2026-10-10 18:31 CDT "Approve, accept all as listed" and 20:01 CDT "go ahead with check-security then M5-R01"): match the shipped M4 code and the routed review rows — users.email and password_hash (Q-1), sessions absolute limit (SEC-6), payment_attempts.failure_reason meaning (FM-3), new sign_in_attempts and pay_rate_attempts tables, database roles and migrations (Q-2 to Q-4), BE-3 clientAddress, BE-6 belowFloorProductIds and unitCostFromLowestAllowedPrice, BE-10 countPayAttempt, D47 guard and FM-3 close, new BE-21 PruneAttempts, EP-23 429, EP-25 order, EP-40 /healthz, new EP-41 /version, rate-limited row, SM-1 guard, FM-3, SEAM-2 (D72), Q-8 | users, sessions, payment_attempts, sign_in_attempts, pay_rate_attempts, INV-4, BE-3, BE-6, BE-10, BE-21, EP-23, EP-25, EP-40, EP-41, SM-1, FM-3, SEAM-2, D72, Q-8 | pending G3 |
+| 2026-10-10 23:10 CDT | Revise (M5 close-out; M5-pass2 R4, M5-pass4 R4; Approvals 2026-10-10 23:10 CDT STANDING): OrderView gains `hold_ended` (EP-21, BE-9.getOrderForViewer); FM-7 reconcile also runs at the start of pay and checkout start | BE-9, EP-21, FM-7, openapi OrderView | G3 by STANDING approval 2026-10-10 23:10 CDT |
+| 2026-10-10 23:57 CDT | Revise (M5 review pass 7 R4, pass 6 R9 a/b, pass 1 R3; Approvals STANDING 2026-10-10 23:09 CDT): EP-17 `Me` gains `practice_name` (string or null), read with the session's user; S5 and S6 titles use it | EP-17, BE-3, openapi Me | G3 by STANDING approval 2026-10-10 23:57 CDT |

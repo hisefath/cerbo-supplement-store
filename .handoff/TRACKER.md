@@ -7,11 +7,11 @@ several harnesses read it and the repo is public.
 ## Resume
 
 <!-- Rewritten as the LAST edit of every supervisor move. Times come from `date`. -->
-- **As of:** 2026-10-10 18:31 CDT
-- **In flight:** nothing. M1-M4 merged to main (10a020e, GitHub mirrored); demo live at web-v2 (1130822, smoke GREEN). route-failure M4 retro closed: F5-F26 filed; H4-H15 all adopted in software-factory-kit (last b8560d0, pushed to GitLab + GitHub); D57-D69 recorded; docs/decisions/REVIEW.md (project review by topic and weight) generated and checked by make check.
-- **Next:** home the unpushed Cerbo commits d4c77e6..de232d2 (on merged milestone/m4-tracer-bullet) on main via a small MR; then /quiz-me (milestone close chain). Queued: M5-R01 design-lld catch-up, M5-R02 define-acceptance, M5-R03 clarify-spec M5 scope; next route-failure pass: neutral examples in H4/H8, update Cerbo's scripts/scope-guard.sh copy, record H4-H15 adopted in HARNESS_CHANGELOG, draw-diagrams trace bugs (Log 2026-10-10 00:03). Also: G-live probe, re-run /check-security, redeploy from main, align D33 Postgres 16 vs 18.
-- **Waiting on:** the human: git identity for software-factory-kit (no ~/.gitconfig; kit commits used Mastershefu <mastershefu@MacBook-Pro-4.local> via env), uptime probe on /healthz.
-- **Verified:** de232d2 make decisions OK (REVIEW.md current); 30a0de4 make check OK (unit + 43 M4 acceptance + decisions); kit b8560d0 scripts/test.sh 131 passed, 0 failed
+- **As of:** 2026-10-10 23:05 CDT
+- **In flight:** M5 on milestone/m5-prices-and-stock (draft MR !9): T001-T006 squashed; acceptance re-run 44fed80 adds AT-035 to AT-038 (green pins), awaiting G4 re-approval of acceptance.md@44fed80.
+- **Next:** G4 re-approval of the acceptance re-run; then /slice-tasks (revise) for the M5 close-out task (pass4 R4 pay-path FM-7, pass5 R2/R3/R4/R6, pass6 R6/R9, S2 hold-ended banner); then design catch-up, M5-R03 clarify-spec, review M5, /report-milestone (G5), merge MR !9, redeploy + walkthrough link. Queued: M5.1 visual refresh (/map-ux-flows, cluely-inspired), M6, next route-failure pass.
+- **Waiting on:** the human: G4 answer on the acceptance re-run; uptime probe on /healthz.
+- **Verified:** 44fed80 make check exit 0 (unit 210, M4 43, M5 38 acceptance); pins AT-035..038 each fail with their rule removed (throwaway worktree)
 
 ## Tasks
 
@@ -21,10 +21,23 @@ several harnesses read it and the repo is public.
 | id | ask (link) | track/phase | harness+model | state | since | owns | result |
 |---|---|---|---|---|---|---|---|
 | M1-S01 | repo setup: backup, init-repo, AGENTS commands, make check, remotes, journal import (human's kickoff message) | Full / phase 0 (G-init) | supervisor (claude-opus-5-5) | done | 2026-10-08 22:33 CDT | scaffold paths, AGENTS.md Commands, Makefile, .gitignore, docs/decisions/DECISION_JOURNAL.md | 1ed9fd1 (G-init) |
-| M5-R01 | F20: design-lld catch-up before M5 (Q-1 to Q-4, D47 SM-1 guard, FM-3 new-key retry, pagination wording, EP-23 429, pay_rate_attempts) | Standard / design-lld | supervisor | todo | 2026-10-10 18:31 CDT | docs/architecture/lld.md, contracts/openapi.yaml | — |
-| M5-R02 | F21: acceptance tests for review-fixed behaviours (key release, stuck attempt, parallel limits, cancel states) | Standard / define-acceptance | supervisor | todo | 2026-10-10 18:31 CDT | specs/M4-tracer-bullet/acceptance.md, tests/acceptance/** | — |
+| M5-R01 | F20: design-lld catch-up before M5 (Q-1 to Q-4, D47 SM-1 guard, FM-3 new-key retry, pagination wording, EP-23 429, pay_rate_attempts) | Standard / design-lld | supervisor | done | 2026-10-10 18:31 CDT | docs/architecture/lld.md, contracts/openapi.yaml | — |
+| M5-R02 | F21: acceptance tests for review-fixed behaviours (key release, stuck attempt, parallel limits, cancel states) | Standard / define-acceptance | supervisor | done | 2026-10-10 18:31 CDT | specs/M4-tracer-bullet/acceptance.md, tests/acceptance/** | — |
 | M5-R03 | F22: M5 scope in the PRD (patient order list /orders 404, provider view of EP-4, needs-review amounts, copy gaps) | Standard / clarify-spec | supervisor | todo | 2026-10-10 18:31 CDT | docs/product/prd.md | — |
+| M5-R04 | define-acceptance re-run: review pins (pass2 R3, pass3 R1, pass4 R1-R3, pass6 R5) | Standard / define-acceptance | supervisor | done | 2026-10-10 23:05 CDT | specs/M5-prices-and-stock/acceptance.md, tests/acceptance/M5 | 44fed80 |
+| M5-T007 | abandoned payments never block; hold_ended | Standard / build | claude-subagent | done | 2026-10-10 23:16 CDT | see task file | 3d759da |
+| M5-T008 | S2 hold-ended banner | Standard / build | claude-subagent | done | 2026-10-10 23:16 CDT | see task file | 0b79027 |
+| M5-T009 | S7 stock page fixes | Standard / build | claude-subagent | done | 2026-10-10 23:16 CDT | see task file | 12acb25 |
+| M5-T010 | S6 dashboard fixes | Standard / build | claude-subagent | done | 2026-10-10 23:16 CDT | see task file | 635d015 |
+| M5-T011 | review fixes: checkout answers (R2, R3), practice name (R4) | Standard / build | claude-subagent | done | 2026-10-10 23:57 CDT | see task file | 0c4510a |
 | M4-CI01 | CI on the MacBook runner: enable runner 245, .gitlab-ci.yml running make check | Fix / supervisor | supervisor (claude-opus-5-5) | done | 2026-10-10 19:05 CDT | .gitlab-ci.yml | — |
+| M5-T001 | Provider changes a practice price (specs/M5-prices-and-stock/tasks/T001.md) | Standard / implement-task | claude-subagent | done | 2026-10-10 21:09 CDT | see task file | 135b9ca |
+| M5-T002 | Payment reserves and releases stock (specs/M5-prices-and-stock/tasks/T002.md) | Standard / implement-task | claude-subagent | done | 2026-10-10 21:09 CDT | see task file | f5bb975 |
+| M5-T003 | Patients see price change notices (specs/M5-prices-and-stock/tasks/T003.md) | Standard / implement-task | claude-subagent | done | 2026-10-10 21:09 CDT | see task file | f386d76 |
+| M5-T004 | Platform staff adjust stock (specs/M5-prices-and-stock/tasks/T004.md) | Standard / implement-task | claude-subagent | done | 2026-10-10 21:09 CDT | see task file | 061cd49 |
+| M5-T005 | Provider opens the practice dashboard (specs/M5-prices-and-stock/tasks/T005.md) | Standard / implement-task | claude-subagent | done | 2026-10-10 21:09 CDT | see task file | 315a1c3 |
+| M5-T006 | M5 joins checks and menu (specs/M5-prices-and-stock/tasks/T006.md) | Standard / implement-task | claude-subagent | done | 2026-10-10 21:09 CDT | see task file | bc2b381 |
+| M5.1-R01 | Visual refresh inspired by cluely.com (Geist + serif display, sky-blue palette, soft glass cards, glow on primary buttons) — after M5 merges; starts with /map-ux-flows | Standard / map-ux-flows | supervisor | todo | 2026-10-10 22:36 CDT | docs/design/screens.md (visual language) | — |
 
 ## Approvals
 
@@ -159,6 +172,31 @@ several harnesses read it and the repo is public.
 | 2026-10-10 19:46 CDT | G-L5 (approval covers apply, kit commit and push to GitLab + GitHub) | H18@0ee4f6f2422d | "Approve, adopt H18 and H17" |
 | 2026-10-10 19:46 CDT | G-L5 (approval covers apply and project commit) | H17@1730d3f72cea | "Approve, adopt H18 and H17" |
 | 2026-10-10 19:53 CDT | deploy-production (option b: roll back to 1130822 at once if smoke is red) | M4@158fb11 | "yes, deploy 158fb11 to production" |
+| 2026-10-10 20:32 CDT | G3 D72 | docs/architecture/lld.md@9708841 D72 | "Approve, drop the seam" |
+| 2026-10-10 20:32 CDT | G3 | docs/architecture/lld.md@9708841 (M5-R01 catch-up; + contracts/openapi.yaml) | "Approve, then /define-acceptance" |
+| 2026-10-10 21:01 CDT | G4 acceptance part (Q-2 to Q-5 recommendations taken at G4; Q-6 open) | specs/M5-prices-and-stock/acceptance.md@f0e77db + tests/acceptance/M5 | "Approve, then /slice-tasks" |
+| 2026-10-10 21:09 CDT | G4 | specs/M5-prices-and-stock/tasks@5175bac (6 tasks, option a) + acceptance.md@f0e77db | "Approve, then go M5" |
+| 2026-10-10 21:27 CDT | M5-T001 review dispositions (pass 1), option a: relaunch T001 to fix R1 (dialog focus trap), R4 (validation message), R9 (EDGE labels, toHundredths test); file R2, R3, R5, R6, R8 to design catch-up and milestone review; keep R7 | .handoff/reviews/M5-pass1.md; m5/t001-provider-changes-a-practice-price@28f085e | "a, relaunch T001 with R1, R4, R9" |
+| 2026-10-10 21:51 CDT | M5-T002 review dispositions (pass 3), option a: relaunch T002 to fix R2 (test the FM-3 stock release), R3 (one-in-flight check before reserving stock); R1 to define-acceptance; R5, R6 to design catch-up; keep R7, R8; R4 (FM-7 reconcile) moves into the M5-T003 relaunch | .handoff/reviews/M5-pass3.md; m5/t002-payment-reserves-and-releases-stock@db27aeb | "a, relaunch T002 with R2, R3" |
+| 2026-10-10 22:00 CDT | M5-T003 review dispositions (pass 2), option a: bring T003 up to date with T002 (squashed), relaunch to fix R3 (P0: never end a hold while a payment is processing), R5 (access check before the hold write), R1 (held price differs from sent in the test) and FM-7 (reconcile an abandoned processing attempt, from pass 3 R4); R4 to design catch-up and a close-out task; R2, R7 filed; keep R6 | .handoff/reviews/M5-pass2.md; m5/t003-patients-see-price-change-notices@c63753c | "a, relaunch T003 with R3, R5, R1 and FM-7" |
+| 2026-10-10 22:19 CDT | M5-T003 review dispositions (pass 4), option a: squash T003; R1, R2, R3 to a define-acceptance re-run (real-database tests: in-flight payment keeps the hold; abandoned attempt reconciled); R4 (pay-path reconcile) to an M5 close-out task; keep R5 | .handoff/reviews/M5-pass4.md; m5/t003-patients-see-price-change-notices@0f67851 | "a, squash T003 and add the acceptance tests" |
+| 2026-10-10 22:24 CDT | M5-T004 review dispositions (pass 5), option a: squash T004; R2, R3, R4, R6 to the M5 close-out task; R1, R5, R7 to design catch-up | .handoff/reviews/M5-pass5.md; m5/t004-platform-staff-adjust-stock@81939f7 | "a, squash T004" |
+| 2026-10-10 22:31 CDT | M5-T005 review dispositions (pass 6), option a: days are elapsed 24-hour periods (EDGE-040); relaunch T005 to fix R2, R1, R3; R4 to design catch-up; R6, R9 to the M5 close-out task; R5 to the define-acceptance re-run; R8 filed; keep R10; discard R7 | .handoff/reviews/M5-pass6.md; m5/t005-provider-opens-the-practice-dashboard@c3bac8b | "a, relaunch T005 with R2, R1, R3" |
+| 2026-10-10 22:36 CDT | decision: visual refresh placement, option a: its own milestone M5.1 "Visual refresh" after M5 merges (map-ux-flows visual language at G-ux, then slices); cluely.com design language as inspiration only, no Cluely branding or assets; dense clinical screens stay readable | chat card | "a, M5.1 visual refresh after M5 merges" |
+| 2026-10-10 23:09 CDT | G4 re-approval (acceptance re-run: AT-035 to AT-038, EDGE-045 to EDGE-048, SS-07; option a) | specs/M5-prices-and-stock/acceptance.md@44fed80 + tests/acceptance/M5 | "please do as many implementations tasks as you can , i approve them all, we should almost complete the project now. mark that i approve all next recommendations until project completion, and then run next skills for me like /slice-tasks" |
+| 2026-10-10 23:09 CDT | STANDING: approve every next recommendation (gates G4/G5/G-L5, review dispositions, slice-tasks, implement-task dispatch, merges of milestone MRs on green CI) until project completion; human-only exceptions kept: secrets/passwords/tokens, AGENTS.md/CLAUDE.md/skill edits stay proposals unless named, deploy still names SHA + environment in chat | all M5, M5.1, M6 artifacts | "please do as many implementations tasks as you can , i approve them all, we should almost complete the project now. mark that i approve all next recommendations until project completion, and then run next skills for me like /slice-tasks" |
+| 2026-10-10 23:16 CDT | G3 (revise: OrderView.hold_ended; FM-7 on pay and checkout start) | docs/architecture/lld.md@94ff279 + contracts/openapi.yaml | STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-10 23:16 CDT | G4 acceptance part (AT-039 to AT-041 red, Q-7 make check gating) | specs/M5-prices-and-stock/acceptance.md@94ff279 | STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-10 23:16 CDT | G4 (close-out slices T007 to T010, option a; analyze RESULT: PASS) | specs/M5-prices-and-stock/tasks/T007-T010@2738485 | STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-10 23:57 CDT | M5 review pass 7 dispositions (STANDING): R1 keep AT-042, track slip (payment change via Fix track) to route-failure; R2, R3, R4 fix in M5-T011; R5, R6 filed for M6 | .handoff/reviews/M5-pass7.md | STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-10 23:57 CDT | G3 revise (EP-17 Me.practice_name) + G4 (AT-043 red; M5-T011 review-fix task, 11th task over the 10 cap per the M4-T011 precedent) | lld.md, openapi.yaml, acceptance.md, tasks/T011.md | STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-10 23:59 CDT | G5 SEC-10 | docs/security/CHECKLIST.md@adfd6fa | accept (re-decided after FR-025) — STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
+| 2026-10-10 23:59 CDT | G5 SEC-12 | docs/security/CHECKLIST.md@adfd6fa | accept — STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
+| 2026-10-10 23:59 CDT | G5 SEC-13 | docs/security/CHECKLIST.md@adfd6fa | accept — STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
+| 2026-10-10 23:59 CDT | G5 SEC-14 | docs/security/CHECKLIST.md@adfd6fa | fix: AT-044 stock history append-only — STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
+| 2026-10-11 00:20 CDT | G5 Revise (report-milestone recommendation): answer DV-1, DV-8 (a, Log lines); D79 for 11 tasks (DV-3); re-run check-security on the head | docs/milestones/M5.md (draft, report run 2026-10-11 00:07 CDT) | STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
+| 2026-10-11 00:24 CDT | G5 security part: approve checklist (0 reachable critical/high, no new finding) | docs/security/CHECKLIST.md@77c555c | STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-11 00:28 CDT | G5 Merge (report recommendation; 4 clauses yes; 0 open P0/P1; 0 unaccepted high/critical) | docs/milestones/M5.md@691b4e1 | STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
 
 ## Log
 
@@ -346,3 +384,56 @@ several harnesses read it and the repo is public.
 2026-10-10 19:16 CDT CI pipeline 48487 failed: Colima VM disk 100% full (postgres initdb: no space left on device); human declined resizing or touching the VM: "no dont do this route, dont want to mess with that much memory or a vm"
 2026-10-10 19:39 CDT MERGE fix/ci-macbook-runner !6 (d53cdd1): pipeline 48540 on shell runner 299 green (122 unit, 43 acceptance, make check OK); runner 245 disabled for cerbo; M4-CI01 done; H16 superseded by H18 (shell runner reused per project)
 2026-10-10 19:55 CDT DEPLOY production web-v2 158fb11 (deployment 21e295fd SUCCESS); /version = 158fb11f36a3d86d8374a2bb97c4d29a9437038b; SMOKE GREEN 7/0 TLS verified; review link and walkthrough sent
+2026-10-10 20:01 CDT DISPATCH M4-SEC2 harness=claude-subagent why=check-security re-run on main's M4 code (one skill, isolated: owns only CHECKLIST.md), parallel with M5-R01 design-lld; worktree .claude/worktrees/m4-sec2 from milestone/m4-security-recheck
+2026-10-10 20:08 CDT VERIFY M4-SEC2 squashed f7150d3: result done; scope-guard OK (1 path); checklist: secrets 0, unaccepted high/critical 0; 11 pass, 3 fail (all accepted D49-D53)
+2026-10-10 20:23 CDT DISPATCH M5-D01 harness=claude-subagent why=redraw erd after the M5-R01 LLD catch-up
+2026-10-10 20:23 CDT DISPATCH M5-D02 harness=claude-subagent why=redraw be-class after the M5-R01 LLD catch-up
+2026-10-10 20:24 CDT VERIFY M5-D01 squashed c379b02: result done; scope-guard OK (1 path); 18 entities, 27 relationships; render unverified (no mmdc)
+2026-10-10 20:25 CDT FAIL M5-D02 human_review: lld.md §2 contradicted itself (clientAddress callers; BE-20 callers missing BE-21); fixed in 42461ba; redraw dispatched again
+2026-10-10 20:27 CDT VERIFY M5-D02 squashed: result done; scope-guard OK (1 path); 21 classes, 47 relationships; render unverified. Embedded 18 diagrams in lld.md (in sync)
+2026-10-10 20:32 CDT GATE G3 approved lld.md@9708841 (M5-R01 catch-up); Q-8 becomes an M5 task; M5-R01 done; next define-acceptance (M5-R02)
+2026-10-10 21:01 CDT GATE G4 (acceptance part) approved specs/M5-prices-and-stock/acceptance.md@f0e77db; M5-R02 done (AT-029 to AT-033 pins); next slice-tasks M5
+2026-10-10 21:09 CDT GATE G4 approved specs/M5-prices-and-stock/tasks@5175bac (option a: 6 tasks, 4 waves); go M5
+2026-10-10 21:09 CDT DISPATCH M5-T001 harness=claude-subagent why=tracer bullet (G4 D74), watched on Claude; worktree .claude/worktrees/m5-t001 from milestone/m5-prices-and-stock@9953146
+2026-10-10 21:22 CDT VERIFY-PREP M5-T001: result done; scope-guard OK (8 paths); supervisor Done-when exit 0 (10/10 ATs; make check OK 135 unit + 43 M4); dispatch verifier pass 1
+2026-10-10 21:27 CDT DISPATCH M5-T001 relaunch harness=claude-subagent why=review pass 1 fixes R1, R4, R9 (resumed run on the same branch)
+2026-10-10 21:35 CDT VERIFY M5-T001 squashed 135b9ca: relaunch result done; scope-guard OK; supervisor Done-when exit 0 (10/10 ATs; make check OK 144 unit + 43 M4); no new dependency
+2026-10-10 21:35 CDT DISPATCH M5-T002 harness=claude-subagent why=wave 2 (after M5-T001), parallel with the other wave-2 task (disjoint Owns); worktree .claude/worktrees/m5-t002
+2026-10-10 21:35 CDT DISPATCH M5-T003 harness=claude-subagent why=wave 2 (after M5-T001), parallel with the other wave-2 task (disjoint Owns); worktree .claude/worktrees/m5-t003
+2026-10-10 21:46 CDT REVIEW M5 pass 2 (M5-T003): 7 rows; R3 P0 confirmed by supervisor in code (hold ending during an in-flight payment charges without marking paid)
+2026-10-10 21:49 CDT REVIEW M5 pass 3 (M5-T002): 8 rows, no P0/P1; R4 FM-7 reconcile missing (shared with pass 2 R3)
+2026-10-10 21:51 CDT DISPATCH M5-T002 relaunch harness=claude-subagent why=review pass 3 fixes R2, R3 (resumed run on the same branch)
+2026-10-10 21:58 CDT VERIFY M5-T002 squashed f5bb975: relaunch done; scope-guard OK; supervisor Done-when exit 0 (3/3 ATs; make check OK 154 unit + 43 M4)
+2026-10-10 21:58 CDT DISPATCH M5-T004 harness=claude-subagent why=wave 3 (after M5-T002), parallel with the other wave-3 task (disjoint Owns); worktree .claude/worktrees/m5-t004
+2026-10-10 21:58 CDT DISPATCH M5-T005 harness=claude-subagent why=wave 3 (after M5-T002), parallel with the other wave-3 task (disjoint Owns); worktree .claude/worktrees/m5-t005
+2026-10-10 22:00 CDT DISPATCH M5-T003 relaunch harness=claude-subagent why=review pass 2 fixes R3 (P0), R5, R1 + FM-7 reconcile; branch merged with milestone@cfa6c5f (T002 squashed)
+2026-10-10 22:15 CDT REVIEW M5 pass 4 (M5-T003 r2): P0 R3, R5, R1 confirmed fixed; FM-7 on the EP-21 path; 5 rows, no P0/P1
+2026-10-10 22:15 CDT REVIEW M5 pass 6 (M5-T005): 10 rows, no P0/P1; money sums and privacy scoping confirmed
+2026-10-10 22:16 CDT REVIEW M5 pass 5 (M5-T004): 7 rows, all P3, no tests-that-lie, no security findings
+2026-10-10 22:19 CDT VERIFY M5-T003 squashed f386d76: relaunch done; scope-guard OK (2 paths); supervisor Done-when exit 0 (3/3 ATs; make check OK 166 unit + 43 M4); pass 4 confirms the P0 fix
+2026-10-10 22:24 CDT VERIFY M5-T004 squashed 061cd49: result done; scope-guard OK (6 paths); supervisor Done-when exit 0 (4/4 ATs; make check OK 166 unit + 43 M4); pass 5 all P3
+2026-10-10 22:31 CDT DISPATCH M5-T005 relaunch harness=claude-subagent why=review pass 6 fixes R2, R1, R3; branch merged with the milestone (T003, T004 squashed)
+2026-10-10 22:35 CDT ROUTE human-requested UX change: "revamp the front end to suite more of cluely's website style, make it more modern and like how this websites ui and colors and design language is: https://cluely.com/" -> needs a G-ux visual-language pass (map-ux-flows) then slices; awaiting placement decision
+2026-10-10 22:37 CDT VERIFY M5-T005 squashed 315a1c3: relaunch done; scope-guard OK; supervisor Done-when exit 0 (8/8 ATs; make check OK 210 unit + 43 M4)
+2026-10-10 22:38 CDT VERIFY M5 milestone branch: tests/acceptance/M5 34/34 passed after T001-T005
+2026-10-10 22:38 CDT DISPATCH M5-T006 harness=claude-subagent why=wave 4 seam (after T001-T005); worktree .claude/worktrees/m5-t006
+2026-10-10 22:44 CDT VERIFY M5-T006 squashed bc2b381: result done; scope-guard OK (2 paths); supervisor Done-when exit 0 (make check runs M5: 34/34; 210 unit, 43 M4); diff read by supervisor (seam, no verifier pass: covered by the milestone review)
+2026-10-10 23:05 CDT PHASE define-acceptance M5 re-run: AT-035 to AT-038 added as green pins; each failed with its rule removed in a throwaway worktree; M5 38/38; make check exit 0; committed 44fed80
+2026-10-10 23:17 CDT DISPATCH M5-T007 harness=claude-subagent why=wave 5 close-out backend (FM-7 on pay/checkout, hold_ended); worktree .claude/worktrees/m5-t007
+2026-10-10 23:26 CDT VERIFY M5-T007 squashed 3d759da: result done; scope-guard OK (4 paths); supervisor make check exit 0 (unit 216, M4 43, M5 41 incl. AT-039..041); diff read by supervisor; verifier deferred to the M5 milestone review
+2026-10-10 23:26 CDT DISPATCH M5-T008 harness=claude-subagent why=S2 hold-ended banner after T007; worktree .claude/worktrees/m5-t008
+2026-10-10 23:37 CDT FAIL M5-T008 scope-guard exit 1: Owns path app/pages/orders/[orderId].vue read as a glob class (scripts/scope-guard.sh case $f in $p); worker did not commit
+2026-10-10 23:37 CDT VERIFY M5-T008 squashed 0b79027: manual scope check (2 files, both exact Owns paths); worker make check exit 0; diff read by supervisor
+2026-10-10 23:37 CDT FIX pay after an ended hold answered invalid-transition (T007 regression, T008 Q2): AT-042 repro then payments.ts fix; make check exit 0 (M5 42); specs/bugs/pay-after-hold-ended-says-already-paid.md
+2026-10-10 23:37 CDT DISPATCH M5-T009 harness=claude-subagent why=S7 stock page fixes (serial); worktree .claude/worktrees/m5-t009
+2026-10-10 23:45 CDT VERIFY M5-T009 squashed 12acb25: result done; scope-guard OK (2 paths); supervisor make check exit 0 (216/43/42); diff read; verifier at milestone review
+2026-10-10 23:45 CDT DISPATCH M5-T010 harness=claude-subagent why=S6 dashboard fixes (serial); worktree .claude/worktrees/m5-t010
+2026-10-10 23:51 CDT VERIFY M5-T010 squashed 635d015: result done; scope-guard OK (1 path); supervisor make check exit 0 (216/43/42); Q1 practice name has no EP field → design catch-up (EP-17 Me practice_name)
+2026-10-10 23:51 CDT REVIEW M5 milestone: diff main..milestone written to .handoff/reviews/M5-diff.patch; verifier pass 7 dispatched
+2026-10-10 23:57 CDT REVIEW M5 pass 7: 0 P0, 2 P1, 1 P2, 3 P3 (.handoff/reviews/M5-pass7.md)
+2026-10-10 23:57 CDT DISPATCH M5-T011 harness=claude-subagent why=pass 7 review fixes; worktree .claude/worktrees/m5-t011
+2026-10-10 23:59 CDT SECURITY M5 check-security: 0 reachable critical/high; SEC-14 fixed by AT-044 (green pin, fails with the grant widened); SEC-10, 12, 13 accepted (D76-D78)
+2026-10-11 00:05 CDT VERIFY M5-T011 squashed 0c4510a: result done; scope-guard OK (4 paths); supervisor make check on the milestone exit 0 (unit 217, M4 43, M5 44); diff read
+2026-10-11 00:20 CDT NOTE DV-1: M5-T001..T006 squash commits carry `Task:` in its own paragraph, apart from Co-Authored-By, so git does not parse it as a trailer; supervisor commit-message formatting, no decision; scope-guard re-run by hand exit 0 for all six (report §4.3)
+2026-10-11 00:20 CDT NOTE DV-8: ebac30e edits two comment lines in app/pages/practice/dashboard.vue: the supervisor updated the stale EP-17 comment that M5-T011's result named as out of date (outside T011 Owns); comment only, no decision
+2026-10-11 00:24 CDT SECURITY M5 re-run at 23f3451: 0 reachable critical/high; SEC-14 fixed, SEC-10/12/13 accepted D76-D78; ALL CHECKS PASSED
