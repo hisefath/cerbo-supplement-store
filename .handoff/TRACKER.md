@@ -218,6 +218,7 @@ several harnesses read it and the repo is public.
 | 2026-10-11 08:25 CDT | G5 security part (M5.1 re-run after T005): approve checklist (0 reachable critical/high, no new finding) | docs/security/CHECKLIST.md@c06a229 | STANDING row 2026-10-10 23:09 CDT |
 | 2026-10-11 08:35 CDT | G5 Revise (M5.1 report recommendation): answer DV-5 with a Log NOTE, correct MILESTONES gate SHAs (DV-6), add the missing T004 VERIFY line, re-run report-milestone | docs/milestones/M5.1.md (draft 08:25) | STANDING row 2026-10-10 23:09 CDT |
 | 2026-10-11 08:40 CDT | G5 Merge (M5.1 report recommendation; 4 clauses yes; 0 open P0/P1; 0 unaccepted high/critical) | docs/milestones/M5.1.md@c26710a | STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
+| 2026-10-11 09:17 CDT | deploy (ship-milestone) | main@c956959 → Railway production (web-v2) | "yes, deploy c956959 to production" |
 
 ## Log
 
@@ -480,3 +481,5 @@ several harnesses read it and the repo is public.
 2026-10-11 08:35 CDT VERIFY M5.1-T004 squashed 7367c5d (recorded late): scope-guard OK (6 paths); supervisor make check on the milestone exit 0 (218/43/44/4) at 2026-10-11 08:00 CDT
 2026-10-11 08:35 CDT NOTE M5.1-T003 VERIFY shares the T002 line (2026-10-11 07:50): scope-guard OK (4 paths); supervisor make check exit 0 in its worktree
 2026-10-11 08:36 CDT CHECK browser (local dev server on the milestone head after T005): Geist and EB Garamond loaded from the app; stock form input border rgb(100,116,139) = --color-control-border; sign-in redirect to next=/ops/stock works; earlier: sign-in, prices, dashboard, 375 px no sideways scroll, stock page
+2026-10-11 08:47 CDT MERGE M5.1 MR !10 -> main c956959 (pipeline #49738 success); make check on main exit 0 (218/43/44/5)
+2026-10-11 09:18 CDT DEPLOY M5.1 c956959 → production web-v2 (deployment b3c00832 SUCCESS); /version c956959; SMOKE GREEN 7/0; fonts 200 font/woff2 same-origin; root redirects signed-out to /sign-in?next=/
