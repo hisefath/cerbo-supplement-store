@@ -1,0 +1,26 @@
+# GitLab CI: one job, the same gate every agent and the pre-push hook run locally (`make check`).
+#
+# It runs straight on the human's MacBook (a shell-executor runner tagged `macbook-shell`), not in Docker, so it
+# adds nothing to the Colima VM: it reuses the test database container that `make db-test-up` starts
+# (localhost:54329, docker-compose.yml). If a job sits at "pending", the Mac is asleep or the runner is stopped:
+# `brew services start gitlab-runner`. Nothing here deploys; deploying stays a human-approved step
+# (docs/runbooks/deploy.md).
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never # the merge request pipeline covers this push
+    - if: $CI_COMMIT_BRANCH
+
+stages: [check]
+
+check:
+  stage: check
+  tags: [macbook-shell]
+  script:
+    - export PATH="/opt/homebrew/bin:$PATH" # Homebrew's node, npm and docker; the runner service starts with a short PATH
+    - node --version
+    - make db-test-up
+    - npm ci --prefer-offline --no-audit --no-fund
+    - make check
