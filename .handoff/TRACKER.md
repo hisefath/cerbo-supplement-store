@@ -30,6 +30,10 @@ several harnesses read it and the repo is public.
 | M5-T009 | S7 stock page fixes | Standard / build | claude-subagent | done | 2026-10-10 23:16 CDT | see task file | 12acb25 |
 | M5-T010 | S6 dashboard fixes | Standard / build | claude-subagent | done | 2026-10-10 23:16 CDT | see task file | 635d015 |
 | M5-T011 | review fixes: checkout answers (R2, R3), practice name (R4) | Standard / build | claude-subagent | done | 2026-10-10 23:57 CDT | see task file | 0c4510a |
+| M5.1-T001 | theme, fonts, sign-in band | Standard / build | claude-subagent | todo | 2026-10-11 07:31 CDT | see task file | — |
+| M5.1-T002 | provider screens | Standard / build | claude-subagent | todo | 2026-10-11 07:31 CDT | see task file | — |
+| M5.1-T003 | patient screens | Standard / build | claude-subagent | todo | 2026-10-11 07:31 CDT | see task file | — |
+| M5.1-T004 | staff screens + suite join | Standard / build | claude-subagent | todo | 2026-10-11 07:31 CDT | see task file | — |
 | M4-CI01 | CI on the MacBook runner: enable runner 245, .gitlab-ci.yml running make check | Fix / supervisor | supervisor (claude-opus-5-5) | done | 2026-10-10 19:05 CDT | .gitlab-ci.yml | — |
 | M5-T001 | Provider changes a practice price (specs/M5-prices-and-stock/tasks/T001.md) | Standard / implement-task | claude-subagent | done | 2026-10-10 21:09 CDT | see task file | 135b9ca |
 | M5-T002 | Payment reserves and releases stock (specs/M5-prices-and-stock/tasks/T002.md) | Standard / implement-task | claude-subagent | done | 2026-10-10 21:09 CDT | see task file | f5bb975 |
@@ -204,6 +208,8 @@ several harnesses read it and the repo is public.
 | 2026-10-11 07:24 CDT | new dependencies (Ask-first, AGENTS.md): @fontsource-variable/geist 5.3.0 and @fontsource/eb-garamond 5.3.0 (OFL-1.1), exact pins, for D81 | package.json, package-lock.json | STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
 | 2026-10-11 07:25 CDT | G-ux + G3 re-approval (band gradient #1D4ED8→#2563EB and focus #3B82F6 so white text passes contrast; colour token names fixed in LLD) | docs/design/screens.md@6faccb4 + docs/architecture/lld.md@6faccb4 | STANDING row 2026-10-10 23:09 CDT |
 | 2026-10-11 07:29 CDT | harness fix (route-failure candidate): scripts/scope-guard.sh matches an exact Owns path literally before the glob, so bracketed Nuxt route files pass (M5-T008 FAIL line) | scripts/scope-guard.sh | STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-11 07:31 CDT | G4 acceptance part (M5.1 AT-001 to AT-004 red; Q-1, Q-2 answered) | specs/M5.1-visual-refresh/acceptance.md@a7cb486 | STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-11 07:31 CDT | G4 (M5.1 slices T001-T004; analyze run with a dotted-milestone copy: 0 overlaps, 0 cycles; 2 known tool limits accepted: tracer bullet covers no AE and T001 covers NFRs only, because a restyle has no AE by CQ-4) | specs/M5.1-visual-refresh/tasks@6bc24f6 | STANDING row 2026-10-10 23:09 CDT |
 
 ## Log
 
@@ -445,3 +451,4 @@ several harnesses read it and the repo is public.
 2026-10-11 00:20 CDT NOTE DV-8: ebac30e edits two comment lines in app/pages/practice/dashboard.vue: the supervisor updated the stale EP-17 comment that M5-T011's result named as out of date (outside T011 Owns); comment only, no decision
 2026-10-11 00:24 CDT SECURITY M5 re-run at 23f3451: 0 reachable critical/high; SEC-14 fixed, SEC-10/12/13 accepted D76-D78; ALL CHECKS PASSED
 2026-10-11 07:22 CDT PHASE map-ux-flows revise (M5.1): Visual language VL-2 added to screens.md Global conventions; 14 screens x 6 sections intact; leak greps clean
+2026-10-11 07:31 CDT NOTE analyze.sh rejects dotted milestones (M5.1) and counts only FR/AE in covers: route-failure candidate (kit slice-tasks references/analyze.md)
