@@ -49,6 +49,18 @@ export interface PracticePricesTable {
   set_at: DefaultTimestamp
 }
 
+/** Append-only (INV-4): the app may only insert and select. */
+export interface PriceChangesTable {
+  id: Id
+  practice_id: Int8
+  product_id: Int8
+  old_price_cents: number
+  new_price_cents: number
+  reason: string
+  changed_by: Int8
+  changed_at: DefaultTimestamp
+}
+
 export interface OrdersTable {
   id: Id
   practice_id: Int8
@@ -144,6 +156,7 @@ export interface Database {
   sessions: SessionsTable
   products: ProductsTable
   practice_prices: PracticePricesTable
+  price_changes: PriceChangesTable
   orders: OrdersTable
   order_lines: OrderLinesTable
   notices: NoticesTable
