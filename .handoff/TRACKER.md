@@ -549,3 +549,5 @@ several harnesses read it and the repo is public.
 2026-10-11 13:34 CDT MERGE M6 MR !12 -> main 18da349 (pipeline #50251 success on 04fbfa3); make check on main exit 0 (337/43/44/5/5/44)
 2026-10-11 13:34 CDT DEPLOY M6 18da349 → production web-v2 (deployment d3719e5b SUCCESS); SMOKE GREEN 7/0; pre-approved by "tell me when M6 is ready to deploy, also deploy it"
 2026-10-11 13:53 CDT DISPATCH M6.1-T001 harness=claude-subagent why=patient order list (M5-R03)
+2026-10-11 14:09 CDT VERIFY M6.1-T001 squashed d288d92: scope-guard OK (6 paths); milestone make check exit 0 (all seven suites incl. M6.1 5/5)
+2026-10-11 14:09 CDT REVIEW M6.1: verifier pass 1 and check-security dispatched
