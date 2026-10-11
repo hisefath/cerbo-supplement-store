@@ -59,6 +59,8 @@ async function payNow() {
     }),
   )
   if (r) emit('paid', r)
+  // The hold ended unpaid: back to the order, which refetches and shows the current prices (FE-7, FR-037).
+  else if (problem.value?.type === '/problems/checkout-expired') emit('back')
   // A refused payment took no money; the next press is a new request (FR-035).
   else if (problem.value?.type && problem.value.type !== '/problems/offline') key.value = null
 }
@@ -84,7 +86,6 @@ async function payNow() {
         :copy="{
           'payment-failed': 'Your payment didn\'t go through. No money was taken. Try again.',
           'order-under-review': 'We couldn\'t complete this payment. No money was taken. Your practice will contact you.',
-          'checkout-expired': 'Your 30-minute price hold ended. These are the current prices.',
           'invalid-transition': 'This order is already paid.',
           internal: 'We couldn\'t complete your payment. No money was taken. Try again.',
           offline: 'You\'re offline. No money was taken. Try again when you\'re back online.',
