@@ -238,6 +238,7 @@ several harnesses read it and the repo is public.
 | 2026-10-11 10:38 CDT | deploy (pre-approved): the M6 merge commit → Railway production (web-v2), once merged on green CI; migrations stay a human-run step | M6 MR (not yet opened) | "tell me when M6 is ready to deploy, also deploy it" |
 | 2026-10-11 11:08 CDT | G4 acceptance part (M6: 44 ATs, Q-1 to Q-13 recommendations, waivers EDGE-007, 033, 034, 039, 051, 058, 059; EDGE-039 waived with a verifier check of the repeatable-read transaction) | specs/M6-measurement-and-operations/acceptance.md@be96e14 + tests/acceptance/M6 | STANDING row 2026-10-10 23:09 CDT |
 | 2026-10-11 11:16 CDT | G4 (M6: 7 slices, option a; T006 harness codex→claude for one dispatch path; analyze RESULT: PASS) | specs/M6-measurement-and-operations/tasks@45ff317 + acceptance.md | STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-11 11:44 CDT | G4 re-approval (Revise, M6-T002 Owns gap, option A): add db/seed/demo.ts to T002 Owns so RESET_TABLES names access_log, request_stats, health_pings (the M5.2 seed guard test caught it) | specs/M6-measurement-and-operations/tasks/T002.md | STANDING row 2026-10-10 23:09 CDT |
 
 ## Log
 
