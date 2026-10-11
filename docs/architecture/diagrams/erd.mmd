@@ -1,6 +1,6 @@
 %% diagram: erd
-%% source: docs/architecture/lld.md#1-data-model @ 2e4e445
-%% drawn: 2026-10-10T05:04:43Z by draw-diagrams (claude, claude-opus-5-5)
+%% source: docs/architecture/lld.md#1-data-model @ 4d0903b
+%% drawn: 2026-10-11T01:23:45Z by draw-diagrams (claude, claude-opus-5-5)
 %% render: unverified
 %% render-check: mmdc not on PATH
 %% missing: 0
@@ -179,4 +179,16 @@ erDiagram
     health_pings {
         timestamptz minute PK "not null"
         timestamptz first_seen_at "not null"
+    }
+    sign_in_attempts {
+        bigint id PK "not null · identity"
+        text email "not null"
+        text ip "not null"
+        timestamptz attempted_at "not null"
+    }
+    pay_rate_attempts {
+        bigint id PK "not null · identity"
+        bigint user_id "not null"
+        text ip "not null"
+        timestamptz attempted_at "not null"
     }
