@@ -22,6 +22,9 @@ describe('M5.2 safe landing', () => {
     const landed = [302, 303, 307].includes(r.status) ? await call(r.headers.get('location') ?? '/missing', { cookie, redirect: 'manual' }) : r
     expect(landed.status).toBe(200)
     expect(landed.text).not.toMatch(/We couldn(&#39;|')t find that page/)
+    // not bounced back to sign-in, and not a refusal (M6.1-pass1 R1)
+    expect(r.headers.get('location') ?? '').not.toMatch(/^\/sign-in/)
+    expect(landed.text).not.toMatch(homeLink)
   })
 
   it('M5.2_AT_002 a role with a work page goes straight to it, and that page opens: Dr. Chen the dashboard, Omar and Fran paid orders (FR-039; flows.md F7 step 2)', async () => {
