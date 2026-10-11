@@ -116,4 +116,18 @@ describe('M5.1 visual language', () => {
     expect(s.status).toBe(200)
     expect(banded(s.text), '/sign-in title inside .page-band').toBe(true)
   })
+
+  it('M5.1_AT_005 opening the site root lands each person on their role home, never a missing page: Dr. Chen the practice dashboard, Omar an operations page, a stranger sign-in (flows.md F7 step 2; bug specs/bugs/root-url-404-after-sign-in.md)', async () => {
+    const home = async (email: string | null) => {
+      const r = await call('/', { cookie: email ? await signIn(email) : undefined, redirect: 'manual' })
+      return { status: r.status, location: r.headers.get('location') }
+    }
+    const stranger = await home(null)
+    expect(stranger.status).toBe(303)
+    expect(stranger.location).toMatch(/^\/sign-in\?next=/)
+    const chen = await home(EMAIL.drChen)
+    expect([302, 303, 307]).toContain(chen.status)
+    expect(chen.location).toBe('/practice/dashboard')
+    expect((await home(EMAIL.omar)).location).toMatch(/^\/ops\//)
+  })
 })

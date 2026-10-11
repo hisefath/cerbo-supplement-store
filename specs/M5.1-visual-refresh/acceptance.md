@@ -46,6 +46,7 @@ Out of scope this milestone: every behaviour; the M4 and M5 suites in `make chec
 | AT-002 | NFR-015, FR-018, FR-028, FR-030 | lld.md Theme: "no colour value is written outside theme.css" | **Given** every page and component file under app/ **When** scanned **Then** no hex or rgb() colour remains | partition | unit | `tests/acceptance/M5.1/visual-language.test.ts::M5.1_AT_002` | red @ 59ce06a |
 | AT-003 | NFR-016 | NFR-016: Pages shown inside the EHR load 0 scripts, styles or fonts from any origin but the app's own. | **Given** Dr. Chen signed in **When** she opens the prices page **Then** every link and script is same-origin, every url() in its styles is same-origin, and at least one .woff2 font is served from the app (200) | error-guessing | integration | `tests/acceptance/M5.1/visual-language.test.ts::M5.1_AT_003` | red @ 59ce06a |
 | AT-004 | FR-005, FR-018, FR-028, FR-030, FR-045 | screens.md Visual language (VL-2): "on every screen the title sits in a band" | **Given** Dr. Chen, Omar and Ana signed in **When** they open prices, dashboard, stock and Ana's order, and a stranger opens sign-in **Then** each page's h1 sits inside the page-band element | example | integration | `tests/acceptance/M5.1/visual-language.test.ts::M5.1_AT_004` | red @ 59ce06a |
+| AT-005 | FR-039 | flows.md F7 step 2: "lands on the page she asked for, or her role's home" | **Given** a stranger, Dr. Chen and Omar **When** each opens the site root **Then** the stranger goes to sign-in; Dr. Chen to /practice/dashboard; Omar to an operations page; never a 404 | error-guessing | integration | `tests/acceptance/M5.1/visual-language.test.ts::M5.1_AT_005` | red @ c2ab86b (bug repro, specs/bugs/root-url-404-after-sign-in.md) |
 
 ## Edge cases
 
@@ -79,6 +80,7 @@ Out of scope this milestone: every behaviour; the M4 and M5 suites in `make chec
 | EDGE | FR | Case (concrete) | Expected (source) | Disposition |
 |---|---|---|---|---|
 | EDGE-006 | NFR-016 | a font or stylesheet fetched from fonts.googleapis.com or a CDN | refused: own origin only (NFR-016, D81) | AT-003 |
+| EDGE-011 | FR-039 | a signed-in person opens the site root, or signs in with next=/ | their role's home, never a missing page (flows.md F7 step 2) | AT-005 |
 
 ### Concurrency, idempotency, double-submit
 
@@ -160,6 +162,7 @@ Ways a test could pass while the feature is wrong (`references/silent-success.md
 | AT-002 | `M5.1_AT_002 no colour value is written outside …` | assertion: 43 hard-coded colours in pages and components | expected [ …(43) ] to deeply equal [] |
 | AT-003 | `M5.1_AT_003 the prices page loads its styles and fonts …` | assertion: no self-hosted font yet | at least one self-hosted .woff2 font: expected 0 to be greater than 0 |
 | AT-004 | `M5.1_AT_004 each work screen puts its title …` | missing: the page-band element (lld.md Theme) | /practice/prices title inside .page-band: expected false to be true |
+| AT-005 | `M5.1_AT_005 opening the site root lands each person …` | assertion: the root answers 404 (no page at /) | expected [ 302, 303, 307 ] to include 404 |
 
 ## Spec gaps and questions
 
@@ -173,3 +176,4 @@ Ways a test could pass while the feature is wrong (`references/silent-success.md
 | Date | Change | Ids | Why (approved artifact, or the human's exact words) |
 |---|---|---|---|
 | 2026-10-11 07:27 CDT (UTC-0500) | First draft | all | G1 prd.md@92d4a5f (CQ-4), G3 lld.md@6faccb4, G-ux screens.md@6faccb4; STANDING approval 2026-10-10 23:09 CDT |
+| 2026-10-11 08:04 CDT | Bug repro found in the M5.1 browser check: the site root 404s after sign-in | AT-005, EDGE-011 | STANDING approval 2026-10-10 23:09 CDT |
