@@ -8,6 +8,7 @@ import { currentPrices, loadPatient } from './catalog'
 import { sendOrderNotice } from './messaging'
 import { belowFloorProductIds, lowestAllowedPriceCents, payoutCents, platformFeeCents } from './money'
 import type { Viewer } from './session'
+import { releaseForOrder } from './stock'
 
 export interface SendOrderInput {
   patientId: bigint
@@ -194,30 +195,111 @@ export interface OrderView {
   is_test_payment: true
 }
 
+export interface OrderLineRow {
+  product_id: string
+  product_name: string
+  quantity: number
+  sent_unit_price_cents: number
+  held_unit_price_cents: number | null
+  paid_unit_price_cents: number | null
+}
+
+/** EP-21 lines (FR-022, FR-023): paid -> the paid prices; cancelled -> the sent prices, frozen (SM-1); a live hold
+ *  (or needs_review) -> the held prices; otherwise `current` (today's practice prices), with a notice for each line
+ *  whose price moved since the order was sent (the sent price is the notice's old price, lld.md order_lines). */
+export function orderViewLines(status: string, holdLive: boolean, rows: OrderLineRow[], current: Map<bigint, number>) {
+  const priced = ['paid', 'cancelled', 'needs_review'].includes(status) || (status === 'in_checkout' && holdLive)
+  const price = (r: OrderLineRow): number => {
+    if (status === 'paid') return r.paid_unit_price_cents ?? r.sent_unit_price_cents
+    if (status === 'cancelled') return r.sent_unit_price_cents
+    if (priced) return r.held_unit_price_cents ?? r.sent_unit_price_cents
+    return current.get(BigInt(r.product_id)) ?? r.sent_unit_price_cents
+  }
+  const lines: OrderLine[] = rows.map((r) => {
+    const unit = price(r)
+    return { product_id: Number(r.product_id), name: r.product_name, quantity: r.quantity, unit_price_cents: unit, line_total_cents: unit * r.quantity }
+  })
+  const price_changes: PriceChangeNotice[] = priced
+    ? []
+    : rows
+        .map((r, i) => ({ product_id: Number(r.product_id), name: r.product_name, old_price_cents: r.sent_unit_price_cents, new_price_cents: lines[i]!.unit_price_cents }))
+        .filter((c) => c.old_price_cents !== c.new_price_cents)
+  return { lines, price_changes }
+}
+
+/** SM-1 "hold ends" (FR-037): an in_checkout order whose hold has passed goes back to sent, its held prices cleared,
+ *  so it follows today's prices again. The order row is locked first, as BE-10.pay locks it, so the two take turns.
+ *  A payment in flight keeps the hold (R3): once the gateway has charged, recordPayment needs in_checkout. One that
+ *  has been processing for 2 minutes is abandoned (FM-7, SM-2): the process died between pay's two transactions, so
+ *  in the stub it is treated as no answer: attempt failed, stock returned, order payment_failed ("Try again"). */
+export async function expireHoldIfDue(orderId: bigint): Promise<void> {
+  const id = orderId.toString()
+  await useDb()
+    .transaction()
+    .execute(async (trx) => {
+      const o = await trx
+        .selectFrom('orders')
+        .select(['status', sql<boolean>`prices_held_until <= now()`.as('hold_over')])
+        .where('id', '=', id)
+        .forUpdate()
+        .executeTakeFirst()
+      if (o?.status !== 'in_checkout') return
+      const attempt = await trx
+        .selectFrom('payment_attempts')
+        .select(['id', sql<boolean>`created_at <= now() - interval '2 minutes'`.as('abandoned')])
+        .where('order_id', '=', id)
+        .where('status', '=', 'processing')
+        .executeTakeFirst()
+      if (attempt?.abandoned) {
+        const closed = await trx
+          .updateTable('payment_attempts')
+          .set({ status: 'failed', failure_reason: 'no_answer', finished_at: sql`now()` })
+          .where('id', '=', attempt.id)
+          .where('status', '=', 'processing')
+          .executeTakeFirst()
+        if (closed.numUpdatedRows !== 1n) return
+        await releaseForOrder(trx, orderId)
+        await trx.updateTable('orders').set({ status: 'payment_failed' }).where('id', '=', id).execute()
+        console.warn('abandoned payment attempt reconciled as failed (FM-7)', { orderId: id, attemptId: attempt.id, reason: 'abandoned' })
+        return
+      }
+      if (attempt || !o.hold_over) return
+      await trx.updateTable('orders').set({ status: 'sent', prices_held_until: null }).where('id', '=', id).execute()
+      await trx.updateTable('order_lines').set({ held_unit_price_cents: null }).where('order_id', '=', id).execute()
+    })
+}
+
 /** EP-21 (FR-005, FR-009, FR-022, FR-037): the order's patient or a provider of its practice sees every line.
  *  Paid: the paid prices. A live hold: the held prices. Otherwise today's prices, with a notice for each line whose
  *  price moved since the order was sent. Anyone else, or an unknown id, gets not-found. */
 export async function getOrderForViewer(viewer: Viewer, orderId: bigint): Promise<OrderView> {
   const db = useDb()
-  const o = await db
-    .selectFrom('orders')
-    .innerJoin('practices', 'practices.id', 'orders.practice_id')
-    .innerJoin('users as provider', 'provider.id', 'orders.provider_id')
-    .select([
-      'orders.id',
-      'orders.patient_id',
-      'orders.practice_id',
-      'orders.status',
-      'orders.prices_held_until',
-      'orders.paid_at',
-      'practices.name as practice_name',
-      'provider.display_name as provider_display_name',
-      sql<boolean>`orders.prices_held_until > now()`.as('hold_live'),
-    ])
-    .where('orders.id', '=', orderId.toString())
-    .executeTakeFirst()
+  const load = () =>
+    db
+      .selectFrom('orders')
+      .innerJoin('practices', 'practices.id', 'orders.practice_id')
+      .innerJoin('users as provider', 'provider.id', 'orders.provider_id')
+      .select([
+        'orders.id',
+        'orders.patient_id',
+        'orders.practice_id',
+        'orders.status',
+        'orders.prices_held_until',
+        'orders.paid_at',
+        'practices.name as practice_name',
+        'provider.display_name as provider_display_name',
+        sql<boolean>`orders.prices_held_until > now()`.as('hold_live'),
+      ])
+      .where('orders.id', '=', orderId.toString())
+      .executeTakeFirst()
+  let o = await load()
   if (!o) throw new ProblemError('not-found')
+  // R5: only someone who may see the order sets off the hold ending or the FM-7 reconcile, which write.
   assertCanViewOrder(viewer, { patientId: BigInt(o.patient_id), practiceId: BigInt(o.practice_id) })
+  if (o.status === 'in_checkout') {
+    await expireHoldIfDue(orderId)
+    o = (await load())!
+  }
 
   const rows = await db
     .selectFrom('order_lines')
@@ -225,24 +307,9 @@ export async function getOrderForViewer(viewer: Viewer, orderId: bigint): Promis
     .where('order_id', '=', o.id)
     .orderBy('id')
     .execute()
-  // A cancelled order shows its sent prices, frozen (SM-1), the same prices cancelOrder returns.
   const priced = ['paid', 'cancelled', 'needs_review'].includes(o.status) || (o.status === 'in_checkout' && o.hold_live)
   const current = priced ? new Map<bigint, number>() : await currentPrices(BigInt(o.practice_id), rows.map((r) => BigInt(r.product_id)))
-  const price = (r: (typeof rows)[number]): number => {
-    if (o.status === 'paid') return r.paid_unit_price_cents ?? r.sent_unit_price_cents
-    if (o.status === 'cancelled') return r.sent_unit_price_cents
-    if (priced) return r.held_unit_price_cents ?? r.sent_unit_price_cents
-    return current.get(BigInt(r.product_id)) ?? r.sent_unit_price_cents
-  }
-  const lines = rows.map((r) => {
-    const unit = price(r)
-    return { product_id: Number(r.product_id), name: r.product_name, quantity: r.quantity, unit_price_cents: unit, line_total_cents: unit * r.quantity }
-  })
-  const price_changes = priced
-    ? []
-    : rows
-        .map((r, i) => ({ product_id: Number(r.product_id), name: r.product_name, old_price_cents: r.sent_unit_price_cents, new_price_cents: lines[i]!.unit_price_cents }))
-        .filter((c) => c.old_price_cents !== c.new_price_cents)
+  const { lines, price_changes } = orderViewLines(o.status, o.hold_live, rows, current)
 
   return {
     order_id: Number(o.id),
