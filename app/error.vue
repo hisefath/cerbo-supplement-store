@@ -17,7 +17,7 @@ useHead({ title })
     </div>
     <section class="card">
       <p v-if="notFound">The link may be old or mistyped.</p>
-      <NuxtLink to="/" class="btn-primary" @click.prevent="clearError({ redirect: '/' })">Go to your home</NuxtLink>
+      <a href="/" class="btn-primary" @click="clearError({ redirect: '/' })">Go to your home</a>
     </section>
   </AppShell>
 </template>

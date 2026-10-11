@@ -9,11 +9,12 @@ const pages = me ? ROLE_PAGES[me.role] : undefined
 if (!me || !pages) await navigateTo('/sign-in', { replace: true, redirectCode: 302 })
 else if (pages[0]) await navigateTo(pages[0].path, { replace: true, redirectCode: 302 })
 
-const ROLE_NAMES: Record<string, string> = { patient: 'Patient', sre: 'Site reliability', data_analyst: 'Data analyst' }
+const ROLE_NAMES: Record<string, string> = { patient: 'Patient', sre: 'Site reliability', data_analyst: 'Data analyst', none: 'No role' }
 const EMPTY: Record<string, string> = {
   patient: 'Your orders open from the message your practice sends you.',
   sre: 'Nothing to open yet: system health and operations access will appear here when they are ready.',
   data_analyst: 'Nothing to open yet: platform health and the volume report will appear here when they are ready.',
+  none: 'Your account has no role yet. Contact platform support to get access.',
 }
 const title = `Welcome, ${me?.display_name ?? ''}`
 useHead({ title })
