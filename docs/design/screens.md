@@ -1,8 +1,8 @@
 # Screens — In-EHR supplement orders
 
 status: complete
-Milestones: M4, M5, M6 · Flows: docs/design/flows.md · PRD: docs/product/prd.md@998ed94
-Updated: 2026-10-10 11:05 CDT
+Milestones: M4, M5, M5.1 (visual language), M6 · Flows: docs/design/flows.md · PRD: docs/product/prd.md@998ed94
+Updated: 2026-10-11 07:22 CDT (M5.1 visual language added under Global conventions)
 
 ## Global conventions
 
@@ -13,6 +13,63 @@ Updated: 2026-10-10 11:05 CDT
 - Help: a "Questions? Contact your practice" line (patient) or "Contact platform support" (staff) in the same place at the foot of every screen
 - Privacy: platform staff screens show an order number, never a patient's name or contact detail (FR-050); patient notices name only the practice (FR-044)
 - Sample data: obviously fake names and values only (Dr. Maya Chen, Ana Ruiz, Willow Creek Wellness)
+
+### Visual language (M5.1)
+
+Revised for M5.1 (decision D75): every screen keeps its layout, states, copy and focus order; only how it looks
+changes. Inspired by the airy, sky-blue style of cluely.com. No Cluely name, logo, image or copy is used.
+
+#### Directions considered
+
+```text
+VL-1 Sky everywhere                 VL-2 Light page, sky header band     VL-3 Night mode
++--------------------------------+  +--------------------------------+  +--------------------------------+
+|~~~~~~ sky gradient page ~~~~~~~|  |~~ sky band: title in serif ~~~~|  |#### deep navy page ############|
+|  Practice prices (serif, white)|  |  Practice prices · Willow Cr.  |  |  Practice prices (serif, white)|
+|  +--------------------------+  |  +--------------------------------+  |  +--------------------------+  |
+|  | glass card, white text   |  |  |  white card, soft blue shadow  |  |  | dark glass card          |  |
+|  | rows on frosted glass    |  |  |  rows on white, ink text       |  |  | rows light on dark       |  |
+|  +--------------------------+  |  |  [ Change price ] glowing blue |  |  +--------------------------+  |
+|  [ Change price ] glowing      |  +--------------------------------+  |  [ Change price ] glowing      |
++--------------------------------+  | pale blue-white page below     |  +--------------------------------+
+                                    +--------------------------------+
+```
+
+| Direction | Idea | Best when | Costs | Fails for |
+|---|---|---|---|---|
+| VL-1 Sky everywhere | the whole page is the sky gradient; cards are frosted glass | a marketing page with little text | white text on light blue fails contrast for small text; dense tables of prices and stock are hard to read | providers scanning numbers inside a busy chart |
+| VL-2 Light page, sky header band | a sky gradient band carries the page title; content sits on white cards over a pale blue-white page | daily work screens with tables and forms | the sky look appears only in the header band and the primary buttons | nobody named; it is the safest for reading |
+| VL-3 Night mode | deep navy page, dark glass cards, glowing accents | evening use, a dramatic demo | inside a light EHR it looks like a different product; more contrast checks | a light host chart around it |
+
+**Recommendation:** VL-2, because these are work screens full of prices and counts that must stay readable inside a
+light EHR; the sky band, serif titles and glowing buttons carry the new look without hurting contrast.
+**Chosen:** VL-2 — STANDING approval 2026-10-10 23:09 CDT ("i approve all next recommendations until project completion"), recorded with the G-ux Revise row for M5.1.
+**Rejected:** VL-1 — small white text on light blue fails WCAG AA contrast · VL-3 — clashes with the light host chart.
+Why this layout: the new look lives in the header band and the buttons, so every number on the page stays as easy to read as before.
+
+#### The chosen language (VL-2)
+
+- Page: a pale blue-white background (#F5F9FF); content on white cards with 16 px rounded corners, a hairline
+  border (#E3EAF6) and a soft, wide blue shadow; generous space: 24 px inside cards, 32 px between sections
+- Header band: on every screen the title sits in a band filled with a sky gradient, deeper blue (#3B7DDD) at the
+  top-left fading to light sky (#8EC5F5) at the bottom-right; the title and its subtitle are white, and the title
+  is at least 28 px so white on the gradient passes large-text contrast; the imitation chart header (provider
+  screens) stays above the band, unchanged
+- Type: page titles in a classic serif (EB Garamond, medium weight, 32 px desktop / 26 px phone); everything else
+  in a clean geometric sans (Geist; 16 px body, 14 px for table detail, never smaller); numbers in tables use
+  even-width digits so columns line up
+- Ink: body text near-black navy (#0F172A); secondary text slate (#475569), which still passes 4.5:1 on white
+- Primary button: deep blue (#1D4ED8) with white text (passes 4.5:1), 12 px rounded corners, a soft blue glow
+  under it and a faint inner highlight along the top edge; hover brightens the glow; pressed sinks the glow
+- Secondary button: white with a blue hairline border and blue text; destructive actions ("Cancel order") use
+  dark red (#B91C1C) text on white, never red alone without the words
+- Status words keep their text and gain a soft pill behind them: Paid (green tint), Sent and In checkout (blue
+  tint), Payment failed and Needs review (amber tint), Cancelled (grey tint); color is never the only signal
+- Focus: a 3 px sky-blue ring with a white gap around every focusable thing, always visible on white and on the band
+- Dialogs and sheets: white, 20 px rounded corners, the page behind dimmed with a light blur
+- Motion: 150-200 ms fades and lifts only; nothing moves when the person has asked their device to reduce motion
+- Fonts load with the page and fall back to the device's sans-serif and serif while loading, so the layout never jumps
+- Contrast (planned, not verified): every text and control pair above is chosen to meet WCAG 2.2 AA; the build checks them
 
 ## S1 Supplement order (in the patient's chart)
 
