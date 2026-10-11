@@ -32,10 +32,10 @@ several harnesses read it and the repo is public.
 | M5-T011 | review fixes: checkout answers (R2, R3), practice name (R4) | Standard / build | claude-subagent | done | 2026-10-10 23:57 CDT | see task file | 0c4510a |
 | M6-T001 | financial report + export (tracer) | Standard / build | claude-subagent | done | 2026-10-11 11:16 CDT | see task file | c575c9c |
 | M6-T002 | roles, access log, operations-access migration | Standard / build | claude-subagent | done | 2026-10-11 11:16 CDT | see task file | 7dd3b96 |
-| M6-T003 | access log screen | Standard / build | claude-subagent | working | 2026-10-11 11:16 CDT | see task file | — |
-| M6-T004 | system health + uptime pings | Standard / build | claude-subagent | working | 2026-10-11 11:16 CDT | see task file | — |
-| M6-T005 | platform health + volume | Standard / build | claude-subagent | todo | 2026-10-11 11:16 CDT | see task file | — |
-| M6-T006 | review list + stock bounds (D83, D84, D86) | Standard / build | claude-subagent | working | 2026-10-11 11:16 CDT | see task file | — |
+| M6-T003 | access log screen | Standard / build | claude-subagent | done | 2026-10-11 11:16 CDT | see task file | 96198ee |
+| M6-T004 | system health + uptime pings | Standard / build | claude-subagent | done | 2026-10-11 11:16 CDT | see task file | 9466b5d |
+| M6-T005 | platform health + volume | Standard / build | claude-subagent | working | 2026-10-11 11:16 CDT | see task file | — |
+| M6-T006 | review list + stock bounds (D83, D84, D86) | Standard / build | claude-subagent | done | 2026-10-11 11:16 CDT | see task file | d5fdfbc |
 | M6-T007 | ROLE_PAGES + privacy sweep + make check join | Standard / build | claude-subagent | todo | 2026-10-11 11:16 CDT | see task file | — |
 | M5.1-T001 | theme, fonts, sign-in band | Standard / build | claude-subagent | done | 2026-10-11 07:31 CDT | see task file | 9987db7 |
 | M5.1-T002 | provider screens | Standard / build | claude-subagent | done | 2026-10-11 07:31 CDT | see task file | 3880298 |
@@ -527,3 +527,6 @@ several harnesses read it and the repo is public.
 2026-10-11 11:47 CDT DISPATCH M6-T003, M6-T004, M6-T006 harness=claude-subagent why=wave 3, parallel, disjoint Owns
 2026-10-11 12:01 CDT VERIFY M6-T006 squashed d5fdfbc: scope-guard OK (6 paths); supervisor make check exit 0; M6 AT-040..044 5/5; follow-up: practice/dashboard.vue:117 still guesses the cancel-refusal copy instead of reading from (D85)
 2026-10-11 12:04 CDT VERIFY M6-T003 squashed 96198ee: scope-guard OK (4 paths); supervisor make check exit 0; M6 AT-031..033 3/3
+2026-10-11 12:12 CDT VERIFY M6-T004 squashed 9466b5d: scope-guard OK (9 paths); combined milestone make check exit 0 (334/43/44/5/5); M6 suite 33/44 (11 red owned by T005, T007)
+2026-10-11 12:12 CDT NOTE vitest path filters like tests/acceptance/M6 also match copies under .claude/worktrees/**: use --dir for suite counts
+2026-10-11 12:12 CDT DISPATCH M6-T005 harness=claude-subagent why=wave 4 platform health
