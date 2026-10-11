@@ -20,6 +20,9 @@ set -f # branch names and refs are data, never globs
 remote=${1:-origin}
 top=$(git rev-parse --show-toplevel)
 cd "$top"
+# git sets GIT_DIR (and friends) for hooks; inside a worktree that makes `git -C <dir> rev-parse --show-toplevel`
+# answer the current directory, so scripts resolve doubled paths. Run make check like a person would.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_PREFIX
 fail=0
 pushes=() # "<branch> <local sha> <remote sha>"
 
