@@ -1711,7 +1711,10 @@ components:
         is_test_payment:
           type: boolean
           const: true
-      required: [order_id, status, practice_name, provider_display_name, lines, total_cents, price_changes, prices_held_until, paid_at, is_test_payment]
+        hold_ended:
+          type: boolean
+          description: true when the order is sent again after a 30-minute price hold ended unpaid (status sent and a checkout was started); screens.md S2 "Your 30-minute price hold ended. These are the current prices."
+      required: [order_id, status, practice_name, provider_display_name, lines, total_cents, price_changes, prices_held_until, paid_at, is_test_payment, hold_ended]
     Checkout:
       type: object
       properties:

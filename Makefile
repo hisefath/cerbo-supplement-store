@@ -45,9 +45,9 @@ test-acceptance:
 test-acceptance-m4:
 	npx vitest run --dir tests/acceptance/M4
 
-## test-acceptance-m5: the M5 acceptance suite, part of check (needs `make db-test-up`)
+## test-acceptance-m5: the M5 acceptance suite, part of check (needs `make db-test-up`); close-out.test.ts joins when M5-T007 lands
 test-acceptance-m5:
-	npx vitest run --dir tests/acceptance/M5
+	npx vitest run --dir tests/acceptance/M5 --exclude '**/close-out.test.ts'
 
 # --- Example: Laravel 13 / PHP 8.5 (Pint + Larastan/PHPStan + Pest or PHPUnit) -------------------------------
 # Replace the three recipes above with these (recipe lines must start with a TAB):
