@@ -951,3 +951,87 @@ Copy this block for each new entry (D-ids increase by one, starting at D1):
 - Cost accepted: on a shared browser, Back after sign-out may show the previous person's name and role. · Reversibility: Type 2 two-way · Confidence: high
 - Revisit if: S15 starts to show order or health data, or the app runs on shared clinic machines inside the EHR. · Evidence: docs/security/CHECKLIST.md SEC-15; approval G5 SEC-15 2026-10-11 10:12 CDT · Interview line: "The home page shows only your own name, so a back-button echo on a shared browser was accepted as low until it shows more."
 - Review: Topic Security · Weight ●○○ · One-liner: S15 home may linger in a shared browser's history; accepted as low.
+
+### D83 Bound price and stock input with clear 422s  [status: accepted]
+- Date 2026-10-11 09:49 CDT · phase 6 design-lld (G3) · milestone M6 · Decided by: human, G3 2026-10-11 09:49 CDT: STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" · Proposed by: design-lld (Claude Code, claude-opus-5-5) · artifact: docs/architecture/lld.md@9200719 D83
+- Context and forces: Price, stock change and quantity had no upper bound, so absurd staff input reached the database and answered 500 (D77 accepted that for now; M5-pass1 R2, M5-pass5 R1).
+- Options:
+  - Do nothing / simplest: keep D77, the 500 stays — cost: an input error reads as our failure — rejected: reviews keep flagging it
+  - bounds in the request schemas plus one computed price check: price ≤ 10,000,000 cents, stock change within ±1,000,000, resulting count ≤ 1,000,000, each 422 (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: about 1 hour — chosen
+  - database CHECK constraints at the same limits mapped to 422 — cost: half a day and a migration on live history tables — rejected: hard to map constraint errors
+- Choice: schema bounds plus the computed price check; supersedes D77 for these inputs · Why: the recommendation in lld.md D83, taken under the standing approval.
+- Cost accepted: the chosen option's cost above. · Reversibility: Type 2 two-way · Confidence: med
+- Revisit if: a product or count legitimately approaches the limits · Evidence: proposed as docs/architecture/lld.md D83; approval G3 2026-10-11 09:49 CDT · Interview line: "The database would refuse it anyway; the bound turns a confusing 500 into a 422 that points at the field."
+- Review: Topic Security · Weight ●○○ · One-liner: Price and stock input get upper bounds and clear errors.
+
+### D84 Lock product rows FOR NO KEY UPDATE  [status: accepted]
+- Date 2026-10-11 09:49 CDT · phase 6 design-lld (G3) · milestone M6 · Decided by: human, G3 2026-10-11 09:49 CDT: STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" · Proposed by: design-lld (Claude Code, claude-opus-5-5) · artifact: docs/architecture/lld.md@9200719 D84
+- Context and forces: reserve, release and adjust lock product rows FOR UPDATE, which also blocks foreign-key inserts (order lines, stock movements) behind a payment (M5-pass3 R6).
+- Options:
+  - Do nothing / simplest: keep FOR UPDATE — cost: short waits for providers sending orders — rejected: needless blocking
+  - FOR NO KEY UPDATE, still in product id order (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: a one-word change per lock — chosen
+  - no explicit lock, conditional updates — cost: naming every short item gets harder — rejected: weaker error copy
+- Choice: FOR NO KEY UPDATE in id order · Why: the recommendation in lld.md D84, taken under the standing approval.
+- Cost accepted: the chosen option's cost above. · Reversibility: Type 2 two-way · Confidence: med
+- Revisit if: a product's key columns change inside these transactions · Evidence: proposed as docs/architecture/lld.md D84; approval G3 2026-10-11 09:49 CDT · Interview line: "I took the weakest lock that still serialises the stock count."
+- Review: Topic Data · Weight ●○○ · One-liner: Product rows lock with FOR NO KEY UPDATE.
+
+### D85 Refusals carry from and event  [status: accepted]
+- Date 2026-10-11 09:49 CDT · phase 6 design-lld (G3) · milestone M6 · Decided by: human, G3 2026-10-11 09:49 CDT: STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" · Proposed by: design-lld (Claude Code, claude-opus-5-5) · artifact: docs/architecture/lld.md@9200719 D85
+- Context and forces: 409 invalid-transition does not say why it was refused, so the checkout guessed and showed the wrong message (M5-pass7 R2; LLD Q-8).
+- Options:
+  - Do nothing / simplest: drop from/event; every screen refetches after a 409 — cost: each screen must remember to — rejected: the guessing bug class stays
+  - send from and event from BE-9.startCheckout, BE-9.cancelOrder and BE-10.pay (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: about 1 hour — chosen
+  - a problem type per cause — cost: many new types — rejected: registry growth
+- Choice: send from and event as the registry promises · Why: the recommendation in lld.md D85, taken under the standing approval.
+- Cost accepted: the chosen option's cost above. · Reversibility: Type 2 two-way · Confidence: med
+- Revisit if: a second state machine uses the same problem type · Evidence: proposed as docs/architecture/lld.md D85; approval G3 2026-10-11 09:49 CDT · Interview line: "The bug came from the client guessing a reason the server knew; the fix puts the reason in the body."
+- Review: Topic Product · Weight ●○○ · One-liner: Refused transitions say from which state and on what event.
+
+### D86 Count Pay stock refusals in request stats  [status: accepted]
+- Date 2026-10-11 09:49 CDT · phase 6 design-lld (G3) · milestone M6 · Decided by: human, G3 2026-10-11 09:49 CDT: STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" · Proposed by: design-lld (Claude Code, claude-opus-5-5) · artifact: docs/architecture/lld.md@9200719 D86
+- Context and forces: A sold-out Pay rolls back and leaves no attempt row, so counting failed attempts would always show 0 (FR-048).
+- Options:
+  - Do nothing / simplest: count failed attempts with reason no stock — cost: none — rejected: always 0, the measure lies
+  - a stock_refusals count on request_stats, added when EP-23 answers insufficient-stock (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: one column, best effort — chosen
+  - write a failed attempt after the rollback — cost: same-key retries collide and answer 409; touches payments — rejected
+- Choice: stock_refusals on request_stats, Pay refusals only · Why: the recommendation in lld.md D86, taken under the standing approval.
+- Cost accepted: the chosen option's cost above. · Reversibility: Type 2 two-way · Confidence: med
+- Revisit if: someone needs which orders or products were refused · Evidence: proposed as docs/architecture/lld.md D86; approval G3 2026-10-11 09:49 CDT · Interview line: "The refusal rolls back by design, so I counted it where the request is observed."
+- Review: Topic Data · Weight ●○○ · One-liner: Pay stock refusals are counted hourly beside request stats.
+
+### D87 Measure availability in five-minute slots  [status: accepted]
+- Date 2026-10-11 09:49 CDT · phase 6 design-lld (G3) · milestone M6 · Decided by: human, G3 2026-10-11 09:49 CDT: STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" · Proposed by: design-lld (Claude Code, claude-opus-5-5) · artifact: docs/architecture/lld.md@9200719 D87
+- Context and forces: health_pings was keyed per minute but the probe pings every 5 minutes, so availability would read about 20% while healthy.
+- Options:
+  - Do nothing / simplest: one-minute slices and ask for a one-minute probe — cost: availability wrong by five until the probe changes — rejected
+  - five-minute slots keyed slot, counted from the first ping (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: outages under five minutes can be missed — chosen
+  - derive availability from request_stats — cost: quiet hours read as down — rejected
+- Choice: five-minute slots matching the probe · Why: the recommendation in lld.md D87, taken under the standing approval.
+- Cost accepted: the chosen option's cost above. · Reversibility: Type 2 two-way · Confidence: med
+- Revisit if: the probe interval changes · Evidence: proposed as docs/architecture/lld.md D87; approval G3 2026-10-11 09:49 CDT · Interview line: "Availability is checked slots over elapsed slots, and the slot is the probe interval."
+- Review: Topic Infrastructure · Weight ●○○ · One-liner: Availability counts five-minute slots, matching the probe.
+
+### D88 Accept refused role-change rows from any caller  [status: accepted]
+- Date 2026-10-11 12:55 CDT · phase 12 check-security (G5) · milestone M6 · Decided by: human, G5 SEC-16 2026-10-11 12:55 CDT: STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" · Proposed by: check-security (Claude Code, claude-opus-5-5) · artifact: docs/security/CHECKLIST.md@a794224
+- Context and forces: A patient or provider can hand-craft a role-change request; the refusal is logged with their own name and text in the append-only access log the finance lead reads (staff-access.ts:86), without a limit, and 403 vs 404 reveals which ids are staff. Only the caller's own identity is exposed; no order or health data.
+- Options:
+  - Do nothing / simplest (shown as "default: pending G5"): leave it undecided — cost: the milestone cannot merge — rejected: blocks G5
+  - fix: refuse non-staff callers unlogged before BE-18, or log them nameless, plus a per-actor limit — cost: a BE-18 change and an FR-055 note — rejected: low under the triage rule
+  - accept (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: a gap in INV-7's letter and unbounded refused rows, owned by name — chosen
+- Choice: accept · Why: In the context of a low finding inside Cerbo's EHR, we chose to accept it with a revisit trigger over fixing it now, accepting a gap in INV-7's letter and unbounded refused rows, owned by name.
+- Cost accepted: a gap in INV-7's letter and unbounded refused rows, owned by name. · Reversibility: Type 2 two-way · Confidence: high
+- Revisit if: patients or providers are identified by Cerbo's EHR launch, a real patient name appears in the access log, or flooding is seen. · Evidence: docs/security/CHECKLIST.md SEC-16; approval G5 SEC-16 2026-10-11 12:55 CDT · Interview line: "Logging every refused attempt is right for audit; the flood risk exposes only the caller's own name, so it is accepted with a trigger to add a per-actor limit."
+- Review: Topic Security · Weight ●○○ · One-liner: Refused role-change rows from any caller are accepted as low.
+
+### D89 Accept one database write per counted request  [status: accepted]
+- Date 2026-10-11 12:55 CDT · phase 12 check-security (G5) · milestone M6 · Decided by: human, G5 SEC-17 2026-10-11 12:55 CDT: STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" · Proposed by: check-security (Claude Code, claude-opus-5-5) · artifact: docs/security/CHECKLIST.md@a794224
+- Context and forces: The request-metrics plugin upserts the hour's row on every counted request, including signed-out page loads (request-metrics.ts:19); under a flood these writes compete for database connections. A failed write never fails a request; no data is exposed.
+- Options:
+  - Do nothing / simplest (shown as "default: pending G5"): leave it undecided — cost: the milestone cannot merge — rejected: blocks G5
+  - fix: count in memory and flush once a minute, or count signed-in requests only — cost: a BE-19 redesign and D86/D87 changes — rejected: low under the triage rule
+  - accept (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: slower answers under a flood — chosen
+- Choice: accept · Why: In the context of a low finding inside Cerbo's EHR, we chose to accept it with a revisit trigger over fixing it now, accepting slower answers under a flood.
+- Cost accepted: slower answers under a flood. · Reversibility: Type 2 two-way · Confidence: high
+- Revisit if: traffic approaches the database pool limit or a request flood is seen. · Evidence: docs/security/CHECKLIST.md SEC-17; approval G5 SEC-17 2026-10-11 12:55 CDT · Interview line: "Counting each request in the database is simple and safe for this load; batching waits until traffic says it is needed."
+- Review: Topic Security · Weight ●○○ · One-liner: One database write per counted request is accepted as low.

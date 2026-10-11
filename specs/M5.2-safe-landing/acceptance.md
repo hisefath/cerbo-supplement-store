@@ -162,3 +162,4 @@ Ways a test could pass while the feature is wrong (`references/silent-success.md
 |---|---|---|---|
 | 2026-10-11 09:36 CDT (UTC-0500) | First draft | all | prd.md CQ-5: "also everytime i log in, i get 404s. i dont reroute safely to a homepage, or have any info like i dont have access or get a link to a page i should be reaching, etc. lets fix that" |
 | 2026-10-11 09:51 CDT | Review pass 1: AT-002 checks the landing page is not a refusal (R1); AT-004 adds Fran on stock adjustments (R3, FR-058); AT-005 the no-role account (R2) | AT-002, AT-004, AT-005 | M5.2-pass1 R1, R2, R3; STANDING approval 2026-10-10 23:09 CDT |
+| 2026-10-11 11:07 CDT | Re-run (M6 acceptance Q-11): AT-001 keeps Ana only; Sam and Dana leave it because M6 gives them work pages (/ops/system, /ops/health), which M6 AT-030 checks; the no-role case stays in AT-005 | AT-001 | M6 acceptance Q-11 recommendation; STANDING approval 2026-10-10 23:09 CDT |

@@ -15,10 +15,8 @@ const root = async (email: string) => call('/', { cookie: await signIn(email), r
 const homeLink = /<a[^>]+href="\/"[^>]*>\s*Go to your home\s*<\/a>/
 
 describe('M5.2 safe landing', () => {
-  it('M5.2_AT_001 a role with no work page yet lands on its home, never a 404: Sam, Dana and Ana each see "Welcome, <name>" and what to do instead (FR-039; S15 Empty)', async () => {
+  it('M5.2_AT_001 a role with no work page lands on its home, never a 404: Ana sees "Welcome, Ana Ruiz" and what to do instead (FR-039; S15 Empty; Sam and Dana gain work pages in M6, checked by M6 AT-030)', async () => {
     const cases = [
-      [EMAIL.sam, 'Welcome, Sam Reyes', 'Nothing to open yet: system health and operations access will appear here when they are ready.'],
-      [EMAIL.dana, 'Welcome, Dana Ito', 'Nothing to open yet: platform health and the volume report will appear here when they are ready.'],
       [EMAIL.ana, 'Welcome, Ana Ruiz', 'Your orders open from the message your practice sends you.'],
     ] as const
     for (const [email, title, copy] of cases) {

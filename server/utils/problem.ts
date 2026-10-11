@@ -69,6 +69,7 @@ export function errorFacts(err: unknown): { error: string; code?: string; constr
 
 function sendProblem(event: H3Event, slug: ProblemSlug, extensions: Record<string, unknown> = {}) {
   const [status, title] = TITLES[slug]
+  event.context.problem = slug // BE-19 counts insufficient-stock on EP-23 from here (D86)
   setResponseStatus(event, status)
   setResponseHeader(event, 'content-type', 'application/problem+json')
   return { type: `/problems/${slug}`, title, status, ...extensions }

@@ -287,18 +287,12 @@ paths:
             text/html:
               schema:
                 type: string
-        "401":
-          description: "/problems/unauthenticated"
-          content:
-            application/problem+json:
+        "303":
+          description: "Signed out: redirect to /sign-in?next=<this page> (EP-1). A signed-in person whose role does not allow the page gets 200 with only the page's Permission denied state, because the page's API call answered 403 (FR-058)."
+          headers:
+            Location:
               schema:
-                $ref: "#/components/schemas/Problem"
-        "403":
-          description: "/problems/forbidden"
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/Problem"
+                type: string
   "/ops/finance":
     get:
       x-lld-id: "EP-11"
@@ -318,18 +312,12 @@ paths:
             text/html:
               schema:
                 type: string
-        "401":
-          description: "/problems/unauthenticated"
-          content:
-            application/problem+json:
+        "303":
+          description: "Signed out: redirect to /sign-in?next=<this page> (EP-1). A signed-in person whose role does not allow the page gets 200 with only the page's Permission denied state, because the page's API call answered 403 (FR-058)."
+          headers:
+            Location:
               schema:
-                $ref: "#/components/schemas/Problem"
-        "403":
-          description: "/problems/forbidden"
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/Problem"
+                type: string
   "/ops/access":
     get:
       x-lld-id: "EP-12"
@@ -343,18 +331,12 @@ paths:
             text/html:
               schema:
                 type: string
-        "401":
-          description: "/problems/unauthenticated"
-          content:
-            application/problem+json:
+        "303":
+          description: "Signed out: redirect to /sign-in?next=<this page> (EP-1). A signed-in person whose role does not allow the page gets 200 with only the page's Permission denied state, because the page's API call answered 403 (FR-058)."
+          headers:
+            Location:
               schema:
-                $ref: "#/components/schemas/Problem"
-        "403":
-          description: "/problems/forbidden"
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/Problem"
+                type: string
   "/ops/access-log":
     get:
       x-lld-id: "EP-13"
@@ -374,18 +356,12 @@ paths:
             text/html:
               schema:
                 type: string
-        "401":
-          description: "/problems/unauthenticated"
-          content:
-            application/problem+json:
+        "303":
+          description: "Signed out: redirect to /sign-in?next=<this page> (EP-1). A signed-in person whose role does not allow the page gets 200 with only the page's Permission denied state, because the page's API call answered 403 (FR-058)."
+          headers:
+            Location:
               schema:
-                $ref: "#/components/schemas/Problem"
-        "403":
-          description: "/problems/forbidden"
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/Problem"
+                type: string
   "/ops/system":
     get:
       x-lld-id: "EP-14"
@@ -405,18 +381,12 @@ paths:
             text/html:
               schema:
                 type: string
-        "401":
-          description: "/problems/unauthenticated"
-          content:
-            application/problem+json:
+        "303":
+          description: "Signed out: redirect to /sign-in?next=<this page> (EP-1). A signed-in person whose role does not allow the page gets 200 with only the page's Permission denied state, because the page's API call answered 403 (FR-058)."
+          headers:
+            Location:
               schema:
-                $ref: "#/components/schemas/Problem"
-        "403":
-          description: "/problems/forbidden"
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/Problem"
+                type: string
   "/api/session":
     post:
       x-lld-id: "EP-15"
@@ -621,7 +591,7 @@ paths:
           content:
             application/problem+json:
               schema:
-                $ref: "#/components/schemas/Problem"
+                $ref: "#/components/schemas/InvalidTransitionProblem"
   "/api/orders/{orderId}":
     get:
       x-lld-id: "EP-21"
@@ -689,7 +659,7 @@ paths:
           content:
             application/problem+json:
               schema:
-                $ref: "#/components/schemas/Problem"
+                $ref: "#/components/schemas/InvalidTransitionProblem"
   "/api/orders/{orderId}/payments":
     post:
       x-lld-id: "EP-23"
@@ -733,7 +703,9 @@ paths:
           content:
             application/problem+json:
               schema:
-                $ref: "#/components/schemas/Problem"
+                anyOf:
+                  - $ref: "#/components/schemas/InvalidTransitionProblem"
+                  - $ref: "#/components/schemas/Problem"
         "422":
           description: "/problems/insufficient-stock, /problems/order-under-review, /problems/idempotency-mismatch"
           content:
@@ -894,6 +866,14 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+        "422":
+          description: "/problems/validation (an unknown, malformed or impossible cursor)"
+          content:
+            application/problem+json:
+              schema:
+                anyOf:
+                  - $ref: "#/components/schemas/ValidationProblem"
+                  - $ref: "#/components/schemas/Problem"
   "/api/practice/prices/{productId}":
     put:
       x-lld-id: "EP-28"
@@ -1069,6 +1049,14 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+        "422":
+          description: "/problems/validation (an unknown, malformed or impossible cursor)"
+          content:
+            application/problem+json:
+              schema:
+                anyOf:
+                  - $ref: "#/components/schemas/ValidationProblem"
+                  - $ref: "#/components/schemas/Problem"
   "/api/ops/stock/{productId}/adjustments":
     post:
       x-lld-id: "EP-32"
@@ -1443,7 +1431,7 @@ paths:
     get:
       x-lld-id: "EP-40"
       operationId: health
-      summary: "Health check for the uptime monitor: one select 1 within 2 s"
+      summary: "Health check for the uptime monitor: one select 1 within 2 s; on success the 5-minute slot is recorded for availability (lld.md D87)"
       tags: [operations]
       security: []
       responses:
@@ -1502,7 +1490,7 @@ components:
       name: cursor
       in: query
       required: false
-      description: "Opaque cursor from the previous page's next_cursor."
+      description: "Opaque cursor from the previous page's next_cursor. An unknown, malformed or impossible cursor is 422 /problems/validation (lld.md BE-22)."
       schema:
         type: string
     Limit:
@@ -1551,6 +1539,18 @@ components:
                     type: string
                 required: [pointer, detail]
           required: [errors]
+    InvalidTransitionProblem:
+      description: "/problems/invalid-transition with why it was refused (lld.md D85, proposed; not yet sent by the M4/M5 code, Q-8)."
+      allOf:
+        - $ref: "#/components/schemas/Problem"
+        - type: object
+          properties:
+            from:
+              $ref: "#/components/schemas/OrderStatus"
+            event:
+              type: string
+              enum: [start_checkout, pay, cancel]
+          required: [from, event]
     Role:
       type: string
       enum: [patient, provider, finance_lead, operations_specialist, sre, data_analyst, none]
@@ -1888,7 +1888,10 @@ components:
       description: "Exactly one of price_cents or margin_basis_points."
       properties:
         price_cents:
-          $ref: "#/components/schemas/Cents"
+          type: integer
+          minimum: 1
+          maximum: 10000000
+          description: "Whole US cents, at most $100,000.00 (lld.md D83, proposed). A margin whose computed price passes the same maximum is also 422 /problems/validation."
         margin_basis_points:
           type: integer
           minimum: 0
@@ -1915,7 +1918,15 @@ components:
           type: ["integer", "null"]
         product_id:
           type: ["integer", "null"]
-      required: [kind, label, order_id, product_id]
+        patient_display_name:
+          type: ["string", "null"]
+          description: "Set on awaiting_payment items: the patient's name, so S6 reads 'Ben Ortiz · $30.00 · awaiting payment for 4 days' whatever page of orders is loaded (M5-pass6 R4). The provider's own practice only."
+        total_cents:
+          oneOf:
+            - $ref: "#/components/schemas/Cents"
+            - type: "null"
+          description: "Set on awaiting_payment items: the order total EP-30 shows for that order."
+      required: [kind, label, order_id, product_id, patient_display_name, total_cents]
     ProductSales:
       type: object
       properties:
@@ -2023,8 +2034,11 @@ components:
       properties:
         change:
           type: integer
+          minimum: -1000000
+          maximum: 1000000
           not:
             const: 0
+          description: "A resulting count above 1,000,000 units is also 422 /problems/validation (lld.md D83, proposed)."
         reason:
           type: string
           minLength: 1
@@ -2078,6 +2092,7 @@ components:
             required: [name, value, alert_line, needs_attention]
         practices:
           type: array
+          description: "Every practice, zeros included, by practice id; the whole list (under 200 rows), shown 25 at a time by the page."
           items:
             type: object
             properties:
@@ -2124,6 +2139,7 @@ components:
           $ref: "#/components/schemas/Cents"
         payouts_by_provider:
           type: array
+          description: "The whole list (under 50 providers), shown 25 at a time by the page."
           items:
             type: object
             properties:
@@ -2214,6 +2230,7 @@ components:
           type: boolean
         availability_percent:
           type: ["number", "null"]
+          description: "5-minute slots with a successful /healthz ÷ slots elapsed in the month since the first ping ever (lld.md D87); null with no pings."
         availability_target_percent:
           type: number
           const: 99.5
@@ -2221,6 +2238,7 @@ components:
           type: ["number", "null"]
         slow_page_percent:
           type: ["number", "null"]
+          description: "Share of page.* responses slower than 2 s; null with no page traffic."
         slow_page_target_percent:
           type: number
           const: 5

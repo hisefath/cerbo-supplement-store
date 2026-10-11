@@ -8,11 +8,13 @@ import { defaultPriceCents, lowestAllowedPriceCents, priceFromMargin } from './m
 import type { Viewer } from './session'
 
 const HISTORY_PAGE = 25
+/** D83: the highest price, given or from a margin ($100,000.00). */
+const MAX_PRICE_CENTS = 10_000_000
 
 /** EP-28 body (openapi PriceChangeRequest): exactly one of price_cents or margin_basis_points, and a reason. */
 export const PriceChangeRequest = z
   .strictObject({
-    price_cents: z.int().positive().optional(),
+    price_cents: z.int().positive().max(MAX_PRICE_CENTS, 'Enter a price of $100,000.00 or less.').optional(),
     margin_basis_points: z.int().min(0).max(9999).optional(),
     reason: z.string().trim().min(1, 'Add a reason so others know why the price changed.').max(200),
     expected_current_price_cents: z.int().positive(),
@@ -54,9 +56,14 @@ export function marginBasisPoints(priceCents: number, unitCostCents: number): nu
   return Math.floor(((priceCents - unitCostCents) * 20000 + priceCents) / (2 * priceCents))
 }
 
-/** The price a change asks for, or /problems/below-price-floor with the lowest allowed price (FR-018, FR-020). */
+/** The price a change asks for, or /problems/validation at its field when it passes $100,000.00 (D83), or
+ *  /problems/below-price-floor with the lowest allowed price (FR-018, FR-020). */
 export function priceFor(productId: bigint, unitCostCents: number, input: { price_cents?: number; margin_basis_points?: number }): number {
   const price = input.price_cents ?? priceFromMargin(unitCostCents, input.margin_basis_points!)
+  if (price > MAX_PRICE_CENTS) {
+    const pointer = input.price_cents === undefined ? '#/margin_basis_points' : '#/price_cents'
+    throw new ProblemError('validation', { errors: [{ pointer, detail: 'That makes the price more than $100,000.00.' }] })
+  }
   const lowest = lowestAllowedPriceCents(unitCostCents)
   if (price < lowest) throw new ProblemError('below-price-floor', { lowestAllowedPriceCents: lowest, productIds: [Number(productId)] })
   return price

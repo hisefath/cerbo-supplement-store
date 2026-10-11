@@ -1,6 +1,6 @@
 // BE-13 StockService (lld.md §2, SEQ-2, INV-5): stock counts change only through recorded movements that never go
 // below zero. reserveForOrder and releaseForOrder run inside BE-10's payment transactions; product rows are always
-// locked in id order, so two payments for the same products wait on each other instead of deadlocking (AE-024).
+// locked in id order (FOR NO KEY UPDATE, D84: foreign-key inserts that point at a product are not blocked), so two payments for the same products wait on each other instead of deadlocking (AE-024).
 import type { Transaction } from 'kysely'
 import type { Database } from '../utils/db-types'
 import { ProblemError } from '../utils/problem'
@@ -29,7 +29,7 @@ export function outstandingByProduct(moves: { product_id: string; change: number
 const byId = (a: string, b: string) => (BigInt(a) < BigInt(b) ? -1 : BigInt(a) > BigInt(b) ? 1 : 0)
 
 async function lockProducts(tx: Transaction<Database>, productIds: string[]) {
-  return tx.selectFrom('products').select(['id', 'units_in_stock']).where('id', 'in', productIds).orderBy('id').forUpdate().execute()
+  return tx.selectFrom('products').select(['id', 'units_in_stock']).where('id', 'in', productIds).orderBy('id').forNoKeyUpdate().execute()
 }
 
 async function move(tx: Transaction<Database>, orderId: string, productId: string, change: number, kind: 'sale' | 'sale_release') {

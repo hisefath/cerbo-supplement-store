@@ -30,6 +30,13 @@ several harnesses read it and the repo is public.
 | M5-T009 | S7 stock page fixes | Standard / build | claude-subagent | done | 2026-10-10 23:16 CDT | see task file | 12acb25 |
 | M5-T010 | S6 dashboard fixes | Standard / build | claude-subagent | done | 2026-10-10 23:16 CDT | see task file | 635d015 |
 | M5-T011 | review fixes: checkout answers (R2, R3), practice name (R4) | Standard / build | claude-subagent | done | 2026-10-10 23:57 CDT | see task file | 0c4510a |
+| M6-T001 | financial report + export (tracer) | Standard / build | claude-subagent | done | 2026-10-11 11:16 CDT | see task file | c575c9c |
+| M6-T002 | roles, access log, operations-access migration | Standard / build | claude-subagent | done | 2026-10-11 11:16 CDT | see task file | 7dd3b96 |
+| M6-T003 | access log screen | Standard / build | claude-subagent | done | 2026-10-11 11:16 CDT | see task file | 96198ee |
+| M6-T004 | system health + uptime pings | Standard / build | claude-subagent | done | 2026-10-11 11:16 CDT | see task file | 9466b5d |
+| M6-T005 | platform health + volume | Standard / build | claude-subagent | done | 2026-10-11 11:16 CDT | see task file | a75e0ab |
+| M6-T006 | review list + stock bounds (D83, D84, D86) | Standard / build | claude-subagent | done | 2026-10-11 11:16 CDT | see task file | d5fdfbc |
+| M6-T007 | ROLE_PAGES + privacy sweep + make check join | Standard / build | claude-subagent | done | 2026-10-11 11:16 CDT | see task file | 5ffe173 |
 | M5.1-T001 | theme, fonts, sign-in band | Standard / build | claude-subagent | done | 2026-10-11 07:31 CDT | see task file | 9987db7 |
 | M5.1-T002 | provider screens | Standard / build | claude-subagent | done | 2026-10-11 07:31 CDT | see task file | 3880298 |
 | M5.1-T003 | patient screens | Standard / build | claude-subagent | done | 2026-10-11 07:31 CDT | see task file | caabf90 |
@@ -218,6 +225,8 @@ several harnesses read it and the repo is public.
 | 2026-10-11 08:25 CDT | G5 security part (M5.1 re-run after T005): approve checklist (0 reachable critical/high, no new finding) | docs/security/CHECKLIST.md@c06a229 | STANDING row 2026-10-10 23:09 CDT |
 | 2026-10-11 08:35 CDT | G5 Revise (M5.1 report recommendation): answer DV-5 with a Log NOTE, correct MILESTONES gate SHAs (DV-6), add the missing T004 VERIFY line, re-run report-milestone | docs/milestones/M5.1.md (draft 08:25) | STANDING row 2026-10-10 23:09 CDT |
 | 2026-10-11 08:40 CDT | G5 Merge (M5.1 report recommendation; 4 clauses yes; 0 open P0/P1; 0 unaccepted high/critical) | docs/milestones/M5.1.md@c26710a | STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
+| 2026-10-11 09:17 CDT | deploy (ship-milestone) | main@c956959 → Railway production (web-v2) | "yes, deploy c956959 to production" |
+| 2026-10-11 09:49 CDT | G3 (M6 delta: BE-22 paging, catch-up rows, D82-D86 recommendations accepted; Q-10, Q-11, Q-12 to clarify-spec) | docs/architecture/lld.md@9200719 + openapi.yaml + 9 diagrams | STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
 | 2026-10-11 09:37 CDT | G1 (clarify CQ-5: M5.2 Safe landing) + G-ux (S15, page-not-found and wrong-role conventions) + G3 (ROLE_PAGES, FE-25, FE-26, FE-23) + G4 (AT-001..004, T001) | prd.md, screens.md, flows.md, lld.md, specs/M5.2-safe-landing on milestone/m5.2-safe-landing | "also everytime i log in, i get 404s. i dont reroute safely to a homepage, or have any info like i dont have access or get a link to a page i should be reaching, etc. lets fix that" · STANDING row 2026-10-10 23:09 CDT |
 | 2026-10-11 09:52 CDT | M5.2 review pass 1 dispositions: R1, R3 fix (tests, supervisor); R2, R5, R6 fix (M5.2-T002; S15 no-role copy added, G-ux); R4 file; R7 keep | .handoff/reviews/M5.2-pass1.md | STANDING row 2026-10-10 23:09 CDT |
 | 2026-10-11 09:59 CDT | M5.2-T002 Q1: A (keep the styled link; AT-003 stays green) | .handoff/runs/M5.2-T002/answers.md | STANDING row 2026-10-10 23:09 CDT |
@@ -225,6 +234,17 @@ several harnesses read it and the repo is public.
 | 2026-10-11 10:12 CDT | G5 security part (M5.2): approve checklist (0 reachable critical/high) | docs/security/CHECKLIST.md@e94fe57 | STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
 | 2026-10-11 10:12 CDT | deploy (pre-approved): the M5.2 merge commit → Railway production (web-v2), once merged on green CI | MR !11 | "tell me when M5.2 is ready to deploy, also deploy it" |
 | 2026-10-11 10:22 CDT | G5 Merge (M5.2 report recommendation; 4 clauses yes; 0 open P0/P1; 0 unaccepted high/critical) | docs/milestones/M5.2.md@8f18a05 | STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-11 10:36 CDT | G1 re-approval (clarify pass 4: CQ-6 to CQ-8) + G3 revise (Q-10 to Q-12 answered; role none keeps M5.2 S15) | docs/product/prd.md@97e8186 + lld.md + openapi.yaml | STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-11 10:38 CDT | deploy (pre-approved): the M6 merge commit → Railway production (web-v2), once merged on green CI; migrations stay a human-run step | M6 MR (not yet opened) | "tell me when M6 is ready to deploy, also deploy it" |
+| 2026-10-11 11:08 CDT | G4 acceptance part (M6: 44 ATs, Q-1 to Q-13 recommendations, waivers EDGE-007, 033, 034, 039, 051, 058, 059; EDGE-039 waived with a verifier check of the repeatable-read transaction) | specs/M6-measurement-and-operations/acceptance.md@be96e14 + tests/acceptance/M6 | STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-11 11:16 CDT | G4 (M6: 7 slices, option a; T006 harness codex→claude for one dispatch path; analyze RESULT: PASS) | specs/M6-measurement-and-operations/tasks@45ff317 + acceptance.md | STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-11 11:44 CDT | G4 re-approval (Revise, M6-T002 Owns gap, option A): add db/seed/demo.ts to T002 Owns so RESET_TABLES names access_log, request_stats, health_pings (the M5.2 seed guard test caught it) | specs/M6-measurement-and-operations/tasks/T002.md | STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-11 12:55 CDT | G5 SEC-16 | docs/security/CHECKLIST.md@a794224 | accept — STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
+| 2026-10-11 12:55 CDT | G5 SEC-17 | docs/security/CHECKLIST.md@a794224 | accept — STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
+| 2026-10-11 12:55 CDT | G5 security part (M6): approve checklist (0 reachable critical/high) | docs/security/CHECKLIST.md@a794224 | STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
+| 2026-10-11 12:55 CDT | M6 review pass 1 dispositions: R1 fix (M6-T008, D85 dashboard copy); R2 to R8 file (R6 = SEC-16, accepted) | .handoff/reviews/M6-pass1.md | STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
+| 2026-10-11 13:16 CDT | G5 Revise (M6 report recommendation): answer DV-4 (a) with a Log NOTE; MILESTONES M6 row gets G4 sha and D88, D89 (DV-7); re-run report-milestone | docs/milestones/M6.md (draft 13:12) | STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-11 13:22 CDT | G5 Merge (M6 report recommendation; 4 clauses yes; 0 open P0/P1; 0 unaccepted high/critical) | docs/milestones/M6.md@d4e0da1 | STANDING row 2026-10-10 23:09 CDT |
 
 ## Log
 
@@ -487,6 +507,10 @@ several harnesses read it and the repo is public.
 2026-10-11 08:35 CDT VERIFY M5.1-T004 squashed 7367c5d (recorded late): scope-guard OK (6 paths); supervisor make check on the milestone exit 0 (218/43/44/4) at 2026-10-11 08:00 CDT
 2026-10-11 08:35 CDT NOTE M5.1-T003 VERIFY shares the T002 line (2026-10-11 07:50): scope-guard OK (4 paths); supervisor make check exit 0 in its worktree
 2026-10-11 08:36 CDT CHECK browser (local dev server on the milestone head after T005): Geist and EB Garamond loaded from the app; stock form input border rgb(100,116,139) = --color-control-border; sign-in redirect to next=/ops/stock works; earlier: sign-in, prices, dashboard, 375 px no sideways scroll, stock page
+2026-10-11 08:47 CDT MERGE M5.1 MR !10 -> main c956959 (pipeline #49738 success); make check on main exit 0 (218/43/44/5)
+2026-10-11 09:18 CDT DEPLOY M5.1 c956959 → production web-v2 (deployment b3c00832 SUCCESS); /version c956959; SMOKE GREEN 7/0; fonts 200 font/woff2 same-origin; root redirects signed-out to /sign-in?next=/
+2026-10-11 09:19 CDT DISPATCH M6-LLD harness=claude-subagent why=design-lld delta for M6 + routed design catch-up; branch design/m6-lld
+2026-10-11 10:15 CDT NOTE M6 decisions renumbered D82-D86 -> D83-D87 on design/m6-lld (D82 went to SEC-15 on milestone/m5.2-safe-landing, which merges first); the M6 G3 Approvals row's 'D82-D86' means today's D83-D87
 2026-10-11 09:37 CDT DISPATCH M5.2-T001 harness=claude-subagent why=safe landing fix (human report: 404s after sign-in)
 2026-10-11 09:48 CDT VERIFY M5.2-T001 squashed 2727f99: scope-guard OK (5 paths); supervisor make check exit 0 (218/43/44/5/4); diff read
 2026-10-11 09:48 CDT REVIEW M5.2: verifier pass 1 dispatched
@@ -496,3 +520,27 @@ several harnesses read it and the repo is public.
 2026-10-11 09:59 CDT REVIEW M5.2: report-milestone and check-security dispatched
 2026-10-11 10:04 CDT FAIL flaky: pre-push make check failed once on unit tests and once on M5_AT_037 (awaiting-payment items) on milestone/m5.2-safe-landing; not reproducible: unit 218/218 alone, AT-037 3/3 alone, M5 suite 44/44 twice; route-failure candidate (shared test database or timing)
 2026-10-11 10:05 CDT FIX harness: .githooks/pre-push unsets GIT_DIR/GIT_WORK_TREE before make check; inside a worktree embed-diagrams resolved doubled paths and blocked the push (the earlier 'flaky' failures came from the same broken hook run); route-failure candidate for the kit
+2026-10-11 10:31 CDT MERGE M5.2 MR !11 -> main c9b890d (pipeline #49910 success); make check on main exit 0 (218/43/44/5/5)
+2026-10-11 10:31 CDT DEPLOY M5.2 c9b890d → production web-v2 (deployment 5224c9ca SUCCESS); SMOKE GREEN 7/0; deploy pre-approved by "tell me when M5.2 is ready to deploy, also deploy it"
+2026-10-11 10:36 CDT DISPATCH M6-ACC harness=claude-subagent why=define-acceptance first pass for M6; branch milestone/m6-measurement-and-operations
+2026-10-11 11:08 CDT PHASE define-acceptance M6: 44 ATs (42 red, 2 green pins); committed be96e14
+2026-10-11 11:08 CDT DISPATCH M6-SLICE harness=claude-subagent why=slice-tasks for M6
+2026-10-11 11:16 CDT NOTE M6 debt: BE-22 Paging not yet adopted by BE-8, BE-14, BE-15 (no M6 test grades it); D84 FOR NO KEY UPDATE guarded by M4/M5 concurrency tests and verifier read; CQ-6 export log line and NFR-010 checked by hand at G5 (demo smoke step 9)
+2026-10-11 11:16 CDT DISPATCH M6-T001 harness=claude-subagent why=tracer bullet (financial report)
+2026-10-11 11:34 CDT VERIFY M6-T001 squashed c575c9c (first squash attempt failed on the '+' worktree marker; T002's worktree fast-forwarded onto it before any edit): scope-guard OK (10 paths); supervisor make check exit 0 (267/43/44/5/5); M6 AT-010..017 8/8; repeatable-read transaction at finance-report.ts:130 (EDGE-039 waiver)
+2026-10-11 11:34 CDT DISPATCH M6-T002 harness=claude-subagent why=roles and access log (parallel: false, runs alone)
+2026-10-11 11:47 CDT VERIFY M6-T002 squashed 7dd3b96: worker stopped human_review on an Owns gap (db/seed/demo.ts RESET_TABLES, caught by the M5.2 seed guard); G4 revise widened Owns; supervisor added the one line, scope-guard OK (10 paths), make check exit 0 (289/43/44/5/5), M6 AT 11/11; access_log grant select, insert only; open: no test proves the role-change row lock (verifier to read)
+2026-10-11 11:47 CDT DISPATCH M6-T003, M6-T004, M6-T006 harness=claude-subagent why=wave 3, parallel, disjoint Owns
+2026-10-11 12:01 CDT VERIFY M6-T006 squashed d5fdfbc: scope-guard OK (6 paths); supervisor make check exit 0; M6 AT-040..044 5/5; follow-up: practice/dashboard.vue:117 still guesses the cancel-refusal copy instead of reading from (D85)
+2026-10-11 12:04 CDT VERIFY M6-T003 squashed 96198ee: scope-guard OK (4 paths); supervisor make check exit 0; M6 AT-031..033 3/3
+2026-10-11 12:12 CDT VERIFY M6-T004 squashed 9466b5d: scope-guard OK (9 paths); combined milestone make check exit 0 (334/43/44/5/5); M6 suite 33/44 (11 red owned by T005, T007)
+2026-10-11 12:12 CDT NOTE vitest path filters like tests/acceptance/M6 also match copies under .claude/worktrees/**: use --dir for suite counts
+2026-10-11 12:12 CDT DISPATCH M6-T005 harness=claude-subagent why=wave 4 platform health
+2026-10-11 12:25 CDT VERIFY M6-T005 squashed a75e0ab: scope-guard OK (5 paths); supervisor make check exit 0 (337/43/44/5/5); M6 suite 43/44 (AT-030 owned by T007); open: no test pins the even-count median rule (Q-5)
+2026-10-11 12:25 CDT DISPATCH M6-T007 harness=claude-subagent why=last task: ROLE_PAGES, privacy sweep, make check join
+2026-10-11 12:42 CDT VERIFY M6-T007 squashed 5ffe173: scope-guard OK (2 paths); milestone make check exit 0 with M6 joined (all six suites)
+2026-10-11 12:42 CDT REVIEW M6 milestone: verifier pass 1 and check-security dispatched
+2026-10-11 12:58 CDT FIX M6-pass1 R1 (Fix track, 1 file, no API change): practice/dashboard.vue cancel-refusal copy reads the problem's from (D85), falling back to the loaded row; make check exit 0
+2026-10-11 13:07 CDT MIGRATE production (human run, ahead of the merge): scripts/railway-setup.sh --skip-seed from the M6 branch checkout applied 1 migration (1760000014000_operations-access.sql); live code is still M5.2 c9b890d, which ignores the new tables; the M6 deploy needs no further migration
+2026-10-11 13:16 CDT NOTE DV-4: b789a54 (M5.1 ship records: MILESTONES M5.1 done, the c956959 deploy row) sits on the M6 branch because main is protected; records reach main with the next milestone MR (the same pattern as the 2026-10-11 08:35 CDT DV-5 NOTE); records only, no decision
+2026-10-11 13:22 CDT NOTE DV-6: the security checklist was not re-run after 898e55f because that fix touches one .vue file (dashboard cancel copy) and no security path

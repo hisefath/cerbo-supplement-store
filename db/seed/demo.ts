@@ -37,7 +37,7 @@ export const WORLD = {
 // (tests/unit/seed-demo.test.ts checks this list against db/migrations).
 export const RESET_TABLES = [
   'ledger_entries', 'payment_attempts', 'idempotency_keys', 'notices', 'order_lines', 'orders', 'practice_prices',
-  'price_changes', 'stock_movements', 'sessions', 'sign_in_attempts', 'pay_rate_attempts', 'products', 'users', 'practices',
+  'price_changes', 'stock_movements', 'access_log', 'request_stats', 'health_pings', 'sessions', 'sign_in_attempts', 'pay_rate_attempts', 'products', 'users', 'practices',
 ]
 
 /** scrypt$N$8$1$<salt b64>$<hash b64>, the format BE-3 verifyPassword reads (Q-1, SEAM-6). */

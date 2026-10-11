@@ -44,3 +44,22 @@ export function assertIsOrderPatient(viewer: Viewer, order: OrderOwnership): voi
 
 /** Platform reviewers: who may open the paid-order list and an order breakdown (EP-5, EP-6, EP-25, EP-26, FR-052). */
 export const ORDER_REVIEWER_ROLES: Role[] = ['operations_specialist', 'finance_lead']
+/** Platform health: EP-10, EP-33 (FR-053). */
+export const PLATFORM_HEALTH_ROLES: Role[] = ['finance_lead', 'operations_specialist', 'data_analyst']
+/** The finance lead only: EP-11, EP-13, EP-34, EP-35, EP-38 (FR-051). */
+export const FINANCE_ROLES: Role[] = ['finance_lead']
+/** Site reliability: EP-12, EP-14, EP-36, EP-39. */
+export const SRE_ROLES: Role[] = ['sre']
+
+/** The person whose role BE-18 would change (lld.md BE-4). */
+export interface StaffRef {
+  id: bigint
+  role: Role
+  practiceId: bigint | null
+}
+
+/** Only the SRE changes roles, and never their own (FR-055, FR-056): forbidden is checked before self-role-change. */
+export function assertCanChangeRole(actor: Viewer, target: StaffRef): void {
+  if (!SRE_ROLES.includes(actor.role)) throw new ProblemError('forbidden')
+  if (actor.userId === target.id) throw new ProblemError('self-role-change')
+}

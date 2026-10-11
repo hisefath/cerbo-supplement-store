@@ -9,7 +9,7 @@ Weight: ●●● critical (hard to undo, or touches money, personal data or sig
 
 ## By topic
 
-### Product (12)
+### Product (13)
 
 - ●●● D25 — Money path first, HIPAA-ready, campaigns later.
 - ●●○ D27 — Live payout builder, two-step patient checkout, equation-first audit.
@@ -21,10 +21,11 @@ Weight: ●●● critical (hard to undo, or touches money, personal data or sig
 - ●○○ D53 — Order quantity unbounded until stock limits exist.
 - ●○○ D75 — The cluely-inspired restyle is its own milestone, M5.1, after M5.
 - ●○○ D80 — M5.1 restyle uses light pages with a sky header band.
+- ●○○ D85 — Refused transitions say from which state and on what event.
 - ●○○ ~~D12~~ — v1: order cancel added to scope. (replaced by D22)
 - ●○○ ~~D14~~ — v1: neutral branding on the public demo. (replaced by D22)
 
-### Data (8)
+### Data (10)
 
 - ●●● D33 — PostgreSQL managed by the host.
 - ●●● ~~D2~~ — v1: Postgres in production, SQLite in tests, suite run on both. (replaced by D22)
@@ -33,9 +34,11 @@ Weight: ●●● critical (hard to undo, or touches money, personal data or sig
 - ●●○ ~~D6~~ — v1: stock column plus movement log, decremented at payment. (replaced by D22)
 - ●●○ ~~D17~~ — v1: never edit a migration that already ran in production. (replaced by D22)
 - ●○○ D56 — Demo database runs PostgreSQL 18 while tests run 16.
+- ●○○ D84 — Product rows lock with FOR NO KEY UPDATE.
+- ●○○ D86 — Pay stock refusals are counted hourly beside request stats.
 - ●○○ ~~D11~~ — v1: one stock path through a single method. (replaced by D22)
 
-### Security (11)
+### Security (14)
 
 - ●●● D26 — Sign-in, notices without health details, no patient identity for platform staff.
 - ●●○ D37 — Seeded test accounts with server-side sessions.
@@ -48,6 +51,9 @@ Weight: ●●● critical (hard to undo, or touches money, personal data or sig
 - ●○○ D77 — Absurd staff input gives a 500, not a 422; accepted, no harm.
 - ●○○ D78 — GET of an order may end a due hold; accepted, access-checked.
 - ●○○ D82 — S15 home may linger in a shared browser's history; accepted as low.
+- ●○○ D83 — Price and stock input get upper bounds and clear errors.
+- ●○○ D88 — Refused role-change rows from any caller are accepted as low.
+- ●○○ D89 — One database write per counted request is accepted as low.
 
 ### Money (8)
 
@@ -60,7 +66,7 @@ Weight: ●●● critical (hard to undo, or touches money, personal data or sig
 - ●●○ D29 — Financial report with gross and net; four least-privilege operations roles.
 - ●●○ D47 — A negative payout at payment sends the order to review.
 
-### Infrastructure (10)
+### Infrastructure (11)
 
 - ●●● D32 — TypeScript on Node.js with server-rendered Vue, matching Cerbo's front end.
 - ●●● D36 — One deployable, built API-first.
@@ -71,6 +77,7 @@ Weight: ●●● critical (hard to undo, or touches money, personal data or sig
 - ●●○ ~~D13~~ — v1: Railway with a Dockerfile and Railway Postgres. (replaced by D22)
 - ●●○ ~~D34~~ — Pages and logic deploy together as one app. (replaced by D36)
 - ●○○ D81 — One theme stylesheet; fonts ship with the app.
+- ●○○ D87 — Availability counts five-minute slots, matching the probe.
 - ●○○ ~~D7~~ — v1: outside services stubbed behind seams. (replaced by D22)
 
 ### Process (33)
@@ -134,6 +141,13 @@ Decisions that adopted a software-factory-kit change (H) and the finding (F) beh
 
 ### 2026-10-11
 
+- D89 · Security · ●○○ — One database write per counted request is accepted as low.
+- D88 · Security · ●○○ — Refused role-change rows from any caller are accepted as low.
+- D87 · Infrastructure · ●○○ — Availability counts five-minute slots, matching the probe.
+- D86 · Data · ●○○ — Pay stock refusals are counted hourly beside request stats.
+- D85 · Product · ●○○ — Refused transitions say from which state and on what event.
+- D84 · Data · ●○○ — Product rows lock with FOR NO KEY UPDATE.
+- D83 · Security · ●○○ — Price and stock input get upper bounds and clear errors.
 - D82 · Security · ●○○ — S15 home may linger in a shared browser's history; accepted as low.
 - D81 · Infrastructure · ●○○ — One theme stylesheet; fonts ship with the app.
 - D80 · Product · ●○○ — M5.1 restyle uses light pages with a sky header band.

@@ -1,6 +1,6 @@
 %% diagram: sequence-system-health
-%% source: docs/architecture/lld.md#seq-12-check-system-health-sequence-system-health-covers-us-10-f12-fr-058-fr-059-ae-061-ae-062 @ e885abc
-%% drawn: 2026-10-10T04:59:37Z by draw-diagrams (claude, claude-opus-5-5)
+%% source: docs/architecture/lld.md#seq-12-check-system-health-sequence-system-health-covers-us-10-f12-fr-058-fr-059-ae-061-ae-062 @ ef9f129
+%% drawn: 2026-10-11T14:43:56Z by draw-diagrams (claude, claude-opus-5-5)
 %% render: unverified
 %% render-check: mmdc not on PATH
 %% missing: 0
@@ -15,10 +15,10 @@ sequenceDiagram
     participant BE19 as BE-19 RequestMetrics
     participant DB
     participant BE2 as BE-2
-    X1->>BE1: GET /health (EP-40) every minute → BE-19.recordPing → DB: insert the minute (ignored if present)
+    X1->>BE1: (changed) GET /healthz (EP-40) every 5 minutes → DB: select 1 → BE-19.recordPing → DB: insert the 5-minute slot (ignored if present) → 200 ok
     alt main path (steps 2-4)
         FE21->>BE1: GET system health (EP-39) → BE-4.assertRole(sre) → BE-19.systemHealth
-        BE19->>DB: availability = pinged minutes ÷ minutes so far in the month#59; errors and slow responses from request stats
+        BE19->>DB: (changed) availability = pinged slots ÷ 5-minute slots elapsed in the month since the first ping (D87)#59; error rate and slow page share from request stats
         FE21->>SRE: #quot;Availability 99.7%, target 99.5%: met#quot; and the other measures
     else the SRE follows a link to an order breakdown
         BE2->>BE4: assertRole fails for EP-6 → 403 /problems/forbidden → #quot;Your role can't open order breakdowns.#quot;

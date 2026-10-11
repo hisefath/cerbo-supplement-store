@@ -112,9 +112,12 @@ async function confirmCancel() {
 }
 
 const cancelCopy = computed(() => {
-  const o = orders.value.find((x) => x.order_id === rowProblem.value?.id)
+  // D85: the refusal says which state the order was in (`from`); the loaded row may be stale. Fall back to it only
+  // when the server sent no `from` (M6-pass1 R1).
+  const from = (rowProblem.value?.problem as { from?: string } | undefined)?.from
+    ?? orders.value.find((x) => x.order_id === rowProblem.value?.id)?.status
   return {
-    'invalid-transition': o?.status === 'paid' ? "This order is paid, so it can't be cancelled." : "This order can't be cancelled: the patient has started checkout.",
+    'invalid-transition': from === 'paid' ? "This order is paid, so it can't be cancelled." : "This order can't be cancelled: the patient has started checkout.",
     internal: "We couldn't cancel the order. It is unchanged. Try again.",
   }
 })

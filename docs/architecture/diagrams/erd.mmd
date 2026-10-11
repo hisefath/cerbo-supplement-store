@@ -1,6 +1,6 @@
 %% diagram: erd
-%% source: docs/architecture/lld.md#1-data-model @ 4d0903b
-%% drawn: 2026-10-11T01:23:45Z by draw-diagrams (claude, claude-opus-5-5)
+%% source: docs/architecture/lld.md#1-data-model @ ef9f129
+%% drawn: 2026-10-11T14:40:51Z by draw-diagrams (claude, claude-opus-5-5)
 %% render: unverified
 %% render-check: mmdc not on PATH
 %% missing: 0
@@ -175,9 +175,10 @@ erDiagram
         integer requests "not null"
         integer errors "not null"
         integer slow "not null"
+        integer stock_refusals "not null"
     }
     health_pings {
-        timestamptz minute PK "not null"
+        timestamptz slot PK "not null"
         timestamptz first_seen_at "not null"
     }
     sign_in_attempts {

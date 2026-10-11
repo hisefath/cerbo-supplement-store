@@ -1,6 +1,6 @@
 %% diagram: sequence-pay-order
-%% source: docs/architecture/lld.md#seq-2-review-and-pay-an-order-sequence-pay-order-covers-us-2-us-8-f2-fr-005-to-fr-013-fr-022-fr-023-fr-026-fr-027-fr-035-to-fr-037-fr-042-ae-005-to-ae-012-ae-020-ae-021-ae-023-ae-031 @ 2e4e445
-%% drawn: 2026-10-10T05:06:05Z by draw-diagrams (claude, claude-opus-5-5)
+%% source: docs/architecture/lld.md#seq-2-review-and-pay-an-order-sequence-pay-order-covers-us-2-us-8-f2-fr-005-to-fr-013-fr-022-fr-023-fr-026-fr-027-fr-035-to-fr-037-fr-042-ae-005-to-ae-012-ae-020-ae-021-ae-023-ae-031 @ ef9f129
+%% drawn: 2026-10-11T14:42:55Z by draw-diagrams (claude, claude-opus-5-5)
 %% render: unverified
 %% render-check: mmdc not on PATH
 %% missing: 0
@@ -31,7 +31,7 @@ sequenceDiagram
     alt main path (steps 9-15)
         BE1->>BE10: pay(viewer, order, key)
         alt main path (steps 10-15)
-            BE10->>DB: [tx begin] lock the order#59; check in_checkout and hold live#59; compute the split with BE-6 and check it balances#59; lock products in id order#59; BE-13.reserveForOrder lowers stock and appends sale movements#59; insert attempt processing [tx commit]
+            BE10->>DB: (changed, as built, M5-pass3 R3) [tx begin] lock the order#59; check in_checkout and hold live#59; compute the split with BE-6 and check it balances#59; insert attempt processing (LINV-6: a second Pay already in flight loses here with 409 /problems/invalid-transition before touching stock)#59; BE-13.reserveForOrder locks products in id order, lowers stock and appends sale movements [tx commit]
             BE10->>BE11: charge(amount, order, key) — outside any transaction
             alt main path (steps 12-15)
                 BE11-->>BE10: succeeded
@@ -46,7 +46,7 @@ sequenceDiagram
                 FE8-->>Patient: #quot;Your payment didn't go through. No money was taken. Try again.#quot;
             end
         else an item sold out before Ana paid
-            BE13->>BE10: InsufficientStock inside transaction 1 → [tx rollback]#59; no attempt row, no charge#59; the order stays in_checkout
+            BE13->>BE10: (changed) insufficient-stock from reserveForOrder, after the attempt insert, inside transaction 1 → [tx rollback] removes the attempt too#59; no attempt row, no charge#59; the order stays in_checkout#59; BE-19 counts the refusal (D86)
             BE1->>BE5: release(user, key)
             BE1-->>FE8: 422 /problems/insufficient-stock
             FE8-->>Patient: #quot;Omega-3 Fish Oil sold out before you paid. Nothing was charged. Contact your practice to change your order.#quot;
