@@ -29,7 +29,7 @@ several harnesses read it and the repo is public.
 | M5-T002 | Payment reserves and releases stock (specs/M5-prices-and-stock/tasks/T002.md) | Standard / implement-task | claude-subagent | done | 2026-10-10 21:09 CDT | see task file | f5bb975 |
 | M5-T003 | Patients see price change notices (specs/M5-prices-and-stock/tasks/T003.md) | Standard / implement-task | claude-subagent | done | 2026-10-10 21:09 CDT | see task file | f386d76 |
 | M5-T004 | Platform staff adjust stock (specs/M5-prices-and-stock/tasks/T004.md) | Standard / implement-task | claude-subagent | done | 2026-10-10 21:09 CDT | see task file | 061cd49 |
-| M5-T005 | Provider opens the practice dashboard (specs/M5-prices-and-stock/tasks/T005.md) | Standard / implement-task | claude-subagent | working | 2026-10-10 21:09 CDT | see task file | — |
+| M5-T005 | Provider opens the practice dashboard (specs/M5-prices-and-stock/tasks/T005.md) | Standard / implement-task | claude-subagent | done | 2026-10-10 21:09 CDT | see task file | 315a1c3 |
 | M5-T006 | M5 joins checks and menu (specs/M5-prices-and-stock/tasks/T006.md) | Standard / implement-task | claude-subagent | todo | 2026-10-10 21:09 CDT | see task file | — |
 | M5.1-R01 | Visual refresh inspired by cluely.com (Geist + serif display, sky-blue palette, soft glass cards, glow on primary buttons) — after M5 merges; starts with /map-ux-flows | Standard / map-ux-flows | supervisor | todo | 2026-10-10 22:36 CDT | docs/design/screens.md (visual language) | — |
 
@@ -394,3 +394,5 @@ several harnesses read it and the repo is public.
 2026-10-10 22:24 CDT VERIFY M5-T004 squashed 061cd49: result done; scope-guard OK (6 paths); supervisor Done-when exit 0 (4/4 ATs; make check OK 166 unit + 43 M4); pass 5 all P3
 2026-10-10 22:31 CDT DISPATCH M5-T005 relaunch harness=claude-subagent why=review pass 6 fixes R2, R1, R3; branch merged with the milestone (T003, T004 squashed)
 2026-10-10 22:35 CDT ROUTE human-requested UX change: "revamp the front end to suite more of cluely's website style, make it more modern and like how this websites ui and colors and design language is: https://cluely.com/" -> needs a G-ux visual-language pass (map-ux-flows) then slices; awaiting placement decision
+2026-10-10 22:37 CDT VERIFY M5-T005 squashed 315a1c3: relaunch done; scope-guard OK; supervisor Done-when exit 0 (8/8 ATs; make check OK 210 unit + 43 M4)
+2026-10-10 22:38 CDT VERIFY M5 milestone branch: tests/acceptance/M5 34/34 passed after T001-T005
