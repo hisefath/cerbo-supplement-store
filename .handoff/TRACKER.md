@@ -351,3 +351,4 @@ several harnesses read it and the repo is public.
 2026-10-10 20:23 CDT DISPATCH M5-D01 harness=claude-subagent why=redraw erd after the M5-R01 LLD catch-up
 2026-10-10 20:23 CDT DISPATCH M5-D02 harness=claude-subagent why=redraw be-class after the M5-R01 LLD catch-up
 2026-10-10 20:24 CDT VERIFY M5-D01 squashed c379b02: result done; scope-guard OK (1 path); 18 entities, 27 relationships; render unverified (no mmdc)
+2026-10-10 20:25 CDT FAIL M5-D02 human_review: lld.md §2 contradicted itself (clientAddress callers; BE-20 callers missing BE-21); fixed in 42461ba; redraw dispatched again
