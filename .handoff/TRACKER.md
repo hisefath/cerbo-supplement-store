@@ -215,6 +215,7 @@ several harnesses read it and the repo is public.
 | 2026-10-11 08:12 CDT | M5.1 review pass 1 dispositions (STANDING): R5, R1, R2, R3, R7, R8, R9, R10 fix (tests and docs by supervisor, code in M5.1-T005); R4 keep (repro committed red first at 771b802); R6 file with M5-R03; R11 keep (real reset ran on the local demo database: "demo reset: 2 practices, 9 users, 3 products") | .handoff/reviews/M5.1-pass1.md | STANDING row 2026-10-10 23:09 CDT |
 | 2026-10-11 08:12 CDT | G3 revise + G4 (M5.1: control-border and pill tokens, site-root paragraph; AT-001/002/004 tightened; M5.1-T005 review-fix task) | lld.md, screens.md, acceptance.md, tasks/T005.md | STANDING row 2026-10-10 23:09 CDT |
 | 2026-10-11 08:18 CDT | G5 security part (M5.1): approve checklist (0 reachable critical/high, no new finding); re-run after M5.1-T005 (Q4) | docs/security/CHECKLIST.md@43215f6 | STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-11 08:25 CDT | G5 security part (M5.1 re-run after T005): approve checklist (0 reachable critical/high, no new finding) | docs/security/CHECKLIST.md@c06a229 | STANDING row 2026-10-10 23:09 CDT |
 
 ## Log
 
