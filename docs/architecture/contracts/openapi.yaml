@@ -1580,10 +1580,13 @@ components:
           $ref: "#/components/schemas/Role"
         practice_id:
           type: ["integer", "null"]
+        practice_name:
+          type: ["string", "null"]
+          description: the viewer's practice name (null for platform staff); screens.md S5 and S6 titles name the practice
         idle_expires_at:
           type: string
           format: date-time
-      required: [user_id, display_name, role, practice_id, idle_expires_at]
+      required: [user_id, display_name, role, practice_id, practice_name, idle_expires_at]
     CatalogItem:
       type: object
       properties:

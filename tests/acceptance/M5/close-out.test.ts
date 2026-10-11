@@ -109,4 +109,15 @@ describe('M5 close-out: an abandoned payment never blocks the patient', () => {
     expect((await call(`/api/orders/${ana.id}/checkout`, { method: 'POST', cookie: ana.cookie })).status).toBe(200)
     expect((await call(`/api/orders/${ana.id}/payments`, { method: 'POST', cookie: ana.cookie, key: newKey() })).status).toBe(201)
   })
+
+  it('M5_AT_043 the signed-in session names the viewer\'s practice: Dr. Chen "Willow Creek Wellness", Dr. Lee "Maple Grove Clinic", Omar (platform staff) null (EP-17 Me.practice_name; screens.md S5, S6 titles; M5-pass7 R4)', async () => {
+    const me = async (email: string) => {
+      const r = await call('/api/session', { cookie: await signIn(email) })
+      expect(r.status).toBe(200)
+      return r.body.practice_name
+    }
+    expect(await me(EMAIL.drChen)).toBe('Willow Creek Wellness')
+    expect(await me(EMAIL.drLee)).toBe('Maple Grove Clinic')
+    expect(await me(EMAIL.omar)).toBeNull()
+  })
 })

@@ -115,6 +115,7 @@ Out of scope this milestone: FR-032, FR-048, FR-049, FR-051 to FR-064 (M6 measur
 | AT-040 | FR-023, FR-027 | FR-023 (M4 checkout start), with lld.md FM-7 (changed 2026-10-10 23:12 CDT): the reconcile also runs at the start of BE-9.startCheckout | **Given** Ana's ended hold over a payment processing for 2 minutes 10 seconds **When** she starts checkout and pays **Then** 200; the attempt failed no_answer; 201; movements sale, sale_release, sale; stock 8 | error-guessing | integration | `tests/acceptance/M5/close-out.test.ts::M5_AT_040` | red @ cd2ea75 |
 | AT-041 | FR-037, FR-022 | FR-037 (as above), with screens.md S2 Edge data "Your 30-minute price hold ended. These are the current prices." and OrderView.hold_ended (lld.md EP-21, changed 2026-10-10 23:12 CDT) | **Given** Ben's order never checked out and Ana's order in checkout **When** each reads it, then Ana's hold ends and she reads again **Then** Ben false; Ana live false; Ana ended: sent and hold_ended true | state-transition | integration | `tests/acceptance/M5/close-out.test.ts::M5_AT_041` | red @ cd2ea75 |
 | AT-042 | FR-037, FR-006 | FR-037 (as above), with lld.md /problems/checkout-expired (409, "Pay pressed after the 30-minute hold ended") | **Given** Ana's hold ended a minute ago **When** she presses Pay **Then** 409 checkout-expired; no attempt, no movement, stock 10; starting checkout again then paying gives 201 | state-transition | integration | `tests/acceptance/M5/close-out.test.ts::M5_AT_042` | red @ 0b79027 (bug repro, specs/bugs/pay-after-hold-ended-says-already-paid.md) |
+| AT-043 | FR-018, FR-045 | screens.md S5 and S6 page titles name the practice ("Practice dashboard · Willow Creek Wellness"), with EP-17 Me.practice_name (lld.md, changed 2026-10-10 23:57 CDT) | **Given** Dr. Chen, Dr. Lee and Omar **When** each reads their session **Then** "Willow Creek Wellness", "Maple Grove Clinic", null | partition | integration | `tests/acceptance/M5/close-out.test.ts::M5_AT_043` | red @ 5f1e972 |
 
 ## Edge cases
 
@@ -151,6 +152,7 @@ Out of scope this milestone: FR-032, FR-048, FR-049, FR-051 to FR-064 (M6 measur
 | EDGE-045 | FR-037 | Ana's hold ends while her payment has been processing for 1 minute 50 seconds | she stays in checkout at the held prices; the units stay reserved (lld.md SM-2; FR-024 charges the held price) | AT-035 |
 | EDGE-051 | FR-037 | Ana's hold ends unpaid, compared with Ben's order that never had one | Ana's order says hold_ended true and S2 shows the hold-ended banner; Ben's says false (screens.md S2; lld.md EP-21) | AT-041 |
 | EDGE-052 | FR-037 | Ana presses Pay a minute after her hold ended | 409 checkout-expired, nothing charged (lld.md problem registry) | AT-042 |
+| EDGE-053 | FR-045 | the dashboard title for a provider, and the session of platform staff with no practice | the practice name; null for staff (EP-17 Me) | AT-043 |
 
 ### Decision tables
 
@@ -332,6 +334,7 @@ builds on it.
 | AT-040 | `M5_AT_040 starting checkout over a payment abandoned …` | assertion: checkout start does not run the FM-7 reconcile | expected [ { status: 'processing', … } ] to deeply equal [ { status: 'failed', … } ] |
 | AT-041 | `M5_AT_041 after Ana's hold ends unpaid …` | missing: OrderView.hold_ended (lld.md EP-21, openapi.yaml) | expected undefined to be false |
 | AT-042 | `M5_AT_042 Pay pressed after the 30-minute hold ended …` | assertion: Pay answers invalid-transition (M5-T007 regression) | expected /problems/checkout-expired, got 409 /problems/invalid-transition |
+| AT-043 | `M5_AT_043 the signed-in session names the viewer's practice …` | missing: Me.practice_name (openapi.yaml, lld.md EP-17) | expected undefined to be 'Willow Creek Wellness' |
 
 ```text
  FAIL  tests/acceptance/M5/prices.test.ts > M5_AT_001 … AssertionError: expected 404 to be 200
@@ -374,3 +377,4 @@ of a wrong guess first. Unasked gaps stay here as ⚠.
 | 2026-10-10 23:02 CDT | Re-run: added review pins; M5-pass4 R3 needs no new test, since AT-007 already has Ana's own read end her hold and runs in make check | AT-035 to AT-038, EDGE-045 to EDGE-048, SS-06, SS-07 | 21:51 "a, relaunch T002 with R2, R3" (pass 3 R1 to define-acceptance); 22:19 "a, squash T003 and add the acceptance tests" (pass 4 R1, R2, R3); 22:31 "a, relaunch T005 with R2, R1, R3" (pass 6 R5 to the define-acceptance re-run) |
 | 2026-10-10 23:12 CDT | Close-out re-run: FM-7 on pay and checkout start, hold_ended (lld.md and openapi.yaml revised the same minute) | AT-039 to AT-041, EDGE-049 to EDGE-051, Q-7 | STANDING approval 2026-10-10 23:12 CDT: "i approve all next recommendations until project completion"; routed rows M5-pass4 R4 (22:19 "a, squash T003 and add the acceptance tests") and M5-pass2 R4 |
 | 2026-10-10 23:37 CDT | Bug repro: Pay after an ended hold | AT-042, EDGE-052 | STANDING approval 2026-10-10 23:09 CDT; M5-T008 result.md Q2 |
+| 2026-10-10 23:57 CDT | Review pass 7 R4: session names the practice | AT-043, EDGE-053 | STANDING approval 2026-10-10 23:09 CDT; M5-pass7 R4 |

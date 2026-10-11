@@ -29,6 +29,7 @@ several harnesses read it and the repo is public.
 | M5-T008 | S2 hold-ended banner | Standard / build | claude-subagent | done | 2026-10-10 23:16 CDT | see task file | 0b79027 |
 | M5-T009 | S7 stock page fixes | Standard / build | claude-subagent | done | 2026-10-10 23:16 CDT | see task file | 12acb25 |
 | M5-T010 | S6 dashboard fixes | Standard / build | claude-subagent | done | 2026-10-10 23:16 CDT | see task file | 635d015 |
+| M5-T011 | review fixes: checkout answers (R2, R3), practice name (R4) | Standard / build | claude-subagent | working | 2026-10-10 23:57 CDT | see task file | — |
 | M4-CI01 | CI on the MacBook runner: enable runner 245, .gitlab-ci.yml running make check | Fix / supervisor | supervisor (claude-opus-5-5) | done | 2026-10-10 19:05 CDT | .gitlab-ci.yml | — |
 | M5-T001 | Provider changes a practice price (specs/M5-prices-and-stock/tasks/T001.md) | Standard / implement-task | claude-subagent | done | 2026-10-10 21:09 CDT | see task file | 135b9ca |
 | M5-T002 | Payment reserves and releases stock (specs/M5-prices-and-stock/tasks/T002.md) | Standard / implement-task | claude-subagent | done | 2026-10-10 21:09 CDT | see task file | f5bb975 |
@@ -187,6 +188,8 @@ several harnesses read it and the repo is public.
 | 2026-10-10 23:16 CDT | G3 (revise: OrderView.hold_ended; FM-7 on pay and checkout start) | docs/architecture/lld.md@94ff279 + contracts/openapi.yaml | STANDING row 2026-10-10 23:09 CDT |
 | 2026-10-10 23:16 CDT | G4 acceptance part (AT-039 to AT-041 red, Q-7 make check gating) | specs/M5-prices-and-stock/acceptance.md@94ff279 | STANDING row 2026-10-10 23:09 CDT |
 | 2026-10-10 23:16 CDT | G4 (close-out slices T007 to T010, option a; analyze RESULT: PASS) | specs/M5-prices-and-stock/tasks/T007-T010@2738485 | STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-10 23:57 CDT | M5 review pass 7 dispositions (STANDING): R1 keep AT-042, track slip (payment change via Fix track) to route-failure; R2, R3, R4 fix in M5-T011; R5, R6 filed for M6 | .handoff/reviews/M5-pass7.md | STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-10 23:57 CDT | G3 revise (EP-17 Me.practice_name) + G4 (AT-043 red; M5-T011 review-fix task, 11th task over the 10 cap per the M4-T011 precedent) | lld.md, openapi.yaml, acceptance.md, tasks/T011.md | STANDING row 2026-10-10 23:09 CDT |
 
 ## Log
 
@@ -420,3 +423,5 @@ several harnesses read it and the repo is public.
 2026-10-10 23:45 CDT DISPATCH M5-T010 harness=claude-subagent why=S6 dashboard fixes (serial); worktree .claude/worktrees/m5-t010
 2026-10-10 23:51 CDT VERIFY M5-T010 squashed 635d015: result done; scope-guard OK (1 path); supervisor make check exit 0 (216/43/42); Q1 practice name has no EP field → design catch-up (EP-17 Me practice_name)
 2026-10-10 23:51 CDT REVIEW M5 milestone: diff main..milestone written to .handoff/reviews/M5-diff.patch; verifier pass 7 dispatched
+2026-10-10 23:57 CDT REVIEW M5 pass 7: 0 P0, 2 P1, 1 P2, 3 P3 (.handoff/reviews/M5-pass7.md)
+2026-10-10 23:57 CDT DISPATCH M5-T011 harness=claude-subagent why=pass 7 review fixes; worktree .claude/worktrees/m5-t011
