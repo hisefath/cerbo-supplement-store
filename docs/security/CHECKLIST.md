@@ -3,8 +3,8 @@ artifact: security-checklist
 milestone: M5.1
 branch: milestone/m5.1-visual-refresh
 base_sha: 220a971f8ea2847d9e680238a2dda0ae55df0f30
-head_sha: ae9c38e696aab0e0f020ef53d21da97bc363329b
-checked: Sun Oct 11 08:07:24 CDT 2026
+head_sha: e54eca8543601d4d099455453489a3070fbfceb9
+checked: Sun Oct 11 08:20:48 CDT 2026 (re-run after M5.1-T005, Q4; first run 08:07:24 CDT at ae9c38e)
 checker: check-security (Claude Code, claude-opus-5-5)
 standard: OWASP ASVS 5.0 Level 1, chapter-level mapping
 gate: G5
@@ -15,7 +15,7 @@ status: draft
 
 ## Summary
 
-M5.1 is a restyle: one global theme stylesheet, two self-hosted font packages (D81), a site-root page that sends a signed-in person to a fixed role home, a demo-reset table list that now names the M5 history tables, and a harness scope-guard fix. It adds no API route, no server code, no log call and no raw HTML; the fonts are bundled and served from the app's own origin under the unchanged `default-src 'self'` CSP, so NFR-016 holds (proven by M5.1_AT_003). No new finding: the only critical and high findings are the three Nuxt tooling advisories already accepted (D49 to D51) and absent from the built server, so the G5 security condition is met and nothing critical or high is reachable inside Cerbo's EHR.
+M5.1 is a restyle: one global theme stylesheet, two self-hosted font packages (D81), a site-root page that sends a signed-in person to a fixed role home, a demo-reset table list that now names the M5 history tables, and a harness scope-guard fix; M5.1-T005 then added a control-border colour token, a dimmed backdrop behind the dashboard cancel dialog, and a site root that sends a person whose session cannot be read to sign-in (fail closed). It adds no API route, no server code, no log call and no raw HTML; the fonts are bundled and served from the app's own origin under the unchanged `default-src 'self'` CSP, so NFR-016 holds (proven by M5.1_AT_003). No new finding: the only critical and high findings are the three Nuxt tooling advisories already accepted (D49 to D51) and absent from the built server, so the G5 security condition is met and nothing critical or high is reachable inside Cerbo's EHR.
 
 - **G5 security condition:** met: secrets 0, unaccepted high/critical 0
 - **Rows:** 11 pass · 3 fail · 0 n.a. (of 14)
@@ -23,17 +23,17 @@ M5.1 is a restyle: one global theme stylesheet, two self-hosted font packages (D
 - **Secret scan:** grep heuristic (unverified): 3 hits: 0 secret, 0 revoked, 3 false positive
 - **Dependency audit:** `package-lock.json`: npm 11.19.1 `npm audit --package-lock-only` → 15 advisory entries (6 critical, 9 high), the same six root advisories as M5; 14 in the production tree (`--omit=dev`); the two new font packages carry none (CMD-16, CMD-17)
 - **Accepted risks:** D51 SEC-1, D49 SEC-2, D50 SEC-3, D52 SEC-5, D76 SEC-10, D77 SEC-12, D78 SEC-13
-- **Biggest gap:** N4: no verified (gitleaks) history scan has ever run; the grep heuristic is all the secret evidence there is, on a repo with a public mirror. Also: `make check` is red at this head on M5.1_AT_001 only (a contrast test tightened for the queued T005 control-border token; not a security control), so the final green run must follow T005 (Q4)
+- **Biggest gap:** N4: no verified (gitleaks) history scan has ever run; the grep heuristic is all the secret evidence there is, on a repo with a public mirror. `make check` is green at this head (CMD-6), closing Q4
 
 ## Scope and method
 
-- **Milestone:** M5.1 `milestone/m5.1-visual-refresh`; diff `220a971`..`ae9c38e`, 47 files changed (CMD-3); the code paths were read at `ebf9930`, and `ae9c38e` adds only docs, specs, `.handoff/` and one acceptance test file (CMD-20)
+- **Milestone:** M5.1 `milestone/m5.1-visual-refresh`; diff `220a971`..`e54eca8`, 48 files changed (CMD-3); the code paths were read at `ebf9930`, `ae9c38e` adds only docs, specs, `.handoff/` and one acceptance test file (CMD-20), and the T005 commits `a6ebc86` and `e54eca8` change five `app/` files, `.handoff/TRACKER.md` and this checklist, all read in full (CMD-22)
 - **Milestone kind:** code (CMD-4 lists 29 non-doc paths under `app/`, `db/`, `scripts/`, `tests/`, plus `Makefile`, `nuxt.config.ts`, `package.json`, `package-lock.json`)
 - **Trust boundaries in play:** TB-1 internet to web app (a new site-root page behind the existing page guard; new static CSS and font files served from the app's own origin) (from `docs/architecture/hld.md` §5). TB-2 to TB-5 unchanged: no server, migration or outbound change (CMD-7)
 - **Change plan security field:** no change plan (greenfield)
 - **Inherited findings routed here:** no AUDIT.md
 - **Tools on PATH:** gitleaks absent, osv-scanner absent, pnpm absent, npm 11.19.1, composer present (no composer.lock) (CMD-5)
-- **Tests cited:** `make check` at ebf9930 → exit 0, 218 unit, 43 M4, 44 M5 and 5 M5.1 acceptance tests passed (CMD-6); at ae9c38e → exit 2, the same except M5.1_AT_001 red (the new control-border and pill contrast pairs wait for T005); AT_003 (same-origin assets) and AT_005 (site root) green (CMD-21)
+- **Tests cited:** `make check` at e54eca8 → exit 0, 218 unit, 43 M4, 44 M5 and 5 M5.1 acceptance tests passed (CMD-6); the earlier red run at ae9c38e (M5.1_AT_001 only, CMD-21) is now green
 
 ## Checklist
 
@@ -41,11 +41,11 @@ Status: `pass`, `fail` or `n.a.`; no evidence is `fail`. Evidence: `path:line` o
 
 | ID | Area | ASVS 5.0 | Status | Evidence | Finding |
 |---|---|---|---|---|---|
-| CK-01 | Authentication | V6 | pass | The new site root `/` is not in the page guard's public list (`app/middleware/auth.global.ts:6`), so a stranger gets 303 to sign-in before `app/pages/index.vue:4` runs; proven by M5.1_AT_005 (stranger lands on sign-in) in CMD-6. No server, session or sign-in logic change (CMD-7); `app/pages/sign-in.vue:56` only moves the role-home table to `app/utils/role-home.ts:4` | — |
+| CK-01 | Authentication | V6 | pass | The new site root `/` is not in the page guard's public list (`app/middleware/auth.global.ts:6`), so a stranger gets 303 to sign-in before `app/pages/index.vue:4` runs, and if the session read fails anyway the page now goes to `/sign-in` (`app/pages/index.vue:4`, `.catch(() => null)`; :5), fail closed; proven by M5.1_AT_005 (stranger lands on sign-in) in CMD-6. No server, session or sign-in logic change (CMD-7); `app/pages/sign-in.vue:56` only moves the role-home table to `app/utils/role-home.ts:4` | — |
 | CK-02 | Session management | V7 | pass | `server/` untouched (CMD-7); M4 and M5 cookie and timeout controls stand (`server/services/session.ts:196`, :23, :24), their tests green in CMD-6 | — |
-| CK-03 | Access control and IDOR | V8 | pass | No API route or query change (CMD-7). The site root reads only the caller's own `/api/session` role (`app/pages/index.vue:4`) and redirects to a fixed path from `app/utils/role-home.ts:4`, else `/sign-in` (`app/pages/index.vue:5`): no input-chosen target, so no open redirect. Every page still relies on its own API call's role check; M4 and M5 access tests green in CMD-6 | — |
+| CK-03 | Access control and IDOR | V8 | pass | No API route or query change (CMD-7). The site root reads only the caller's own `/api/session` role (`app/pages/index.vue:4`) and redirects to a fixed path from `app/utils/role-home.ts:4`, else `/sign-in`, including when the session read fails (`app/pages/index.vue:5`, T005): no input-chosen target, so no open redirect. Every page still relies on its own API call's role check; M4 and M5 access tests green in CMD-6 | — |
 | CK-04 | Input validation and injection | V1, V2 | fail | M5.1 adds no input handling (CMD-7, CMD-8). The demo reset's TRUNCATE interpolates only the constant `RESET_TABLES` list (`db/seed/demo.ts:38`, :72), no user value. Row stays fail on the accepted M5 findings | SEC-10, SEC-12 |
-| CK-05 | Output encoding and XSS | V1, V3 | pass | No `v-html`, `innerHTML` or `dangerouslySetInnerHTML` in `app/` or `server/` (CMD-10, 0 hits); the restyle only wraps existing `{{ }}` text in new elements and adds a `:class` built from the server's order-status enum (`app/pages/practice/dashboard.vue:179`, CMD-8); CSP unchanged (`nuxt.config.ts:14`) | — |
+| CK-05 | Output encoding and XSS | V1, V3 | pass | No `v-html`, `innerHTML` or `dangerouslySetInnerHTML` in `app/` or `server/` (CMD-10, 0 hits); the restyle only wraps existing `{{ }}` text in new elements and adds a `:class` built from the server's order-status enum (`app/pages/practice/dashboard.vue:179`, CMD-8); T005 only wraps the cancel dialog in a styled backdrop element, same `{{ }}` text (`app/pages/practice/dashboard.vue:212`, CMD-22); CSP unchanged (`nuxt.config.ts:14`) | — |
 | CK-06 | CSRF | V3 | fail | No write path added (CMD-7, CMD-8); the site root is a GET that reads the session and redirects, no state change (`app/pages/index.vue:4`, :5). Row stays fail on the accepted M5 findings | SEC-5, SEC-13 |
 | CK-07 | Secrets and cryptography | V11, V13 | pass | Secret scan: 2 tree hits and 4 history commits, all false positive; no tracked env file (CMD-12, CMD-13, CMD-14). No secret, token or crypto code in the diff; the seed still takes the demo password only from the environment (`db/seed/demo.ts:63`) | — |
 | CK-08 | Errors and logging (no PII or secrets) | V16 | pass | The diff adds no log call (CMD-8: no `console.` in added lines); generic client errors unchanged (`server/utils/problem.ts:86`) | — |
@@ -116,11 +116,11 @@ Locations only. Never a value.
 
 | Path | Rows touched | Note |
 |---|---|---|
-| `app/assets/` | CK-09, CK-11 | `theme.css`: custom properties and shared classes; imports the two self-hosted font packages (same origin) |
-| `app/pages/index.vue` | CK-01, CK-03, CK-06 | new site root: guarded page, reads the caller's role, redirects to a fixed role home |
+| `app/assets/` | CK-09, CK-11 | `theme.css`: custom properties and shared classes; imports the two self-hosted font packages (same origin); T005 adds one colour token |
+| `app/pages/index.vue` | CK-01, CK-03, CK-06 | new site root: guarded page, reads the caller's role, redirects to a fixed role home; T005: a failed session read goes to sign-in |
 | `app/utils/` | CK-03 | `role-home.ts`: the fixed role-to-path table, moved out of sign-in |
-| `app/pages/` | CK-05 | restyle of existing pages (bands, cards, button classes); sign-in uses the shared table; no new data shown, no raw HTML |
-| `app/components/` | CK-05 | restyle of existing components; no new data shown, no raw HTML |
+| `app/pages/` | CK-05 | restyle of existing pages (bands, cards, button classes, T005 input borders and dialog backdrop); sign-in uses the shared table; no new data shown, no raw HTML |
+| `app/components/` | CK-05 | restyle of existing components (T005: ChangeForm input border token); no new data shown, no raw HTML |
 | `nuxt.config.ts` | CK-11 | adds the global stylesheet; headers and CSP unchanged |
 | `package.json` | CK-12 | two font packages (D81) |
 | `package-lock.json` | CK-12 | the two font packages, pinned with integrity hashes |
@@ -185,29 +185,30 @@ Locations only. Never a value.
 | Q1 | ⚠ Does `nuxt build` output (`.output/server`) contain simple-git, node-forge or braces? | decided whether SEC-1 to SEC-3 ship to production | answered 2026-10-10 15:47 CDT (tracker Log, VERIFY SEC-1): none of them is in `.output/server`; M5.1 adds no dependency tree | nothing |
 | Q2 | ⚠ Every seeded demo person, including the SRE, shares one demo password; should M6 (role changes, EP-34 to EP-37) give the SRE account its own password? | today the SRE account can change nothing; in M6 it would let anyone with the demo password change roles | yes: one password per role-changing account before M6 ships, or keep the SRE account out of the public demo | nothing |
 | Q3 | ⚠ D53's revisit trigger ("M5 adds stock limits (FR-025)") has happened; re-accept SEC-10? | an accepted risk whose trigger fired becomes a decision again | answered 2026-10-10 23:59 CDT (Approvals G5 SEC-10): re-accepted as D76 | nothing |
-| Q4 | ⚠ The milestone branch moved during this run: `ae9c38e` (08:12:44 CDT, pass-1 dispositions, tighter M5.1 tests, control-border token in the LLD, task T005 queued) landed after the code was checked at `ebf9930`. This checklist now binds to `ae9c38e`; T005 will change `app/` (theme.css and control borders) again. Re-run check-security after T005? | `make check` is red at `ae9c38e` (M5.1_AT_001, CMD-21) and T005 moves `head_sha`, so this checklist goes stale at the next commit | yes: re-run after T005 lands; expect no new finding from a colour-token change, but the run re-binds the evidence and records a green `make check` | G5 for any head after `ae9c38e` |
+| Q4 | ⚠ The milestone branch moved during this run: `ae9c38e` (08:12:44 CDT, pass-1 dispositions, tighter M5.1 tests, control-border token in the LLD, task T005 queued) landed after the code was checked at `ebf9930`. This checklist now binds to `ae9c38e`; T005 will change `app/` (theme.css and control borders) again. Re-run check-security after T005? | `make check` is red at `ae9c38e` (M5.1_AT_001, CMD-21) and T005 moves `head_sha`, so this checklist goes stale at the next commit | answered 2026-10-11 08:20 CDT by this re-run at `e54eca8` (Approvals G5 security part 08:18 CDT asked for it): T005 adds no finding, `make check` green (CMD-6) | nothing |
 | Q5 | ⚠ The demo reset empties the append-only price and stock histories (and, since M4, the ledger), which INV-4 otherwise forbids. Should it refuse to run once the database holds real, non-demo data? | today it is human-run with the owner role, needs `DEMO_RESET=yes`, and production setup skips it (`docs/runbooks/deploy.md:153`); with real patients it would erase money and stock records | no action while the deployment is a demo; before real patients, make the reset refuse on a production marker or remove it from the production image | nothing |
 
 ## Commands run
 
-- **CMD-1** `date` → exit 0 · Sun Oct 11 08:07:24 CDT 2026
-- **CMD-2** `git branch --show-current`; `git status --porcelain -- . ':!docs/milestones' ':!.handoff' ':!docs/security/CHECKLIST.md'`; `git rev-parse milestone/m5.1-visual-refresh` → exit 0 · on the milestone branch, empty status, ebf993078a683f9253776fe5176b2110edd640dc
-- **CMD-3** `git merge-base main milestone/m5.1-visual-refresh`; `git diff --stat` and `--name-only 220a971 milestone/m5.1-visual-refresh` counted → exit 0 · 220a971f8ea2847d9e680238a2dda0ae55df0f30; 45 files
+- **CMD-1** `date` → exit 0 · Sun Oct 11 08:20:48 CDT 2026 (re-run; first run 08:07:24 CDT)
+- **CMD-2** `git branch --show-current`; `git status --porcelain -- . ':!docs/milestones' ':!.handoff' ':!docs/security/CHECKLIST.md'`; `git rev-parse milestone/m5.1-visual-refresh` → exit 0 · on the milestone branch, empty status, e54eca8543601d4d099455453489a3070fbfceb9 (first run: ebf9930)
+- **CMD-3** `git merge-base main milestone/m5.1-visual-refresh`; `git diff --stat` and `--name-only 220a971 milestone/m5.1-visual-refresh` counted → exit 0 · 220a971f8ea2847d9e680238a2dda0ae55df0f30; 48 files at e54eca8
 - **CMD-4** `git diff --name-only 220a971 milestone/m5.1-visual-refresh` filtered to non-doc paths, and the code diff read in full → exit 0 · 29 paths: Makefile, 21 under app/, db/seed/demo.ts, nuxt.config.ts, package.json, package-lock.json, scripts/scope-guard.sh, 2 under tests/
 - **CMD-5** `command -v gitleaks osv-scanner npm pnpm composer; npm --version` → npm and composer present, gitleaks, osv-scanner and pnpm absent, npm 11.19.1
-- **CMD-6** `make check` → exit 0 · 218 unit passed (14 files), 43 M4 acceptance (5 files), 44 M5 acceptance (5 files), 5 M5.1 acceptance (1 file: AT_001 to AT_005), decision views current, make check: OK
+- **CMD-6** `make check` at e54eca8 → exit 0 · 218 unit passed (14 files), 43 M4 acceptance (5 files), 44 M5 acceptance (5 files), 5 M5.1 acceptance (1 file: AT_001 to AT_005), decision views current, make check: OK
 - **CMD-7** `git diff --name-only 220a971 milestone/m5.1-visual-refresh -- server` → exit 0 · empty (no server change; no migration under db/migrations)
 - **CMD-8** `git diff 220a971 milestone/m5.1-visual-refresh -- app server db nuxt.config.ts scripts Makefile` added lines matched against `v-html/innerHTML/https?:/fonts/googleapis/gstatic/cdn/<script/<link/useHead/console./$fetch/useFetch/useRequestFetch/navigateTo/eval/exec` → exit 0 · 4 lines: `app/pages/index.vue` script tag, session fetch and redirect, and the sign-in redirect using ROLE_HOME; no log call, no external URL
 - **CMD-9** `git diff 220a971 milestone/m5.1-visual-refresh -- nuxt.config.ts package.json package-lock.json` → exit 0 · two dependencies added (@fontsource-variable/geist 5.3.0, @fontsource/eb-garamond 5.3.0, OFL-1.1, registry.npmjs.org tarballs with sha512 integrity, no dependencies listed); one `css:` line in nuxt.config.ts
-- **CMD-10** `git grep -nE 'v-html/innerHTML/dangerouslySetInnerHTML' -- app server` → exit 1 · 0 hits
+- **CMD-10** `git grep -nE 'v-html/innerHTML/dangerouslySetInnerHTML' -- app server` → exit 1 · 0 hits (re-run at e54eca8: same result)
 - **CMD-11** `grep -oE 'url\([^)]*\)'` and `grep -cE 'https?://'` on `app/assets/css/theme.css`, `node_modules/@fontsource-variable/geist/index.css`, `node_modules/@fontsource/eb-garamond/500.css` → exit 0 · theme.css has only the two package `@import`s; the package CSS has only `url(./files/…woff2/woff)`; 0 absolute URLs
-- **CMD-12** `git grep -nIiE "$P" -- . ':!vendor' ':!node_modules' ':!*.lock' ':!package-lock.json' ':!*.min.js' / cut -d: -f1-2` → exit 0 · 2 hits: docs/milestones/M5.md:637, :828
-- **CMD-13** `git ls-files / grep -E '(^/\/)\.env' / grep -vE '\.(example/sample/dist/template)$'` → exit 1 · none
-- **CMD-14** `git log --all -E -i -G"$P" --format='%h %ad' --date=short --name-only -- …` → exit 0 · 691b4e1 (docs/milestones/M5.md), b045719, 8949ae4, cc64669 (public/.htaccess)
-- **CMD-15** `git grep -nIE 'https?://' -- app nuxt.config.ts` excluding `.invalid` → exit 0 · 1 hit, `app/middleware/auth.global.ts:10` (a comment naming rejected redirect forms; unchanged)
-- **CMD-16** `npm audit --package-lock-only` (and `--json`) → exit 1 · 15 vulnerabilities (9 high, 6 critical); advisories GHSA-858h-whjf-mvg5, GHSA-86w9-cpqp-85rv, GHSA-g4wm-2vf7-vfgr, GHSA-v5rq-49vh-5v5c, GHSA-vfj7-8cjw-p6xm, GHSA-x6jw-m9v5-85vh; no @fontsource entry
-- **CMD-17** `npm audit --package-lock-only --omit=dev` → exit 1 · 14 vulnerabilities (8 high, 6 critical)
+- **CMD-12** `git grep -nIiE "$P" -- . ':!vendor' ':!node_modules' ':!*.lock' ':!package-lock.json' ':!*.min.js' / cut -d: -f1-2` → exit 0 · 2 hits: docs/milestones/M5.md:637, :828 (re-run at e54eca8: same result)
+- **CMD-13** `git ls-files / grep -E '(^/\/)\.env' / grep -vE '\.(example/sample/dist/template)$'` → exit 1 · none (re-run at e54eca8: same result)
+- **CMD-14** `git log --all -E -i -G"$P" --format='%h %ad' --date=short --name-only -- …` → exit 0 · 691b4e1 (docs/milestones/M5.md), b045719, 8949ae4, cc64669 (public/.htaccess) (re-run at e54eca8: same result)
+- **CMD-15** `git grep -nIE 'https?://' -- app nuxt.config.ts` excluding `.invalid` → exit 0 · 1 hit, `app/middleware/auth.global.ts:10` (a comment naming rejected redirect forms; unchanged) (re-run at e54eca8: same result)
+- **CMD-16** `npm audit --package-lock-only` (and `--json`) → exit 1 · 15 vulnerabilities (9 high, 6 critical); advisories GHSA-858h-whjf-mvg5, GHSA-86w9-cpqp-85rv, GHSA-g4wm-2vf7-vfgr, GHSA-v5rq-49vh-5v5c, GHSA-vfj7-8cjw-p6xm, GHSA-x6jw-m9v5-85vh; no @fontsource entry (re-run at e54eca8: same result)
+- **CMD-17** `npm audit --package-lock-only --omit=dev` → exit 1 · 14 vulnerabilities (8 high, 6 critical) (re-run at e54eca8: same result)
 - **CMD-18** `grep -E '"(scripts/install/postinstall/preinstall)"'` and `grep '"version"/"license"'` on both font packages' package.json, `ls` of each package → exit 0 · no scripts; 5.3.0 and OFL-1.1 each; contents are CSS, font files, metadata and licence
-- **CMD-19** `git grep -nIiE 'openai/anthropic/…/llamaindex' -- . ':!vendor' ':!node_modules' ':!docs' ':!specs' ':!.handoff' ':!*.md'` → exit 0 · 1 hit, `.claude/settings.json:6` (agent plugin setting, not a model call)
+- **CMD-19** `git grep -nIiE 'openai/anthropic/…/llamaindex' -- . ':!vendor' ':!node_modules' ':!docs' ':!specs' ':!.handoff' ':!*.md'` → exit 0 · 1 hit, `.claude/settings.json:6` (agent plugin setting, not a model call) (re-run at e54eca8: same result)
 - **CMD-20** `git status --porcelain`; `git log ebf9930..milestone/m5.1-visual-refresh`; `git diff --stat ebf9930 ae9c38e`; `git diff ebf9930 ae9c38e -- tests` read → exit 0 · one new commit ae9c38e696aab0e0f020ef53d21da97bc363329b: .handoff/TRACKER.md, .handoff/reviews/M5.1-pass1.md, MILESTONES.md, docs/architecture/lld.md, docs/design/screens.md, specs/M5.1-visual-refresh/acceptance.md, specs/M5.1-visual-refresh/tasks/T005.md, tests/acceptance/M5.1/visual-language.test.ts (more contrast pairs, hsl() and 4/8-digit hex in the colour scan, a stricter band regex); no app, server, db or manifest change
 - **CMD-21** `make check` at ae9c38e → exit 2 · 218 unit, 43 M4, 44 M5 passed; M5.1 1 failed and 4 passed (M5.1_AT_001 failed; AT_002 to AT_005 passed)
+- **CMD-22** `git log ae9c38e..milestone/m5.1-visual-refresh`; `git diff --stat ae9c38e e54eca8`; `git diff ae9c38e e54eca8 -- . ':!.handoff' ':!specs' ':!docs'` read in full; `git diff ae9c38e e54eca8 -- package.json package-lock.json nuxt.config.ts` → exit 0 · 2 commits (a6ebc86, e54eca8); app changes: theme.css +1 token, ChangeForm.vue and ops/orders/index.vue input border token, index.vue `.catch(() => null)` on the session read with fallback to /sign-in, dashboard.vue cancel dialog wrapped in a `.backdrop` div plus its CSS; 0 lines in manifests or nuxt.config.ts; no server, db, v-html or log change
