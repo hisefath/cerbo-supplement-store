@@ -116,8 +116,8 @@
 <!-- diagram: erd -->
 ```mermaid
 %% diagram: erd
-%% source: docs/architecture/lld.md#1-data-model @ 2e4e445
-%% drawn: 2026-10-10T05:04:43Z by draw-diagrams (claude, claude-opus-5-5)
+%% source: docs/architecture/lld.md#1-data-model @ 4d0903b
+%% drawn: 2026-10-11T01:23:45Z by draw-diagrams (claude, claude-opus-5-5)
 %% render: unverified
 %% render-check: mmdc not on PATH
 %% missing: 0
@@ -296,6 +296,18 @@ erDiagram
     health_pings {
         timestamptz minute PK "not null"
         timestamptz first_seen_at "not null"
+    }
+    sign_in_attempts {
+        bigint id PK "not null · identity"
+        text email "not null"
+        text ip "not null"
+        timestamptz attempted_at "not null"
+    }
+    pay_rate_attempts {
+        bigint id PK "not null · identity"
+        bigint user_id "not null"
+        text ip "not null"
+        timestamptz attempted_at "not null"
     }
 ```
 <!-- /diagram -->
@@ -723,8 +735,8 @@ All money columns are whole US cents in `integer` (max about $21 million per val
 <!-- diagram: be-class -->
 ```mermaid
 %% diagram: be-class
-%% source: docs/architecture/lld.md#2-backend-components @ 2e4e445
-%% drawn: 2026-10-10T05:06:07Z by draw-diagrams (claude, claude-opus-5-5)
+%% source: docs/architecture/lld.md#2-backend-components @ 42461ba
+%% drawn: 2026-10-11T01:26:07Z by draw-diagrams (claude, claude-opus-5-5)
 %% render: unverified
 %% render-check: mmdc not on PATH
 %% missing: 0
@@ -740,6 +752,7 @@ classDiagram
     <<service>> BE3
     BE3 : +signIn(email: string, password: string, ip: string) Promise~{ viewer: Viewer#59; cookieToken: string }~
     BE3 : +resolve(cookieToken: string | undefined) Promise~Viewer | null~
+    BE3 : +clientAddress(event: H3Event) string
     BE3 : +signOut(cookieToken: string) Promise~void~
     class BE4["BE-4 AccessPolicy"]
     <<policy>> BE4
@@ -760,6 +773,8 @@ classDiagram
     BE6 : +defaultPriceCents(unitCostCents: number) number
     BE6 : +priceFromMargin(unitCostCents: number, marginBasisPoints: number) number
     BE6 : +lowestAllowedPriceCents(unitCostCents: number) number
+    BE6 : +belowFloorProductIds~T~(lines: { id: T#59; unitPriceCents: number#59; unitCostCents: number#59; quantity: number }[]) T[]
+    BE6 : +unitCostFromLowestAllowedPrice(lowestAllowedCents: number) number
     BE6 : +assertSplitBalances(split: Split) void
     class BE7["BE-7 CatalogService"]
     <<service>> BE7
@@ -778,6 +793,7 @@ classDiagram
     BE9 : +expireHoldIfDue(orderId: bigint) Promise~void~
     class BE10["BE-10 PaymentService"]
     <<service>> BE10
+    BE10 : +countPayAttempt(userId: bigint, ip: string) Promise~void~
     BE10 : +pay(viewer: Viewer, orderId: bigint, idempotencyKey: string) Promise~Receipt~
     class BE11["BE-11 PaymentGateway"]
     <<adapter (stub)>> BE11
@@ -820,6 +836,9 @@ classDiagram
     class BE20["BE-20 Clock"]
     <<seam>> BE20
     BE20 : +now() Date
+    class BE21["BE-21 PruneAttempts"]
+    <<scheduled task>> BE21
+    BE21 : +run() Promise~{ result: 'ok' }~
     BE1 ..> BE3 : depends on
     BE1 ..> BE4 : depends on
     BE1 ..> BE5 : depends on
@@ -838,7 +857,7 @@ classDiagram
     BE2 ..> BE3 : depends on
     BE2 ..> BE4 : depends on
     BE3 ..> BE20 : depends on
-    note for BE3 "depends on: SEAM-2 random tokens, scrypt from Node's crypto"
+    note for BE3 "depends on: Node's crypto (randomBytes for tokens, scrypt for passwords#59; D72)"
     BE5 ..> BE20 : depends on
     BE7 ..> BE4 : depends on
     BE7 ..> BE6 : depends on
@@ -869,6 +888,8 @@ classDiagram
     BE18 ..> BE4 : depends on
     BE18 ..> BE20 : depends on
     BE19 ..> BE20 : depends on
+    BE21 ..> BE20 : depends on
+    note for BE21 "depends on: the Nitro task scheduler (cron */15 * * * *, in the same process#59; no new container)"
 ```
 <!-- /diagram -->
 
@@ -1154,7 +1175,7 @@ classDiagram
 
 | Public method (signature only) | Called by | Returns | Raises (problem type) | Covers |
 |---|---|---|---|---|
-| `run(): Promise<{ result: 'ok' }>` | the scheduler every 15 minutes | — | — | SEC-11 |
+| `run(): Promise<{ result: 'ok' }>` | the scheduler every 15 minutes | `{ result: 'ok' }` after both deletes | — | SEC-11 |
 
 ## 3. Frontend components
 
