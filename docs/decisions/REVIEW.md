@@ -59,7 +59,7 @@ Weight: ●●● critical (hard to undo, or touches money, personal data or sig
 - ●●○ D29 — Financial report with gross and net; four least-privilege operations roles.
 - ●●○ D47 — A negative payout at payment sends the order to review.
 
-### Infrastructure (9)
+### Infrastructure (10)
 
 - ●●● D32 — TypeScript on Node.js with server-rendered Vue, matching Cerbo's front end.
 - ●●● D36 — One deployable, built API-first.
@@ -69,6 +69,7 @@ Weight: ●●● critical (hard to undo, or touches money, personal data or sig
 - ●●○ D55 — Demo deployed from the M4 branch before the merge chain.
 - ●●○ ~~D13~~ — v1: Railway with a Dockerfile and Railway Postgres. (replaced by D22)
 - ●●○ ~~D34~~ — Pages and logic deploy together as one app. (replaced by D36)
+- ●○○ D81 — One theme stylesheet; fonts ship with the app.
 - ●○○ ~~D7~~ — v1: outside services stubbed behind seams. (replaced by D22)
 
 ### Process (33)
@@ -132,6 +133,7 @@ Decisions that adopted a software-factory-kit change (H) and the finding (F) beh
 
 ### 2026-10-11
 
+- D81 · Infrastructure · ●○○ — One theme stylesheet; fonts ship with the app.
 - D80 · Product · ●○○ — M5.1 restyle uses light pages with a sky header band.
 - D79 · Process · ●○○ — M5 adds an 11th task for review fixes, like M4.
 

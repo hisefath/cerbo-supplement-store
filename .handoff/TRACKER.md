@@ -200,6 +200,8 @@ several harnesses read it and the repo is public.
 | 2026-10-11 07:22 CDT | G-ux Revise (M5.1, D75): add a visual language to screens.md Global conventions, inspired by the cluely.com style (no Cluely name, logo or copy); layouts, states and copy unchanged | docs/design/screens.md@220a971 | "also revamp the front end to suite more of cluely's website style, make it more modern and like how this websites ui and colors and design language is: https://cluely.com/" (2026-10-10) · "go ahead with M5.1, /map-ux-flows" · STANDING row 2026-10-10 23:09 CDT |
 | 2026-10-11 07:22 CDT | G-ux (M5.1 visual language, VL-2 chosen) | docs/design/screens.md@73063b6 | STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
 | 2026-10-11 07:23 CDT | G1 re-approval (clarify-spec pass 2, CQ-4: M5.1 row, NFR-015, NFR-016) | docs/product/prd.md@92d4a5f | STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-11 07:24 CDT | G3 (M5.1 delta: theme.css, self-hosted fonts; D81 recommendation) | docs/architecture/lld.md@4c4479e | STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
+| 2026-10-11 07:24 CDT | new dependencies (Ask-first, AGENTS.md): @fontsource-variable/geist 5.3.0 and @fontsource/eb-garamond 5.3.0 (OFL-1.1), exact pins, for D81 | package.json, package-lock.json | STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
 
 ## Log
 
