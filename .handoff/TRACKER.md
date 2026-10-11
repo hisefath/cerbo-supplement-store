@@ -7,11 +7,11 @@ several harnesses read it and the repo is public.
 ## Resume
 
 <!-- Rewritten as the LAST edit of every supervisor move. Times come from `date`. -->
-- **As of:** 2026-10-10 18:31 CDT
-- **In flight:** nothing. M1-M4 merged to main (10a020e, GitHub mirrored); demo live at web-v2 (1130822, smoke GREEN). route-failure M4 retro closed: F5-F26 filed; H4-H15 all adopted in software-factory-kit (last b8560d0, pushed to GitLab + GitHub); D57-D69 recorded; docs/decisions/REVIEW.md (project review by topic and weight) generated and checked by make check.
-- **Next:** home the unpushed Cerbo commits d4c77e6..de232d2 (on merged milestone/m4-tracer-bullet) on main via a small MR; then /quiz-me (milestone close chain). Queued: M5-R01 design-lld catch-up, M5-R02 define-acceptance, M5-R03 clarify-spec M5 scope; next route-failure pass: neutral examples in H4/H8, update Cerbo's scripts/scope-guard.sh copy, record H4-H15 adopted in HARNESS_CHANGELOG, draw-diagrams trace bugs (Log 2026-10-10 00:03). Also: G-live probe, re-run /check-security, redeploy from main, align D33 Postgres 16 vs 18.
-- **Waiting on:** the human: git identity for software-factory-kit (no ~/.gitconfig; kit commits used Mastershefu <mastershefu@MacBook-Pro-4.local> via env), uptime probe on /healthz.
-- **Verified:** de232d2 make decisions OK (REVIEW.md current); 30a0de4 make check OK (unit + 43 M4 acceptance + decisions); kit b8560d0 scripts/test.sh 131 passed, 0 failed
+- **As of:** 2026-10-10 23:05 CDT
+- **In flight:** M5 on milestone/m5-prices-and-stock (draft MR !9): T001-T006 squashed; acceptance re-run 44fed80 adds AT-035 to AT-038 (green pins), awaiting G4 re-approval of acceptance.md@44fed80.
+- **Next:** G4 re-approval of the acceptance re-run; then /slice-tasks (revise) for the M5 close-out task (pass4 R4 pay-path FM-7, pass5 R2/R3/R4/R6, pass6 R6/R9, S2 hold-ended banner); then design catch-up, M5-R03 clarify-spec, review M5, /report-milestone (G5), merge MR !9, redeploy + walkthrough link. Queued: M5.1 visual refresh (/map-ux-flows, cluely-inspired), M6, next route-failure pass.
+- **Waiting on:** the human: G4 answer on the acceptance re-run; uptime probe on /healthz.
+- **Verified:** 44fed80 make check exit 0 (unit 210, M4 43, M5 38 acceptance); pins AT-035..038 each fail with their rule removed (throwaway worktree)
 
 ## Tasks
 
@@ -24,6 +24,7 @@ several harnesses read it and the repo is public.
 | M5-R01 | F20: design-lld catch-up before M5 (Q-1 to Q-4, D47 SM-1 guard, FM-3 new-key retry, pagination wording, EP-23 429, pay_rate_attempts) | Standard / design-lld | supervisor | done | 2026-10-10 18:31 CDT | docs/architecture/lld.md, contracts/openapi.yaml | — |
 | M5-R02 | F21: acceptance tests for review-fixed behaviours (key release, stuck attempt, parallel limits, cancel states) | Standard / define-acceptance | supervisor | done | 2026-10-10 18:31 CDT | specs/M4-tracer-bullet/acceptance.md, tests/acceptance/** | — |
 | M5-R03 | F22: M5 scope in the PRD (patient order list /orders 404, provider view of EP-4, needs-review amounts, copy gaps) | Standard / clarify-spec | supervisor | todo | 2026-10-10 18:31 CDT | docs/product/prd.md | — |
+| M5-R04 | define-acceptance re-run: review pins (pass2 R3, pass3 R1, pass4 R1-R3, pass6 R5) | Standard / define-acceptance | supervisor | done | 2026-10-10 23:05 CDT | specs/M5-prices-and-stock/acceptance.md, tests/acceptance/M5 | 44fed80 |
 | M4-CI01 | CI on the MacBook runner: enable runner 245, .gitlab-ci.yml running make check | Fix / supervisor | supervisor (claude-opus-5-5) | done | 2026-10-10 19:05 CDT | .gitlab-ci.yml | — |
 | M5-T001 | Provider changes a practice price (specs/M5-prices-and-stock/tasks/T001.md) | Standard / implement-task | claude-subagent | done | 2026-10-10 21:09 CDT | see task file | 135b9ca |
 | M5-T002 | Payment reserves and releases stock (specs/M5-prices-and-stock/tasks/T002.md) | Standard / implement-task | claude-subagent | done | 2026-10-10 21:09 CDT | see task file | f5bb975 |
@@ -177,6 +178,7 @@ several harnesses read it and the repo is public.
 | 2026-10-10 22:24 CDT | M5-T004 review dispositions (pass 5), option a: squash T004; R2, R3, R4, R6 to the M5 close-out task; R1, R5, R7 to design catch-up | .handoff/reviews/M5-pass5.md; m5/t004-platform-staff-adjust-stock@81939f7 | "a, squash T004" |
 | 2026-10-10 22:31 CDT | M5-T005 review dispositions (pass 6), option a: days are elapsed 24-hour periods (EDGE-040); relaunch T005 to fix R2, R1, R3; R4 to design catch-up; R6, R9 to the M5 close-out task; R5 to the define-acceptance re-run; R8 filed; keep R10; discard R7 | .handoff/reviews/M5-pass6.md; m5/t005-provider-opens-the-practice-dashboard@c3bac8b | "a, relaunch T005 with R2, R1, R3" |
 | 2026-10-10 22:36 CDT | decision: visual refresh placement, option a: its own milestone M5.1 "Visual refresh" after M5 merges (map-ux-flows visual language at G-ux, then slices); cluely.com design language as inspiration only, no Cluely branding or assets; dense clinical screens stay readable | chat card | "a, M5.1 visual refresh after M5 merges" |
+2026-10-10 23:05 CDT PHASE define-acceptance M5 re-run: AT-035 to AT-038 added as green pins; each failed with its rule removed in a throwaway worktree; M5 38/38; make check exit 0; committed 44fed80
 
 ## Log
 
