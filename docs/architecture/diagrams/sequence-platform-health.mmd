@@ -16,7 +16,7 @@ sequenceDiagram
     participant BE16 as BE-16 PlatformHealthQueries
     participant DB
     FE17->>BE1: GET health for the month (EP-33) → BE-4.assertRole → BE-16.health
-    BE16->>DB: (changed) funnel counts of the month's sent orders by their current state (BE-16 Definitions)#59; median minutes from sent to paid#59; out-of-stock refusals summed from request_stats.stock_refusals (D85)#59; review count#59; paid amounts and fees per practice from ledger entries, and sent and paid order counts per practice
+    BE16->>DB: (changed) funnel counts of the month's sent orders by their current state (BE-16 Definitions)#59; median minutes from sent to paid#59; out-of-stock refusals summed from request_stats.stock_refusals (D86)#59; review count#59; paid amounts and fees per practice from ledger entries, and sent and paid order counts per practice
     BE16->>BE16: compares each measure with its alert line (A-11: review count line 1#59; others #quot;set after 30 days#quot;)
     FE17->>FE24: funnel counts → #quot;Sent 10 · Checkout started 9 · Paid 8#quot;#59; the practice list shows its first 25 rows (changed)
     alt main path (steps 5)

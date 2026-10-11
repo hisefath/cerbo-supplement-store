@@ -18,7 +18,7 @@ sequenceDiagram
     X1->>BE1: (changed) GET /healthz (EP-40) every 5 minutes → DB: select 1 → BE-19.recordPing → DB: insert the 5-minute slot (ignored if present) → 200 ok
     alt main path (steps 2-4)
         FE21->>BE1: GET system health (EP-39) → BE-4.assertRole(sre) → BE-19.systemHealth
-        BE19->>DB: (changed) availability = pinged slots ÷ 5-minute slots elapsed in the month since the first ping (D86)#59; error rate and slow page share from request stats
+        BE19->>DB: (changed) availability = pinged slots ÷ 5-minute slots elapsed in the month since the first ping (D87)#59; error rate and slow page share from request stats
         FE21->>SRE: #quot;Availability 99.7%, target 99.5%: met#quot; and the other measures
     else the SRE follows a link to an order breakdown
         BE2->>BE4: assertRole fails for EP-6 → 403 /problems/forbidden → #quot;Your role can't open order breakdowns.#quot;

@@ -21,7 +21,7 @@ Weight: ●●● critical (hard to undo, or touches money, personal data or sig
 - ●○○ D53 — Order quantity unbounded until stock limits exist.
 - ●○○ D75 — The cluely-inspired restyle is its own milestone, M5.1, after M5.
 - ●○○ D80 — M5.1 restyle uses light pages with a sky header band.
-- ●○○ D84 — Refused transitions say from which state and on what event.
+- ●○○ D85 — Refused transitions say from which state and on what event.
 - ●○○ ~~D12~~ — v1: order cancel added to scope. (replaced by D22)
 - ●○○ ~~D14~~ — v1: neutral branding on the public demo. (replaced by D22)
 
@@ -34,8 +34,8 @@ Weight: ●●● critical (hard to undo, or touches money, personal data or sig
 - ●●○ ~~D6~~ — v1: stock column plus movement log, decremented at payment. (replaced by D22)
 - ●●○ ~~D17~~ — v1: never edit a migration that already ran in production. (replaced by D22)
 - ●○○ D56 — Demo database runs PostgreSQL 18 while tests run 16.
-- ●○○ D83 — Product rows lock with FOR NO KEY UPDATE.
-- ●○○ D85 — Pay stock refusals are counted hourly beside request stats.
+- ●○○ D84 — Product rows lock with FOR NO KEY UPDATE.
+- ●○○ D86 — Pay stock refusals are counted hourly beside request stats.
 - ●○○ ~~D11~~ — v1: one stock path through a single method. (replaced by D22)
 
 ### Security (11)
@@ -50,7 +50,7 @@ Weight: ●●● critical (hard to undo, or touches money, personal data or sig
 - ●○○ D76 — Stock limits now cap quantity; the overflow 500 stays accepted.
 - ●○○ D77 — Absurd staff input gives a 500, not a 422; accepted, no harm.
 - ●○○ D78 — GET of an order may end a due hold; accepted, access-checked.
-- ●○○ D82 — Price and stock input get upper bounds and clear errors.
+- ●○○ D83 — Price and stock input get upper bounds and clear errors.
 
 ### Money (8)
 
@@ -74,7 +74,7 @@ Weight: ●●● critical (hard to undo, or touches money, personal data or sig
 - ●●○ ~~D13~~ — v1: Railway with a Dockerfile and Railway Postgres. (replaced by D22)
 - ●●○ ~~D34~~ — Pages and logic deploy together as one app. (replaced by D36)
 - ●○○ D81 — One theme stylesheet; fonts ship with the app.
-- ●○○ D86 — Availability counts five-minute slots, matching the probe.
+- ●○○ D87 — Availability counts five-minute slots, matching the probe.
 - ●○○ ~~D7~~ — v1: outside services stubbed behind seams. (replaced by D22)
 
 ### Process (33)
@@ -138,11 +138,11 @@ Decisions that adopted a software-factory-kit change (H) and the finding (F) beh
 
 ### 2026-10-11
 
-- D86 · Infrastructure · ●○○ — Availability counts five-minute slots, matching the probe.
-- D85 · Data · ●○○ — Pay stock refusals are counted hourly beside request stats.
-- D84 · Product · ●○○ — Refused transitions say from which state and on what event.
-- D83 · Data · ●○○ — Product rows lock with FOR NO KEY UPDATE.
-- D82 · Security · ●○○ — Price and stock input get upper bounds and clear errors.
+- D87 · Infrastructure · ●○○ — Availability counts five-minute slots, matching the probe.
+- D86 · Data · ●○○ — Pay stock refusals are counted hourly beside request stats.
+- D85 · Product · ●○○ — Refused transitions say from which state and on what event.
+- D84 · Data · ●○○ — Product rows lock with FOR NO KEY UPDATE.
+- D83 · Security · ●○○ — Price and stock input get upper bounds and clear errors.
 - D81 · Infrastructure · ●○○ — One theme stylesheet; fonts ship with the app.
 - D80 · Product · ●○○ — M5.1 restyle uses light pages with a sky header band.
 - D79 · Process · ●○○ — M5 adds an 11th task for review fixes, like M4.

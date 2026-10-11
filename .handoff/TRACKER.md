@@ -485,3 +485,4 @@ several harnesses read it and the repo is public.
 2026-10-11 08:47 CDT MERGE M5.1 MR !10 -> main c956959 (pipeline #49738 success); make check on main exit 0 (218/43/44/5)
 2026-10-11 09:18 CDT DEPLOY M5.1 c956959 → production web-v2 (deployment b3c00832 SUCCESS); /version c956959; SMOKE GREEN 7/0; fonts 200 font/woff2 same-origin; root redirects signed-out to /sign-in?next=/
 2026-10-11 09:19 CDT DISPATCH M6-LLD harness=claude-subagent why=design-lld delta for M6 + routed design catch-up; branch design/m6-lld
+2026-10-11 10:15 CDT NOTE M6 decisions renumbered D82-D86 -> D83-D87 on design/m6-lld (D82 went to SEC-15 on milestone/m5.2-safe-landing, which merges first); the M6 G3 Approvals row's 'D82-D86' means today's D83-D87

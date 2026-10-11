@@ -1437,7 +1437,7 @@ paths:
     get:
       x-lld-id: "EP-40"
       operationId: health
-      summary: "Health check for the uptime monitor: one select 1 within 2 s; on success the 5-minute slot is recorded for availability (lld.md D86)"
+      summary: "Health check for the uptime monitor: one select 1 within 2 s; on success the 5-minute slot is recorded for availability (lld.md D87)"
       tags: [operations]
       security: []
       responses:
@@ -1546,7 +1546,7 @@ components:
                 required: [pointer, detail]
           required: [errors]
     InvalidTransitionProblem:
-      description: "/problems/invalid-transition with why it was refused (lld.md D84, proposed; not yet sent by the M4/M5 code, Q-8)."
+      description: "/problems/invalid-transition with why it was refused (lld.md D85, proposed; not yet sent by the M4/M5 code, Q-8)."
       allOf:
         - $ref: "#/components/schemas/Problem"
         - type: object
@@ -1897,7 +1897,7 @@ components:
           type: integer
           minimum: 1
           maximum: 10000000
-          description: "Whole US cents, at most $100,000.00 (lld.md D82, proposed). A margin whose computed price passes the same maximum is also 422 /problems/validation."
+          description: "Whole US cents, at most $100,000.00 (lld.md D83, proposed). A margin whose computed price passes the same maximum is also 422 /problems/validation."
         margin_basis_points:
           type: integer
           minimum: 0
@@ -2044,7 +2044,7 @@ components:
           maximum: 1000000
           not:
             const: 0
-          description: "A resulting count above 1,000,000 units is also 422 /problems/validation (lld.md D82, proposed)."
+          description: "A resulting count above 1,000,000 units is also 422 /problems/validation (lld.md D83, proposed)."
         reason:
           type: string
           minLength: 1
@@ -2236,7 +2236,7 @@ components:
           type: boolean
         availability_percent:
           type: ["number", "null"]
-          description: "5-minute slots with a successful /healthz ÷ slots elapsed in the month since the first ping ever (lld.md D86); null with no pings."
+          description: "5-minute slots with a successful /healthz ÷ slots elapsed in the month since the first ping ever (lld.md D87); null with no pings."
         availability_target_percent:
           type: number
           const: 99.5

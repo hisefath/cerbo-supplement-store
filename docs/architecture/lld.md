@@ -78,7 +78,7 @@
 | FR-045 | `orders` | BE-15 | EP-8, EP-30 | FE-15 | SEQ-5 | SM-1 |
 | FR-046 | `orders` | BE-15 | EP-29 | FE-15 | SEQ-5 | — |
 | FR-047 | `products` | BE-15 | EP-29 | FE-15 | SEQ-5 | — |
-| FR-048 (changed) | `orders`, `ledger_entries`, `request_stats` (`stock_refusals`, D85) | BE-16, BE-19 | EP-10, EP-33 | FE-17, FE-24 | SEQ-8 | — |
+| FR-048 (changed) | `orders`, `ledger_entries`, `request_stats` (`stock_refusals`, D86) | BE-16, BE-19 | EP-10, EP-33 | FE-17, FE-24 | SEQ-8 | — |
 | FR-049 | — | BE-16 | EP-33 | FE-17 | SEQ-8 | — |
 | FR-050 | `orders`, `users` | BE-14, BE-16, BE-17 | EP-25, EP-26 | FE-10, FE-11 | SEQ-3 | — |
 | FR-051 | `users` | BE-4, BE-17 | EP-11, EP-34, EP-35 | FE-18 | SEQ-9 | — |
@@ -89,7 +89,7 @@
 | FR-056 | `access_log` | BE-4, BE-18 | EP-37 | FE-19 | SEQ-10 | — |
 | FR-057 (changed) | `access_log` | BE-18, BE-22 | EP-13, EP-38 | FE-20, ST-7 | SEQ-11 | — |
 | FR-058 (changed) | — | BE-2, BE-4 | EP-5 to EP-14 (wrong role: the page's API call answers 403 and the page shows only its Permission denied state), EP-25 to EP-39 | FE-23 | SEQ-3, SEQ-8, SEQ-12 | — |
-| FR-059 (changed) | `request_stats`, `health_pings` (5-minute slots, D86) | BE-19, BE-22 | EP-14, EP-39, EP-40 | FE-21, ST-7 | SEQ-12 | — |
+| FR-059 (changed) | `request_stats`, `health_pings` (5-minute slots, D87) | BE-19, BE-22 | EP-14, EP-39, EP-40 | FE-21, ST-7 | SEQ-12 | — |
 | FR-060 | `ledger_entries` | BE-17 | EP-11, EP-34 | FE-18, FE-12, ST-7 | SEQ-9 | — |
 | FR-061 | `ledger_entries` | BE-17 | EP-34 | FE-12 | SEQ-9 | — |
 | FR-062 | `ledger_entries` | BE-17 | EP-34 | FE-18 | SEQ-9 | — |
@@ -622,7 +622,7 @@ All money columns are whole US cents in `integer` (max about $21 million per val
 | `requests` | integer | no | 0 | CHECK `ck_request_stats_nonneg` | |
 | `errors` | integer | no | 0 | CHECK `ck_request_stats_nonneg` | 5xx responses |
 | `slow` | integer | no | 0 | CHECK `ck_request_stats_nonneg` | responses slower than 2 s (NFR-001) |
-| `stock_refusals` | integer | no | 0 | CHECK `ck_request_stats_nonneg` | (new, D85) EP-23 answers of 422 `/problems/insufficient-stock`; the platform health "Out-of-stock refusals" count (FR-048) |
+| `stock_refusals` | integer | no | 0 | CHECK `ck_request_stats_nonneg` | (new, D86) EP-23 answers of 422 `/problems/insufficient-stock`; the platform health "Out-of-stock refusals" count (FR-048) |
 
 - **Primary key:** (`hour`, `route_group`) `pk_request_stats` — serves EP-39 by month and the upsert
 - **Foreign keys:** none
@@ -631,16 +631,16 @@ All money columns are whole US cents in `integer` (max about $21 million per val
 - **Checks:** `ck_request_stats_nonneg`: all counts >= 0
 - **Grants (changed):** `supplements_app` may SELECT, INSERT and UPDATE (the per-request upsert adds to the counts)
 - **Sensitive data:** none
-- **Basis:** FR-059, FR-048 (D85); HLD §10 Logging
+- **Basis:** FR-059, FR-048 (D86); HLD §10 Logging
 
 #### `health_pings` — one 5-minute slot in which the uptime monitor reached the app · owner BE-19 · (changed)
 
 | Column | Type | Null | Default | Constraint | Notes |
 |---|---|---|---|---|---|
-| `slot` | timestamptz | no | — | PK `pk_health_pings` | (changed, D86; was `minute`) the probe time truncated down to its 5-minute slot, UTC, matching the 5-minute probe in `docs/ops/HEALTH.md` §4 |
+| `slot` | timestamptz | no | — | PK `pk_health_pings` | (changed, D87; was `minute`) the probe time truncated down to its 5-minute slot, UTC, matching the 5-minute probe in `docs/ops/HEALTH.md` §4 |
 | `first_seen_at` | timestamptz | no | now() | — | |
 
-- **Primary key:** `slot` — (changed) availability = slots with a ping ÷ slots elapsed in the period, counting from the first ping ever recorded so the time before monitoring began is not called downtime (FR-059, D86)
+- **Primary key:** `slot` — (changed) availability = slots with a ping ÷ slots elapsed in the period, counting from the first ping ever recorded so the time before monitoring began is not called downtime (FR-059, D87)
 - **Foreign keys:** none
 - **Indexes:** the primary key serves EP-39
 - **Unique:** the primary key (a second ping in the same slot is ignored)
@@ -648,7 +648,7 @@ All money columns are whole US cents in `integer` (max about $21 million per val
 - **Grants (changed):** `supplements_app` may SELECT and INSERT
 - **Written by (changed):** EP-40 `/healthz`, only after its `select 1` succeeds, so a slot with a ping is a slot in which the app reached its database. Anyone can call `/healthz`, so a stranger can only fill a slot that was up anyway; a ping never marks a down slot up
 - **Sensitive data:** none
-- **Basis:** FR-059; HLD L-5; D86
+- **Basis:** FR-059; HLD L-5; D87
 
 #### `sign_in_attempts` — one sign-in try, kept for the rate-limit window · owner BE-3 · (new)
 
@@ -940,7 +940,7 @@ classDiagram
 | Public method (signature only) | Called by | Returns | Raises (problem type) | Covers |
 |---|---|---|---|---|
 | (changed, as built) one file per EP under `server/api/**`, named `<path>.<method>.ts`, whose default export is `defineApiHandler<T>(fn: (event: H3Event) => Promise<T>)` from `server/utils/problem.ts`; EP-40 and EP-41 are plain `defineEventHandler` routes under `server/routes/` | Nitro router | the EP row's response schema | the EP row's problem types: a thrown `ProblemError(slug, extensions)` becomes `application/problem+json`; any other error → `/problems/internal` with `instance` `urn:uuid:<random>` | every EP-15 to EP-41 |
-| (new) `sendProblem` also stores the slug on `event.context.problem`, so BE-19's response hook can count `insufficient-stock` on EP-23 (D85) | BE-1 | — | — | FR-048 |
+| (new) `sendProblem` also stores the slug on `event.context.problem`, so BE-19's response hook can count `insufficient-stock` on EP-23 (D86) | BE-1 | — | — | FR-048 |
 | (new) EP-37's handler skips `BE-4.assertRole`: it passes every signed-in caller to BE-18.changeRole, which decides and logs the refusal (FR-055, NFR-014) | BE-1 | — | — | FR-055 |
 
 ### BE-2 PageGuards · route middleware · CN-1 · (changed)
@@ -1037,7 +1037,7 @@ classDiagram
 
 - **Responsibility:** change a practice's price for a product only through a recorded, floor-checked change.
 - **Depends on:** BE-6, BE-7, BE-20, BE-22 (changed: history cursor)
-- **Bounds (new, proposed D82):** a requested or margin-computed price above 10,000,000 cents ($100,000.00) is refused with 422 `/problems/validation` (pointer `#/price_cents` or `#/margin_basis_points`) before any write, so the `integer` column never overflows into a 500
+- **Bounds (new, proposed D83):** a requested or margin-computed price above 10,000,000 cents ($100,000.00) is refused with 422 `/problems/validation` (pointer `#/price_cents` or `#/margin_basis_points`) before any write, so the `integer` column never overflows into a 500
 - **Tables:** reads `products`; writes `practice_prices`, `price_changes`
 - **Transactions:** `changePrice` opens one around the price upsert and the history insert, locking the practice price row
 - **Basis:** FR-017 to FR-022, NFR-003
@@ -1106,8 +1106,8 @@ classDiagram
 
 - **Responsibility:** change stock counts only through recorded movements that never go below zero.
 - **Depends on:** BE-4, BE-20, BE-22 (changed: history cursor from the shared helper, no longer imported from BE-8, M5-pass5 R7)
-- **Product row lock (changed, proposed D83):** `FOR NO KEY UPDATE`, always in id order, in `reserveForOrder`, `releaseForOrder` and `adjust`; it still stops two writers lowering one count together but no longer blocks foreign-key inserts (`order_lines`, `stock_movements`) that point at the product
-- **Bounds (new, proposed D82):** an adjustment whose `change` is outside −1,000,000 to +1,000,000, or whose resulting count would pass 1,000,000 units, is refused with 422 `/problems/validation` (pointer `#/change`)
+- **Product row lock (changed, proposed D84):** `FOR NO KEY UPDATE`, always in id order, in `reserveForOrder`, `releaseForOrder` and `adjust`; it still stops two writers lowering one count together but no longer blocks foreign-key inserts (`order_lines`, `stock_movements`) that point at the product
+- **Bounds (new, proposed D83):** an adjustment whose `change` is outside −1,000,000 to +1,000,000, or whose resulting count would pass 1,000,000 units, is refused with 422 `/problems/validation` (pointer `#/change`)
 - **Tables:** reads and writes `products`; writes `stock_movements`
 - **Transactions:** `adjust` opens one (lock the product row, check the expected count, update, insert the movement); `reserveForOrder` and `releaseForOrder` run inside BE-10's payment transactions
 - **Basis:** FR-025 to FR-027, FR-029, FR-030, FR-038; INV-5
@@ -1149,11 +1149,11 @@ classDiagram
 
 - **Responsibility:** compute the de-identified order funnel, measures with alert lines, and volume per practice.
 - **Depends on:** BE-4, BE-20, BE-22 (month parsing)
-- **Tables:** reads `orders`, `ledger_entries`, `practices`, `request_stats` (changed: out-of-stock refusals, D85; `payment_attempts` is no longer read)
+- **Tables:** reads `orders`, `ledger_entries`, `practices`, `request_stats` (changed: out-of-stock refusals, D86; `payment_attempts` is no longer read)
 - **Transactions:** none (one repeatable-read transaction is not needed: the page shows counts, not a balance)
-- **Definitions (new; a month is a UTC calendar month, as M5's acceptance Q-3):** sent = orders with `sent_at` in the month; checkout started = those with `checkout_started_at` set; paid = those now `paid`; payment failed = those now `payment_failed`; checkout expired = those now `sent` with `checkout_started_at` set (a hold ended and was not restarted); median time to pay = median of `paid_at − sent_at` over the paid ones, in whole minutes, null when none; orders needing review = all orders now `needs_review` (not month-bound, it is a work queue); out-of-stock refusals = sum of `request_stats.stock_refusals` over the month's hours (D85); per practice: paid and fees = sums of `patient_payment` and `platform_fee` ledger entries with `occurred_at` in the month, orders sent = `sent_at` in the month, orders paid = `paid_at` in the month; every practice is listed, zeros included, by practice id
+- **Definitions (new; a month is a UTC calendar month, as M5's acceptance Q-3):** sent = orders with `sent_at` in the month; checkout started = those with `checkout_started_at` set; paid = those now `paid`; payment failed = those now `payment_failed`; checkout expired = those now `sent` with `checkout_started_at` set (a hold ended and was not restarted); median time to pay = median of `paid_at − sent_at` over the paid ones, in whole minutes, null when none; orders needing review = all orders now `needs_review` (not month-bound, it is a work queue); out-of-stock refusals = sum of `request_stats.stock_refusals` over the month's hours (D86); per practice: paid and fees = sums of `patient_payment` and `platform_fee` ledger entries with `occurred_at` in the month, orders sent = `sent_at` in the month, orders paid = `paid_at` in the month; every practice is listed, zeros included, by practice id
 - **Alert lines (A-11):** orders needing review alerts at 1 or more; every other line is null ("Alert line set after 30 days of orders."), so it never needs attention
-- **Basis:** FR-032, FR-048, FR-049, FR-053; A-11; D85
+- **Basis:** FR-032, FR-048, FR-049, FR-053; A-11; D86
 
 | Public method (signature only) | Called by | Returns | Raises (problem type) | Covers |
 |---|---|---|---|---|
@@ -1198,7 +1198,7 @@ classDiagram
 - **Wiring (changed):** a Nitro server plugin hooks `request` (start time) and `afterResponse` (status, duration, `event.context.problem`) and calls `record` without awaiting it before the response; EP-40 calls `recordPing` after its `select 1` succeeds
 - **Tables:** writes and reads `request_stats`, `health_pings`
 - **Transactions:** none (single upserts; a failed write never fails the request, FM-8)
-- **System health (changed):** availability = health slots with a ping ÷ 5-minute slots elapsed in the month since the first ping ever (D86), null with no pings; error rate = errors ÷ requests over all counted groups; slow page share = slow ÷ requests over `page.*` groups only (S14 "Pages slower than 2 s"); each null when its denominator is 0; `partial_month` when the month is the current one
+- **System health (changed):** availability = health slots with a ping ÷ 5-minute slots elapsed in the month since the first ping ever (D87), null with no pings; error rate = errors ÷ requests over all counted groups; slow page share = slow ÷ requests over `page.*` groups only (S14 "Pages slower than 2 s"); each null when its denominator is 0; `partial_month` when the month is the current one
 - **Basis:** FR-059, NFR-001, NFR-005, NFR-010
 
 | Public method (signature only) | Called by | Returns | Raises (problem type) | Covers |
@@ -1538,18 +1538,18 @@ cannot be read it goes to `/sign-in`. It redirects only to fixed paths, never to
 | **EP-25** (changed) | GET | `/api/ops/orders` | session + role operations_specialist or finance_lead | query: status (paid or needs_review), number, cursor, limit | 200 `OpsOrderPage` | 401 `/problems/unauthenticated`; 403 `/problems/forbidden`; 422 `/problems/validation` | n/a (safe) | cursor on id DESC (changed: the order number is the id, D40), default 25, max 100; (changed) cursor made and read by BE-22 | FR-013, FR-014, FR-050, FR-052 |
 | **EP-26** | GET | `/api/ops/orders/{orderId}` | session + role operations_specialist or finance_lead | path: orderId | 200 `OrderBreakdown` | 401 `/problems/unauthenticated`; 403 `/problems/forbidden`; 404 `/problems/not-found` | n/a (safe) | — | FR-014, FR-036, FR-050, FR-058 |
 | **EP-27** (changed) | GET | `/api/practice/prices` | session + role provider | query: history_cursor | 200 `PriceList` | 401 `/problems/unauthenticated`; 403 `/problems/forbidden`; 422 `/problems/validation` (unknown or malformed history_cursor, M5-pass1 R5) | n/a (safe) | history: cursor, default 25, max 100 | FR-017, FR-019 |
-| **EP-28** (changed) | PUT | `/api/practice/prices/{productId}` | session + role provider | `PriceChangeRequest` | 200 `PracticePrice` | 400 `/problems/idempotency-key-missing`; 401 `/problems/unauthenticated`; 403 `/problems/forbidden`; 404 `/problems/not-found`; 409 `/problems/idempotency-in-flight`; 409 `/problems/stale-price`; 422 `/problems/validation` (changed: also a price, given or from the margin, above 10,000,000 cents, proposed D82); 422 `/problems/below-price-floor`; 422 `/problems/idempotency-mismatch` | `Idempotency-Key` required (each change appends history, so a blind repeat would double it) | — | FR-018, FR-019, FR-020, FR-022 |
+| **EP-28** (changed) | PUT | `/api/practice/prices/{productId}` | session + role provider | `PriceChangeRequest` | 200 `PracticePrice` | 400 `/problems/idempotency-key-missing`; 401 `/problems/unauthenticated`; 403 `/problems/forbidden`; 404 `/problems/not-found`; 409 `/problems/idempotency-in-flight`; 409 `/problems/stale-price`; 422 `/problems/validation` (changed: also a price, given or from the margin, above 10,000,000 cents, proposed D83); 422 `/problems/below-price-floor`; 422 `/problems/idempotency-mismatch` | `Idempotency-Key` required (each change appends history, so a blind repeat would double it) | — | FR-018, FR-019, FR-020, FR-022 |
 | **EP-29** (changed) | GET | `/api/practice/dashboard` | session + role provider | query: month (YYYY-MM) | 200 `PracticeDashboard` (changed: `AttentionItem` gains `patient_display_name` and `total_cents`, set on awaiting-payment items) | 401 `/problems/unauthenticated`; 403 `/problems/forbidden`; 422 `/problems/validation` | n/a (safe) | — (one row per product) | FR-028, FR-029, FR-046, FR-047 |
 | **EP-30** (changed) | GET | `/api/practice/orders` | session + role provider | query: month, cursor, limit | 200 `PracticeOrderPage` | 401 `/problems/unauthenticated`; 403 `/problems/forbidden`; 422 `/problems/validation` (also a cursor that decodes to an impossible time, M5-pass6 R8) | n/a (safe) | cursor, default 25, max 100 | FR-045 |
 | **EP-31** (changed) | GET | `/api/ops/stock` | session + role operations_specialist | query: history_cursor | 200 `StockList` | 401 `/problems/unauthenticated`; 403 `/problems/forbidden`; 422 `/problems/validation` (unknown or malformed history_cursor, M5-pass5 R5) | n/a (safe) | history: cursor, default 25, max 100 | FR-029, FR-030 |
-| **EP-32** (changed) | POST | `/api/ops/stock/{productId}/adjustments` | session + role operations_specialist | `StockAdjustmentRequest` | 201 `StockMovement` | 400 `/problems/idempotency-key-missing`; 401 `/problems/unauthenticated`; 403 `/problems/forbidden`; 404 `/problems/not-found`; 409 `/problems/idempotency-in-flight`; 409 `/problems/stale-stock`; 422 `/problems/validation` (changed: also a change outside ±1,000,000 or a count above 1,000,000, proposed D82); 422 `/problems/insufficient-stock`; 422 `/problems/idempotency-mismatch` | `Idempotency-Key` required | — | FR-030, FR-038, FR-052 |
+| **EP-32** (changed) | POST | `/api/ops/stock/{productId}/adjustments` | session + role operations_specialist | `StockAdjustmentRequest` | 201 `StockMovement` | 400 `/problems/idempotency-key-missing`; 401 `/problems/unauthenticated`; 403 `/problems/forbidden`; 404 `/problems/not-found`; 409 `/problems/idempotency-in-flight`; 409 `/problems/stale-stock`; 422 `/problems/validation` (changed: also a change outside ±1,000,000 or a count above 1,000,000, proposed D83); 422 `/problems/insufficient-stock`; 422 `/problems/idempotency-mismatch` | `Idempotency-Key` required | — | FR-030, FR-038, FR-052 |
 | **EP-33** (changed) | GET | `/api/ops/health` | session + role finance_lead, operations_specialist or data_analyst | query: month | 200 `PlatformHealth` | 401 `/problems/unauthenticated`; 403 `/problems/forbidden`; 422 `/problems/validation` | n/a (safe) | — (changed: the whole practice list, under 200 rows a month; the page shows 25 at a time) | FR-032, FR-048, FR-049, FR-053 |
 | **EP-34** (changed) | GET | `/api/ops/finance/report` | session + role finance_lead | query: from, to (dates) or month | 200 `FinancialReport` | 401 `/problems/unauthenticated`; 403 `/problems/forbidden`; 422 `/problems/validation` (both forms, a bad date, from after to, or over 366 days) | n/a (safe) | — (changed: the whole provider list, under 50 rows; the page shows 25 at a time) | FR-051, FR-060, FR-061, FR-062, FR-064, FR-065 |
 | **EP-35** | GET | `/api/ops/finance/export` | session + role finance_lead | query: from, to or month | 200 text/csv (totals, then one line per paid order) | 401 `/problems/unauthenticated`; 403 `/problems/forbidden`; 422 `/problems/validation` | n/a (safe; logged as a privileged action) | — (streamed) | FR-051, FR-063 |
 | **EP-36** | GET | `/api/ops/staff` | session + role sre | none | 200 `StaffList` | 401 `/problems/unauthenticated`; 403 `/problems/forbidden` | n/a (safe) | — (operations team, under 50 people) | FR-054 |
 | **EP-37** (changed) | PUT | `/api/ops/staff/{userId}/role` | session; BE-18 refuses and logs anyone but the sre, and the sre on their own account (BE-1 does not pre-check the role) | `RoleChangeRequest` | 200 `StaffMember` | 400 `/problems/idempotency-key-missing`; 401 `/problems/unauthenticated`; 403 `/problems/forbidden`; 403 `/problems/self-role-change`; 404 `/problems/not-found`; 409 `/problems/idempotency-in-flight`; 409 `/problems/stale-role`; 422 `/problems/validation`; 422 `/problems/last-finance-lead`; 422 `/problems/idempotency-mismatch` | `Idempotency-Key` required | — | FR-054, FR-055, FR-056 |
 | **EP-38** (changed) | GET | `/api/ops/access-log` | session + role finance_lead | query: month, cursor, limit | 200 `AccessLogPage` | 401 `/problems/unauthenticated`; 403 `/problems/forbidden`; 422 `/problems/validation` (bad month, cursor or limit) | n/a (safe) | cursor on (created_at DESC, id DESC) by BE-22, default 25, max 100 | FR-057 |
-| **EP-39** (changed) | GET | `/api/ops/system-health` | session + role sre | query: month | 200 `SystemHealth` (changed: availability over 5-minute slots, D86) | 401 `/problems/unauthenticated`; 403 `/problems/forbidden`; 422 `/problems/validation` | n/a (safe) | — | FR-059 |
+| **EP-39** (changed) | GET | `/api/ops/system-health` | session + role sre | query: month | 200 `SystemHealth` (changed: availability over 5-minute slots, D87) | 401 `/problems/unauthenticated`; 403 `/problems/forbidden`; 422 `/problems/validation` | n/a (safe) | — | FR-059 |
 | **EP-40** | GET | `/healthz` (changed) | public; reveals only up or down | none | 200 text `ok` after one `select 1` within 2 s, then (changed, M6) BE-19.recordPing records the 5-minute slot without delaying or failing the answer; 503 text `unavailable` (no ping); `Cache-Control: no-store` | — | n/a (safe) | — | FR-059 |
 | **EP-41** | GET | `/version` (new) | public; reveals only the build identity | none | 200 `BuildInfo` (`commit`, `built_at`, read from `build-info.json` written at deploy); 503 text `unknown build`; `Cache-Control: no-store` | — | n/a (safe) | — | FR-059 |
 
@@ -1557,7 +1557,7 @@ cannot be read it goes to `/sign-in`. It redirects only to fixed paths, never to
 
 | type | title | status | When | Extension members |
 |---|---|---|---|---|
-| `/problems/validation` | Some fields are invalid | 422 | the request body or query fails its schema (empty order, quantity below 1, both price and margin, no reason); (changed) a cursor, month, period or limit BE-22 can't read; a price or stock change past the D82 bounds | `errors[]` (`pointer`, `detail`) |
+| `/problems/validation` | Some fields are invalid | 422 | the request body or query fails its schema (empty order, quantity below 1, both price and margin, no reason); (changed) a cursor, month, period or limit BE-22 can't read; a price or stock change past the D83 bounds | `errors[]` (`pointer`, `detail`) |
 | `/problems/unauthenticated` | Please sign in | 401 | no live session (signed out, or idle 15 minutes) | none |
 | `/problems/forbidden` | You can't open this | 403 | signed in, but the role does not allow the page or action (FR-058); (changed) a sign-in by an account whose role is `none` (Q-11) | none |
 | `/problems/not-found` | We can't find this | 404 | the record doesn't exist, or exists but isn't the viewer's (same answer, FR-009) | none |
@@ -1566,7 +1566,7 @@ cannot be read it goes to `/sign-in`. It redirects only to fixed paths, never to
 | `/problems/idempotency-key-missing` | Idempotency-Key is required | 400 | a guarded mutation arrives without its key | none |
 | `/problems/idempotency-in-flight` | This request is still being processed | 409 | the same key's first request has not finished | none |
 | `/problems/idempotency-mismatch` | This key was used for a different request | 422 | same key, different body | none |
-| `/problems/invalid-transition` | This order can't do that now | 409 | an SM-1 transition is not allowed from the current status | (changed, proposed D84) `from`: the order's status when refused (an `OrderStatus`); `event`: `start_checkout`, `pay` or `cancel`. A second Pay losing on LINV-6 sends `from` `in_checkout`, `event` `pay`. Not sent by the M4/M5 code yet (Q-8) |
+| `/problems/invalid-transition` | This order can't do that now | 409 | an SM-1 transition is not allowed from the current status | (changed, proposed D85) `from`: the order's status when refused (an `OrderStatus`); `event`: `start_checkout`, `pay` or `cancel`. A second Pay losing on LINV-6 sends `from` `in_checkout`, `event` `pay`. Not sent by the M4/M5 code yet (Q-8) |
 | `/problems/checkout-expired` | Your price hold ended | 409 | Pay pressed after the 30-minute hold ended (FR-037) | none |
 | `/problems/below-price-floor` | That price is below the lowest allowed | 422 | a price or an order would leave the provider a payout below $0.00 after the fee (FR-004, FR-020) | `lowestAllowedPriceCents`, `productIds` |
 | `/problems/insufficient-stock` | Not enough in stock | 422 | a quantity or a payment needs more units than are in stock, or an adjustment would go below zero (FR-025, FR-026) | `productIds`, `unitsAvailable` |
@@ -1749,7 +1749,7 @@ sequenceDiagram
                 FE8-->>Patient: #quot;Your payment didn't go through. No money was taken. Try again.#quot;
             end
         else an item sold out before Ana paid
-            BE13->>BE10: (changed) insufficient-stock from reserveForOrder, after the attempt insert, inside transaction 1 → [tx rollback] removes the attempt too#59; no attempt row, no charge#59; the order stays in_checkout#59; BE-19 counts the refusal (D85)
+            BE13->>BE10: (changed) insufficient-stock from reserveForOrder, after the attempt insert, inside transaction 1 → [tx rollback] removes the attempt too#59; no attempt row, no charge#59; the order stays in_checkout#59; BE-19 counts the refusal (D86)
             BE1->>BE5: release(user, key)
             BE1-->>FE8: 422 /problems/insufficient-stock
             FE8-->>Patient: #quot;Omega-3 Fish Oil sold out before you paid. Nothing was charged. Contact your practice to change your order.#quot;
@@ -1797,7 +1797,7 @@ sequenceDiagram
 
 **alt an item sold out before Ana paid** (replaces steps 10-15)
 
-- a1. (changed) BE-13 → BE-10: `insufficient-stock` from reserveForOrder, after the attempt insert, inside transaction 1 → [tx rollback] removes the attempt too; no attempt row, no charge; the order stays in_checkout; BE-19 counts the refusal (D85)
+- a1. (changed) BE-13 → BE-10: `insufficient-stock` from reserveForOrder, after the attempt insert, inside transaction 1 → [tx rollback] removes the attempt too; no attempt row, no charge; the order stays in_checkout; BE-19 counts the refusal (D86)
 - a2. BE-1 → BE-5: release(user, key)
 - a3. BE-1 → FE-8: 422 `/problems/insufficient-stock`
 - a4. FE-8 → Patient: "Omega-3 Fish Oil sold out before you paid. Nothing was charged. Contact your practice to change your order."
@@ -2188,7 +2188,7 @@ sequenceDiagram
     participant BE16 as BE-16 PlatformHealthQueries
     participant DB
     FE17->>BE1: GET health for the month (EP-33) → BE-4.assertRole → BE-16.health
-    BE16->>DB: (changed) funnel counts of the month's sent orders by their current state (BE-16 Definitions)#59; median minutes from sent to paid#59; out-of-stock refusals summed from request_stats.stock_refusals (D85)#59; review count#59; paid amounts and fees per practice from ledger entries, and sent and paid order counts per practice
+    BE16->>DB: (changed) funnel counts of the month's sent orders by their current state (BE-16 Definitions)#59; median minutes from sent to paid#59; out-of-stock refusals summed from request_stats.stock_refusals (D86)#59; review count#59; paid amounts and fees per practice from ledger entries, and sent and paid order counts per practice
     BE16->>BE16: compares each measure with its alert line (A-11: review count line 1#59; others #quot;set after 30 days#quot;)
     FE17->>FE24: funnel counts → #quot;Sent 10 · Checkout started 9 · Paid 8#quot;#59; the practice list shows its first 25 rows (changed)
     alt main path (steps 5)
@@ -2206,7 +2206,7 @@ sequenceDiagram
 - **Preconditions:** signed in as finance_lead, operations_specialist or data_analyst
 
 1. FE-17 → BE-1: GET health for the month (EP-33) → BE-4.assertRole → BE-16.health
-2. (changed) BE-16 → DB: funnel counts of the month's sent orders by their current state (BE-16 Definitions); median minutes from sent to paid; out-of-stock refusals summed from `request_stats.stock_refusals` (D85); review count; paid amounts and fees per practice from ledger entries, and sent and paid order counts per practice
+2. (changed) BE-16 → DB: funnel counts of the month's sent orders by their current state (BE-16 Definitions); median minutes from sent to paid; out-of-stock refusals summed from `request_stats.stock_refusals` (D86); review count; paid amounts and fees per practice from ledger entries, and sent and paid order counts per practice
 3. BE-16 → BE-16: compares each measure with its alert line (A-11: review count line 1; others "set after 30 days")
 4. FE-17 → FE-24: funnel counts → "Sent 10 · Checkout started 9 · Paid 8"; the practice list shows its first 25 rows (changed)
 5. FE-17 → Data analyst: "1 measure needs attention: orders needing review (1)" on top
@@ -2461,7 +2461,7 @@ sequenceDiagram
     X1->>BE1: (changed) GET /healthz (EP-40) every 5 minutes → DB: select 1 → BE-19.recordPing → DB: insert the 5-minute slot (ignored if present) → 200 ok
     alt main path (steps 2-4)
         FE21->>BE1: GET system health (EP-39) → BE-4.assertRole(sre) → BE-19.systemHealth
-        BE19->>DB: (changed) availability = pinged slots ÷ 5-minute slots elapsed in the month since the first ping (D86)#59; error rate and slow page share from request stats
+        BE19->>DB: (changed) availability = pinged slots ÷ 5-minute slots elapsed in the month since the first ping (D87)#59; error rate and slow page share from request stats
         FE21->>SRE: #quot;Availability 99.7%, target 99.5%: met#quot; and the other measures
     else the SRE follows a link to an order breakdown
         BE2->>BE4: assertRole fails for EP-6 → 403 /problems/forbidden → #quot;Your role can't open order breakdowns.#quot;
@@ -2475,7 +2475,7 @@ sequenceDiagram
 
 1. (changed) Uptime monitor → BE-1: GET /healthz (EP-40) every 5 minutes → DB: `select 1` → BE-19.recordPing → DB: insert the 5-minute slot (ignored if present) → 200 `ok`
 2. FE-21 → BE-1: GET system health (EP-39) → BE-4.assertRole(sre) → BE-19.systemHealth
-3. (changed) BE-19 → DB: availability = pinged slots ÷ 5-minute slots elapsed in the month since the first ping (D86); error rate and slow page share from request stats
+3. (changed) BE-19 → DB: availability = pinged slots ÷ 5-minute slots elapsed in the month since the first ping (D87); error rate and slow page share from request stats
 4. FE-21 → SRE: "Availability 99.7%, target 99.5%: met" and the other measures
 
 **alt the SRE follows a link to an order breakdown** (replaces steps 2-4)
@@ -2516,7 +2516,7 @@ stateDiagram-v2
 <!-- /diagram -->
 
 - **Initial:** `sent` · **Terminal:** `paid`, `cancelled`, `needs_review` · **Stored in:** CHECK `ck_orders_status`
-- **Enforced in:** BE-9 and BE-10, each transition a conditional update ("change to X only where the status is still Y", checking the affected-row count), so two racing requests can't both win; (changed, proposed D84) every 409 `/problems/invalid-transition` names `from` and `event`
+- **Enforced in:** BE-9 and BE-10, each transition a conditional update ("change to X only where the status is still Y", checking the affected-row count), so two racing requests can't both win; (changed, proposed D85) every 409 `/problems/invalid-transition` names `from` and `event`
 
 | State | Meaning |
 |---|---|
@@ -2841,7 +2841,7 @@ stateDiagram-v2
 - **Interview line:** "I put the whole look in one theme file and shipped the fonts with the app, so the restyle never calls a third party from inside the clinician's chart."
 - **Default if you don't answer:** stays proposed; nothing downstream may build on it.
 
-### D82 Upper bounds on price and stock input  [status: accepted]
+### D83 Upper bounds on price and stock input  [status: accepted]
 
 - **Question:** should an absurd price or stock change be refused with a 422, or keep reaching the database and coming back as a 500?
 - **Forces:** journal D77 (accepted: the 500 is harmless, staff-only, rolls back); M5-pass1 R2 and M5-pass5 R1 routed it to design twice; `integer` columns stop at 2,147,483,647; a 99.99% margin multiplies cost by 10,000 (S5 already warns at 99%); S7 asks to confirm +10,000 units
@@ -2861,7 +2861,7 @@ stateDiagram-v2
 - **Interview line:** "The database would have refused it anyway; the bound just turns a confusing 500 into a 422 that points at the field."
 - **Default if you don't answer:** stays proposed; D77 stands and the 500 stays.
 
-### D83 How strongly a payment locks product rows  [status: accepted]
+### D84 How strongly a payment locks product rows  [status: accepted]
 
 - **Question:** which row lock should stock changes take on `products`: `FOR UPDATE` (as built) or `FOR NO KEY UPDATE`?
 - **Forces:** M5-pass3 R6: `FOR UPDATE` also blocks the key-share lock every foreign-key insert takes on the product (sending an order's lines, writing a stock movement), so those wait behind payment transaction 1; the update only changes `units_in_stock`, never the key; INV-5 needs two writers of one count to serialise
@@ -2881,7 +2881,7 @@ stateDiagram-v2
 - **Interview line:** "I took the weakest lock that still serialises the stock count, so foreign-key inserts don't queue behind payments."
 - **Default if you don't answer:** stays proposed; the code keeps `FOR UPDATE`.
 
-### D84 What a refused order transition tells the screen  [status: accepted]
+### D85 What a refused order transition tells the screen  [status: accepted]
 
 - **Question:** should 409 `/problems/invalid-transition` carry the order's current status and the attempted event (Q-8), or should screens keep re-reading the order to find out why?
 - **Forces:** the registry has promised `from` and `event` since the first G3, and the code sends neither; M5-pass7 R2 (P1): the checkout step told a patient "This order is already paid." when it was `payment_failed`, because the problem could not say why; M5-T011 fixed that one screen by going back and refetching EP-21; S6 still picks its copy from the row it loaded, which can be stale
@@ -2901,7 +2901,7 @@ stateDiagram-v2
 - **Interview line:** "The bug came from the client guessing a reason the server knew; the fix was to put the reason in the problem body."
 - **Default if you don't answer:** stays proposed; Q-8 stays open and screens keep refetching.
 
-### D85 Where out-of-stock refusals are counted  [status: accepted]
+### D86 Where out-of-stock refusals are counted  [status: accepted]
 
 - **Question:** where does the platform health count "Out-of-stock refusals" (FR-048) come from, now that a sold-out payment leaves no attempt row?
 - **Forces:** as built (and per SEQ-2), a sold-out Pay rolls transaction 1 back, so `payment_attempts` holds no trace and BE-16's first design (count failed attempts with reason no stock) would always show 0; the count is a total only (FR-053); it is a health signal, not money
@@ -2921,7 +2921,7 @@ stateDiagram-v2
 - **Interview line:** "The refusal rolls back by design, so I counted it where the request is observed instead of inventing a payment row."
 - **Default if you don't answer:** stays proposed; the measure shows 0.
 
-### D86 How finely availability is measured  [status: accepted]
+### D87 How finely availability is measured  [status: accepted]
 
 - **Question:** what time slice does one uptime ping stand for: one minute (first draft) or five minutes?
 - **Forces:** `docs/ops/HEALTH.md` §4 sets the probe at every 5 minutes; with one-minute slices a healthy month would read about 20%; AE-062 expects a figure like 99.7%; S14's target is 99.5%
@@ -2952,7 +2952,7 @@ stateDiagram-v2
 | **Q-5** | ⚠ How are expired `idempotency_keys` and ended `sessions` rows removed, with no scheduler container in the HLD? | `idempotency_keys`, `sessions` | delete a user's expired rows on their next write (no scheduler); `request_stats` and `health_pings` stay (about 9,000 small rows a year) | design: confirm at G3 |
 | **Q-6** | ⚠ Which fictional accounts and products are seeded? | seed data, demo, acceptance tests | 2 practices (Willow Creek Wellness, one more), Dr. Maya Chen and Dr. Sam Lee, patients Ana Ruiz and Ben Ortiz, Fran Fields, Omar Ortega, Sam Reyes, Dana Ito, and the 3 PRD products plus 5 more; all `@example.test` | human at G3 |
 | **Q-7** | ⚠ Broader holistic care (prescriptions through a partner pharmacy, medical supplies, services such as gym memberships or IV sessions, recurring charges) would need product types, a payee per order line and asynchronous work (D42 revisit-if). Should the PRD record these as Later scope? | future PRD scope; `products`, `order_lines`, `ledger_entries` categories | yes: add them to the PRD's Later row as a parked idea so they are not built now; design them when a milestone takes them | write-prd (Later scope), human |
-| **Q-8** (changed) | ⚠ The registry gives `/problems/invalid-transition` the members `from` and `event`, but the M4 and M5 code sends neither (M4-pass6 R9; M5-pass7 R2 showed the cost: a patient told "already paid" when her payment had failed). Keep the contract and add them, or drop them from the registry? | `/problems/invalid-transition`, FE-8, FE-15, BE-9, BE-10 | now proposed as D84: keep the contract and send `from` and `event` from the three refusal sites in an M6 task | human at G3 (D84) |
+| **Q-8** (changed) | ⚠ The registry gives `/problems/invalid-transition` the members `from` and `event`, but the M4 and M5 code sends neither (M4-pass6 R9; M5-pass7 R2 showed the cost: a patient told "already paid" when her payment had failed). Keep the contract and add them, or drop them from the registry? | `/problems/invalid-transition`, FE-8, FE-15, BE-9, BE-10 | now proposed as D85: keep the contract and send `from` and `event` from the three refusal sites in an M6 task | human at G3 (D85) |
 | **Q-9** (new) | ⚠ S14 shows an availability target of 99.5% (`SystemHealth.availability_target_percent`), while `docs/ops/HEALTH.md` SLO-1 is 99% of probes over 30 rolling days. Which is the product's target? | EP-39 `SystemHealth`, FE-21 | keep 99.5% on S14 (the approved screen); the runbook's 99% is the demo's alerting budget, a different measure over a different window; align the runbook when the in-EHR release sets its SLO | ship-milestone (runbook), human |
 | **Q-10** (new) | ⚠ NFR-014 wants report exports logged and reviewed by someone other than the actor. The design logs each export as one structured line (BE-17), which the SRE reads in the logs; S13 lists role changes only. Is the log line enough? | EP-35, BE-17, `access_log` | yes for this slice: the line names the actor, period and row count and the SRE (not the finance lead) reviews logs; an export history on S13 would need a PRD and screen change | clarify-spec on docs/product/prd.md |
 | **Q-11** (new) | ⚠ What happens when an operations person whose role was removed (`none`) signs in? No screen covers it, and the site root has no home for `none`. | EP-15, BE-3.signIn, `ROLE_HOME`, S8 | refuse the sign-in with 403 `/problems/forbidden` and open no session; S8 shows "Your account has no role yet. Ask the SRE to give you one." (new copy) | clarify-spec on docs/product/prd.md (and map-ux-flows for the S8 copy) |
@@ -2972,4 +2972,4 @@ stateDiagram-v2
 | 2026-10-10 23:57 CDT | Revise (M5 review pass 7 R4, pass 6 R9 a/b, pass 1 R3; Approvals STANDING 2026-10-10 23:09 CDT): EP-17 `Me` gains `practice_name` (string or null), read with the session's user; S5 and S6 titles use it | EP-17, BE-3, openapi Me | G3 by STANDING approval 2026-10-10 23:57 CDT |
 | 2026-10-11 07:24 CDT | Delta (M5.1, D75, D80): FE-1 page frame (changed); Theme paragraph (theme.css custom properties, shared classes, self-hosted fonts); D81 proposed | FE-1, D81 | G3 by STANDING approval 2026-10-11 07:24 CDT |
 | 2026-10-11 08:11 CDT | Revise (M5.1 review pass 1 R5, R9): control-border token; pill tokens listed; D81 marked accepted (journal D81); site-root page recorded | Theme, FE-2, D81 | G3 by STANDING approval 2026-10-11 08:11 CDT |
-| 2026-10-11 09:25 CDT | Delta (M6-measurement-and-operations, job M6-LLD): M6 rows reconciled with the code M4, M5 and M5.1 shipped (route-file handlers, page guard, role lists, `reserveForOrder` as built, SEQ-2 attempt-before-stock order); routed M5 catch-up: attention items carry patient name and total (M5-pass6 R4), 422 for every bad cursor in the contract and one shared paging helper BE-22 (M5-pass1 R5, pass5 R5, R7, pass6 R8), price and stock bounds proposed (D82, against D77), `FOR NO KEY UPDATE` proposed (D83), invalid-transition members proposed (D84, Q-8, M5-pass7 R2); M6 design gaps closed: out-of-stock refusals counted in `request_stats` (D85), availability over 5-minute slots matching the probe (D86), EP-37 refusals reach BE-18, M6 grants; decision statuses synced with the journal (D38 superseded by D44; D39 to D42, D72 accepted); Q-9 to Q-12 | users, access_log, request_stats, health_pings, Database roles, BE-1, BE-2, BE-4, BE-8, BE-10, BE-13 to BE-19, BE-22, FE-15, FE-17 to FE-20, FE-22, FE-23, ST-7, EP-10 to EP-15, EP-25, EP-27 to EP-34, EP-37 to EP-40, Problem types, Pagination, SEQ-2, SEQ-8, SEQ-10, SEQ-12, SM-1, SM-2, FM-8, SEAM-7, D38 to D42, D72, D82 to D86, Q-8 to Q-12 | pending G3 |
+| 2026-10-11 09:25 CDT | Delta (M6-measurement-and-operations, job M6-LLD): M6 rows reconciled with the code M4, M5 and M5.1 shipped (route-file handlers, page guard, role lists, `reserveForOrder` as built, SEQ-2 attempt-before-stock order); routed M5 catch-up: attention items carry patient name and total (M5-pass6 R4), 422 for every bad cursor in the contract and one shared paging helper BE-22 (M5-pass1 R5, pass5 R5, R7, pass6 R8), price and stock bounds proposed (D83, against D77), `FOR NO KEY UPDATE` proposed (D84), invalid-transition members proposed (D85, Q-8, M5-pass7 R2); M6 design gaps closed: out-of-stock refusals counted in `request_stats` (D86), availability over 5-minute slots matching the probe (D87), EP-37 refusals reach BE-18, M6 grants; decision statuses synced with the journal (D38 superseded by D44; D39 to D42, D72 accepted); Q-9 to Q-12 | users, access_log, request_stats, health_pings, Database roles, BE-1, BE-2, BE-4, BE-8, BE-10, BE-13 to BE-19, BE-22, FE-15, FE-17 to FE-20, FE-22, FE-23, ST-7, EP-10 to EP-15, EP-25, EP-27 to EP-34, EP-37 to EP-40, Problem types, Pagination, SEQ-2, SEQ-8, SEQ-10, SEQ-12, SM-1, SM-2, FM-8, SEAM-7, D38 to D42, D72, D83 to D87, Q-8 to Q-12 | pending G3 |

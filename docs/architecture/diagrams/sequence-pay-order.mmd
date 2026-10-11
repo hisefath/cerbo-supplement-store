@@ -46,7 +46,7 @@ sequenceDiagram
                 FE8-->>Patient: #quot;Your payment didn't go through. No money was taken. Try again.#quot;
             end
         else an item sold out before Ana paid
-            BE13->>BE10: (changed) insufficient-stock from reserveForOrder, after the attempt insert, inside transaction 1 → [tx rollback] removes the attempt too#59; no attempt row, no charge#59; the order stays in_checkout#59; BE-19 counts the refusal (D85)
+            BE13->>BE10: (changed) insufficient-stock from reserveForOrder, after the attempt insert, inside transaction 1 → [tx rollback] removes the attempt too#59; no attempt row, no charge#59; the order stays in_checkout#59; BE-19 counts the refusal (D86)
             BE1->>BE5: release(user, key)
             BE1-->>FE8: 422 /problems/insufficient-stock
             FE8-->>Patient: #quot;Omega-3 Fish Oil sold out before you paid. Nothing was charged. Contact your practice to change your order.#quot;
