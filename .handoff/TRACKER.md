@@ -263,6 +263,7 @@ several harnesses read it and the repo is public.
 | 2026-10-11 15:40 CDT | G-L5 | H29@0a295ac08761 | "A, adopt all 10" |
 | 2026-10-11 15:40 CDT | G-L5 (block decision, rows without a diff) | FINDINGS.md F32, F34, F36, F41-F46 | "A, adopt all 10" (recommended A: accept all as listed) |
 | 2026-10-11 16:33 CDT | Fix track: Sign out button (screens.md Global conventions; AT-006; 2 code files, no API change) | fix/sign-out-button | "theres no logout button, please make one" |
+| 2026-10-11 16:51 CDT | Fix track: sign-in error line (wrong password showed "You're offline"; 2 code files + unit test, no API change) | fix/sign-in-error-message | "hey, this alert in red doesnt make sense, i typed in the wrong password, it should be representative of the right error." |
 
 ## Log
 
@@ -571,3 +572,5 @@ several harnesses read it and the repo is public.
 2026-10-11 14:51 CDT DEPLOY M6.1 1377d9d → production web-v2 (deployment ef903acd SUCCESS); SMOKE GREEN 7/0; pre-approved; M5-R03 closed
 2026-10-11 15:44 CDT APPLY route-failure G-L5 "A, adopt all 10": kit H20 63163f4, H22 99195f4, H24 f1f7494, H26 9279262, H29 fa952bb (pushed); project H21, H23, H25, H27, H28 on chore/route-failure-h21-h28; bash login shell resolves node, npx, glab, railway
 2026-10-11 16:33 CDT FIX sign out: AppShell shows Sign out to signed-in people (EP-16, then /sign-in?signed_out=1 "You signed out."); AT-006 red at d3bd726 then green; make check exit 0; browser check: button shown, signs out, notice shown, hidden when signed out
+2026-10-11 16:51 CDT FIX sign-in error line: production answers a wrong password with 401 sign-in-failed (checked by curl and from the live page); the page showed "You're offline" whenever a request got no answer, without checking navigator.onLine. signInErrorMessage() now says offline only when the browser is offline, else the S8 'our failure' copy; unit test red at 0cc38e5, green at 78c089e
+2026-10-11 16:51 CDT NOTE filed: the same 'no answer = offline' assumption, plus 'X is unchanged' claims that may be false when a write's answer is lost, in ProblemMessage default slug, CheckoutStep, OrderPanel, ops/access.vue:107, ops/stock.vue:158, practice/prices.vue:104 (route to a fix task; checkout copy must stay money-safe)
