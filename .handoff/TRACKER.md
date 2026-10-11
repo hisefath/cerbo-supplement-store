@@ -197,6 +197,7 @@ several harnesses read it and the repo is public.
 | 2026-10-11 00:20 CDT | G5 Revise (report-milestone recommendation): answer DV-1, DV-8 (a, Log lines); D79 for 11 tasks (DV-3); re-run check-security on the head | docs/milestones/M5.md (draft, report run 2026-10-11 00:07 CDT) | STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
 | 2026-10-11 00:24 CDT | G5 security part: approve checklist (0 reachable critical/high, no new finding) | docs/security/CHECKLIST.md@77c555c | STANDING row 2026-10-10 23:09 CDT |
 | 2026-10-11 00:28 CDT | G5 Merge (report recommendation; 4 clauses yes; 0 open P0/P1; 0 unaccepted high/critical) | docs/milestones/M5.md@691b4e1 | STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
+| 2026-10-11 06:56 CDT | deploy (ship-milestone) | main@220a971 → Railway production (web-v2) | "yes, deploy 220a971 to production" |
 
 ## Log
 
@@ -438,3 +439,5 @@ several harnesses read it and the repo is public.
 2026-10-11 00:20 CDT NOTE DV-8: ebac30e edits two comment lines in app/pages/practice/dashboard.vue: the supervisor updated the stale EP-17 comment that M5-T011's result named as out of date (outside T011 Owns); comment only, no decision
 2026-10-11 00:24 CDT SECURITY M5 re-run at 23f3451: 0 reachable critical/high; SEC-14 fixed, SEC-10/12/13 accepted D76-D78; ALL CHECKS PASSED
 2026-10-11 00:34 CDT MERGE M5 MR !9 -> main 220a971 (pipeline #49100 success); make check on main exit 0 (unit 217, M4 43, M5 44)
+2026-10-11 06:59 CDT DEPLOY M5 220a971 → production web-v2 (deployment 373e2d7d SUCCESS); migrations 12000, 13000 applied by human-run railway-setup.sh --skip-seed; /version 220a971; SMOKE GREEN 7/0
+2026-10-11 06:59 CDT BUG filed: db/seed/demo.ts reset list lacks price_changes and stock_movements, so a full re-seed now fails (FK); fix in M5.1 via fix-bug
