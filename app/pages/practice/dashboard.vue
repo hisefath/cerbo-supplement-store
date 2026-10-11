@@ -10,8 +10,8 @@ interface PracticeDashboard { month: string; attention: AttentionItem[]; sales: 
 interface PracticeOrder { order_id: number; patient_display_name: string; total_cents: number; status: string; sent_at: string; paid_at: string | null }
 interface PracticeOrderPage { data: PracticeOrder[]; next_cursor: string | null }
 
-// S6 names the practice, but no EP returns its name yet (Me has only practice_id): this reads the session's
-// practice_name if EP-17 ever returns it, and falls back to the bare title until then (question in M5-T010 result).
+// S6 names the practice: the session's
+// practice_name from EP-17 (Me.practice_name, M5-T011).
 const viewer = useNuxtData<{ practice_name?: string } | null>('viewer').data
 const practiceName = computed(() => viewer.value?.practice_name ?? '')
 useHead({ title: computed(() => (practiceName.value ? `Practice dashboard · ${practiceName.value}` : 'Practice dashboard')) })

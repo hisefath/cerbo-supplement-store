@@ -29,7 +29,7 @@ several harnesses read it and the repo is public.
 | M5-T008 | S2 hold-ended banner | Standard / build | claude-subagent | done | 2026-10-10 23:16 CDT | see task file | 0b79027 |
 | M5-T009 | S7 stock page fixes | Standard / build | claude-subagent | done | 2026-10-10 23:16 CDT | see task file | 12acb25 |
 | M5-T010 | S6 dashboard fixes | Standard / build | claude-subagent | done | 2026-10-10 23:16 CDT | see task file | 635d015 |
-| M5-T011 | review fixes: checkout answers (R2, R3), practice name (R4) | Standard / build | claude-subagent | working | 2026-10-10 23:57 CDT | see task file | — |
+| M5-T011 | review fixes: checkout answers (R2, R3), practice name (R4) | Standard / build | claude-subagent | done | 2026-10-10 23:57 CDT | see task file | 0c4510a |
 | M4-CI01 | CI on the MacBook runner: enable runner 245, .gitlab-ci.yml running make check | Fix / supervisor | supervisor (claude-opus-5-5) | done | 2026-10-10 19:05 CDT | .gitlab-ci.yml | — |
 | M5-T001 | Provider changes a practice price (specs/M5-prices-and-stock/tasks/T001.md) | Standard / implement-task | claude-subagent | done | 2026-10-10 21:09 CDT | see task file | 135b9ca |
 | M5-T002 | Payment reserves and releases stock (specs/M5-prices-and-stock/tasks/T002.md) | Standard / implement-task | claude-subagent | done | 2026-10-10 21:09 CDT | see task file | f5bb975 |
@@ -430,3 +430,4 @@ several harnesses read it and the repo is public.
 2026-10-10 23:57 CDT REVIEW M5 pass 7: 0 P0, 2 P1, 1 P2, 3 P3 (.handoff/reviews/M5-pass7.md)
 2026-10-10 23:57 CDT DISPATCH M5-T011 harness=claude-subagent why=pass 7 review fixes; worktree .claude/worktrees/m5-t011
 2026-10-10 23:59 CDT SECURITY M5 check-security: 0 reachable critical/high; SEC-14 fixed by AT-044 (green pin, fails with the grant widened); SEC-10, 12, 13 accepted (D76-D78)
+2026-10-11 00:05 CDT VERIFY M5-T011 squashed 0c4510a: result done; scope-guard OK (4 paths); supervisor make check on the milestone exit 0 (unit 217, M4 43, M5 44); diff read
