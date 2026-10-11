@@ -583,3 +583,6 @@ several harnesses read it and the repo is public.
 2026-10-11 17:27 CDT DISPATCH M7-J02 harness=claude-subagent why=isolated doc/tool job, disjoint Owns
 2026-10-11 17:27 CDT DISPATCH M7-J03 harness=claude-subagent why=isolated doc/tool job, disjoint Owns
 2026-10-11 17:27 CDT DISPATCH M7-J04 harness=claude-subagent why=isolated doc/tool job, disjoint Owns
+2026-10-11 17:31 CDT RESULT M7-J03 status=done harness=claude-subagent timeout=no tree=clean
+2026-10-11 17:31 CDT FINDING LINV-1: lld.md names ct_order_lines_fee_shares_sum but no migration builds it (allocateFee enforces in code) -> M7-J05
+2026-10-11 17:31 CDT NOTE records push: GitHub mirror leg blocked by pre-push; GitLab branch pushed, MR !19
