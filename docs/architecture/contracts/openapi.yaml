@@ -742,6 +742,12 @@ paths:
                 anyOf:
                   - $ref: "#/components/schemas/ValidationProblem"
                   - $ref: "#/components/schemas/Problem"
+        "429":
+          description: "/problems/rate-limited (more than 10 payment attempts in 15 minutes for one person or one address)"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
         "502":
           description: "/problems/payment-failed"
           content:
@@ -1433,20 +1439,49 @@ paths:
                 anyOf:
                   - $ref: "#/components/schemas/ValidationProblem"
                   - $ref: "#/components/schemas/Problem"
-  "/health":
+  "/healthz":
     get:
       x-lld-id: "EP-40"
       operationId: health
-      summary: "Health check for the uptime monitor"
+      summary: "Health check for the uptime monitor: one select 1 within 2 s"
       tags: [operations]
       security: []
       responses:
         "200":
-          description: "Health check for the uptime monitor"
+          description: "The app reaches its database"
+          content:
+            text/plain:
+              schema:
+                type: string
+                enum: [ok]
+        "503":
+          description: "The database is unreachable or slower than 2 s"
+          content:
+            text/plain:
+              schema:
+                type: string
+                enum: [unavailable]
+  "/version":
+    get:
+      x-lld-id: "EP-41"
+      operationId: version
+      summary: "The build identity written at deploy"
+      tags: [operations]
+      security: []
+      responses:
+        "200":
+          description: "The deployed commit and build time"
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Health"
+                $ref: "#/components/schemas/BuildInfo"
+        "503":
+          description: "No build identity (local development)"
+          content:
+            text/plain:
+              schema:
+                type: string
+                enum: [unknown build]
 components:
   securitySchemes:
     sessionCookie:
@@ -2184,12 +2219,13 @@ components:
           type: number
           const: 5
       required: [month, partial_month, availability_percent, availability_target_percent, error_rate_percent, slow_page_percent, slow_page_target_percent]
-    Health:
+    BuildInfo:
       type: object
       properties:
-        status:
+        commit:
           type: string
-          enum: [up]
-        version:
+          pattern: "^[0-9a-f]{40}$"
+        built_at:
           type: string
-      required: [status, version]
+          format: date-time
+      required: [commit, built_at]
