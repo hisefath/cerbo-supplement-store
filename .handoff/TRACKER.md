@@ -22,7 +22,7 @@ several harnesses read it and the repo is public.
 |---|---|---|---|---|---|---|---|
 | M1-S01 | repo setup: backup, init-repo, AGENTS commands, make check, remotes, journal import (human's kickoff message) | Full / phase 0 (G-init) | supervisor (claude-opus-5-5) | done | 2026-10-08 22:33 CDT | scaffold paths, AGENTS.md Commands, Makefile, .gitignore, docs/decisions/DECISION_JOURNAL.md | 1ed9fd1 (G-init) |
 | M5-R01 | F20: design-lld catch-up before M5 (Q-1 to Q-4, D47 SM-1 guard, FM-3 new-key retry, pagination wording, EP-23 429, pay_rate_attempts) | Standard / design-lld | supervisor | done | 2026-10-10 18:31 CDT | docs/architecture/lld.md, contracts/openapi.yaml | — |
-| M5-R02 | F21: acceptance tests for review-fixed behaviours (key release, stuck attempt, parallel limits, cancel states) | Standard / define-acceptance | supervisor | todo | 2026-10-10 18:31 CDT | specs/M4-tracer-bullet/acceptance.md, tests/acceptance/** | — |
+| M5-R02 | F21: acceptance tests for review-fixed behaviours (key release, stuck attempt, parallel limits, cancel states) | Standard / define-acceptance | supervisor | done | 2026-10-10 18:31 CDT | specs/M4-tracer-bullet/acceptance.md, tests/acceptance/** | — |
 | M5-R03 | F22: M5 scope in the PRD (patient order list /orders 404, provider view of EP-4, needs-review amounts, copy gaps) | Standard / clarify-spec | supervisor | todo | 2026-10-10 18:31 CDT | docs/product/prd.md | — |
 | M4-CI01 | CI on the MacBook runner: enable runner 245, .gitlab-ci.yml running make check | Fix / supervisor | supervisor (claude-opus-5-5) | done | 2026-10-10 19:05 CDT | .gitlab-ci.yml | — |
 
@@ -161,6 +161,7 @@ several harnesses read it and the repo is public.
 | 2026-10-10 19:53 CDT | deploy-production (option b: roll back to 1130822 at once if smoke is red) | M4@158fb11 | "yes, deploy 158fb11 to production" |
 | 2026-10-10 20:32 CDT | G3 D72 | docs/architecture/lld.md@9708841 D72 | "Approve, drop the seam" |
 | 2026-10-10 20:32 CDT | G3 | docs/architecture/lld.md@9708841 (M5-R01 catch-up; + contracts/openapi.yaml) | "Approve, then /define-acceptance" |
+| 2026-10-10 21:01 CDT | G4 acceptance part (Q-2 to Q-5 recommendations taken at G4; Q-6 open) | specs/M5-prices-and-stock/acceptance.md@f0e77db + tests/acceptance/M5 | "Approve, then /slice-tasks" |
 
 ## Log
 
@@ -356,3 +357,4 @@ several harnesses read it and the repo is public.
 2026-10-10 20:25 CDT FAIL M5-D02 human_review: lld.md §2 contradicted itself (clientAddress callers; BE-20 callers missing BE-21); fixed in 42461ba; redraw dispatched again
 2026-10-10 20:27 CDT VERIFY M5-D02 squashed: result done; scope-guard OK (1 path); 21 classes, 47 relationships; render unverified. Embedded 18 diagrams in lld.md (in sync)
 2026-10-10 20:32 CDT GATE G3 approved lld.md@9708841 (M5-R01 catch-up); Q-8 becomes an M5 task; M5-R01 done; next define-acceptance (M5-R02)
+2026-10-10 21:01 CDT GATE G4 (acceptance part) approved specs/M5-prices-and-stock/acceptance.md@f0e77db; M5-R02 done (AT-029 to AT-033 pins); next slice-tasks M5
