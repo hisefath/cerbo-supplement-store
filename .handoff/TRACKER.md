@@ -538,3 +538,4 @@ several harnesses read it and the repo is public.
 2026-10-11 12:25 CDT DISPATCH M6-T007 harness=claude-subagent why=last task: ROLE_PAGES, privacy sweep, make check join
 2026-10-11 12:42 CDT VERIFY M6-T007 squashed 5ffe173: scope-guard OK (2 paths); milestone make check exit 0 with M6 joined (all six suites)
 2026-10-11 12:42 CDT REVIEW M6 milestone: verifier pass 1 and check-security dispatched
+2026-10-11 12:58 CDT FIX M6-pass1 R1 (Fix track, 1 file, no API change): practice/dashboard.vue cancel-refusal copy reads the problem's from (D85), falling back to the loaded row; make check exit 0
