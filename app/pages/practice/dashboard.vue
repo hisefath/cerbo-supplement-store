@@ -209,13 +209,15 @@ function holdFocus(e: FocusEvent) {
       </div>
       <p>Questions? Contact platform support</p>
 
-      <div v-if="cancelling" ref="dialog" role="dialog" aria-modal="true" aria-labelledby="cancel-heading" class="dialog" @keydown="trapTab" @focusout="holdFocus">
-        <p id="cancel-heading">
-          Cancel {{ cancelling.patient_display_name }}'s {{ dollars(cancelling.total_cents) }} order?
-          {{ cancelling.patient_display_name.split(' ')[0] }} will see that your practice cancelled it. This can't be undone.
-        </p>
-        <button type="button" class="btn-danger" :disabled="busy" @click="confirmCancel">{{ busy ? 'Cancelling…' : 'Cancel order' }}</button>
-        <button type="button" class="btn-secondary keep" @click="cancelling = null">Keep order</button>
+      <div v-if="cancelling" class="backdrop">
+        <div ref="dialog" role="dialog" aria-modal="true" aria-labelledby="cancel-heading" class="dialog" @keydown="trapTab" @focusout="holdFocus">
+          <p id="cancel-heading">
+            Cancel {{ cancelling.patient_display_name }}'s {{ dollars(cancelling.total_cents) }} order?
+            {{ cancelling.patient_display_name.split(' ')[0] }} will see that your practice cancelled it. This can't be undone.
+          </p>
+          <button type="button" class="btn-danger" :disabled="busy" @click="confirmCancel">{{ busy ? 'Cancelling…' : 'Cancel order' }}</button>
+          <button type="button" class="btn-secondary keep" @click="cancelling = null">Keep order</button>
+        </div>
       </div>
     </section>
   </AppShell>
@@ -227,7 +229,8 @@ function holdFocus(e: FocusEvent) {
 .attention { list-style: none; padding: 0; margin: 0; }
 .card { margin-bottom: var(--space-section); overflow-x: auto; }
 .attention li { padding: 4px 0; }
-.dialog { border: 1px solid var(--color-border); border-radius: var(--radius-dialog); box-shadow: var(--shadow-card); padding: var(--space-card); background: var(--color-card); }
+.backdrop { position: fixed; inset: 0; z-index: 10; padding: 16px; background: color-mix(in srgb, var(--color-ink) 40%, transparent); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; }
+.dialog { max-width: 480px; width: 100%; box-sizing: border-box; border: 1px solid var(--color-border); border-radius: var(--radius-dialog); box-shadow: var(--shadow-card); padding: var(--space-card); background: var(--color-card); }
 .dialog button { margin-right: 8px; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 @media (max-width: 600px) {

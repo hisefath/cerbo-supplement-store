@@ -107,7 +107,7 @@ const emptyText = computed(() => {
 .tabs { display: flex; gap: 16px; margin: 8px 0; }
 .tabs a { min-height: 24px; padding: 4px 0; }
 .tabs a[aria-current='page'] { font-weight: 600; text-decoration: underline; }
-.find input { min-height: 44px; box-sizing: border-box; padding: 0 12px; border: 1px solid var(--color-border); border-radius: var(--radius-button); background: var(--color-card); color: var(--color-ink); font: inherit; }
+.find input { min-height: 44px; box-sizing: border-box; padding: 0 12px; border: 1px solid var(--color-control-border); border-radius: var(--radius-button); background: var(--color-card); color: var(--color-ink); font: inherit; }
 .find { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0 16px; }
 .find label { flex-basis: 100%; }
 .helper { flex-basis: 100%; margin: 0; color: var(--color-ink-muted); font-size: var(--text-detail); }

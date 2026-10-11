@@ -59,7 +59,7 @@ onMounted(() => root.value?.querySelector<HTMLInputElement>('input')?.focus())
 <style scoped>
 .change { border-top: 1px solid var(--color-border); border-bottom: 1px solid var(--color-border); padding: var(--space-card) 0; margin: 12px 0; }
 label { display: block; margin-top: 8px; }
-input { display: block; width: 100%; max-width: 360px; min-height: 44px; box-sizing: border-box; padding: 0 12px; border: 1px solid var(--color-border); border-radius: var(--radius-button); background: var(--color-card); color: var(--color-ink); font: inherit; }
+input { display: block; width: 100%; max-width: 360px; min-height: 44px; box-sizing: border-box; padding: 0 12px; border: 1px solid var(--color-control-border); border-radius: var(--radius-button); background: var(--color-card); color: var(--color-ink); font: inherit; }
 .helper { margin: 2px 0; color: var(--color-ink-muted); font-size: var(--text-detail); }
 .error { color: var(--color-danger); }
 .actions { display: flex; gap: 8px; margin-top: 12px; }
