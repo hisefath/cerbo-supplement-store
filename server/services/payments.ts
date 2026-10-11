@@ -7,7 +7,7 @@ import { errorFacts, ProblemError } from '../utils/problem'
 import { now } from './clock'
 import { assertIsOrderPatient } from './access-policy'
 import { allocateFee, assertSplitBalances, payoutCents, platformFeeCents, SplitMismatch, type Split } from './money'
-import type { OrderLine } from './orders'
+import { expireHoldIfDueForPatient, type OrderLine } from './orders'
 import { charge } from './payment-gateway'
 import type { Viewer } from './session'
 import { releaseForOrder, reserveForOrder } from './stock'
@@ -88,6 +88,7 @@ export async function countPayAttempt(userId: bigint, ip: string): Promise<void>
 
 export async function pay(viewer: Viewer, orderId: bigint, idempotencyKey: string): Promise<Receipt> {
   const db = useDb()
+  await expireHoldIfDueForPatient(viewer, orderId)
 
   // Transaction 1: lock the order, check the hold and the split, record the attempt as processing, reserve the stock.
   const prepared = await db.transaction().execute(async (trx) => {

@@ -132,6 +132,7 @@ export interface Checkout {
 /** SM-1: sent or payment_failed (or a hold that has ended) -> in_checkout, holding today's prices for 30 minutes
  *  (FR-023, FR-037, INV-8). Pressed again while the hold is live, it returns the same hold. */
 export async function startCheckout(viewer: Viewer, orderId: bigint): Promise<Checkout> {
+  await expireHoldIfDueForPatient(viewer, orderId)
   return useDb()
     .transaction()
     .execute(async (trx) => {
@@ -193,6 +194,7 @@ export interface OrderView {
   prices_held_until: string | null
   paid_at: string | null
   is_test_payment: true
+  hold_ended: boolean
 }
 
 export interface OrderLineRow {
@@ -269,6 +271,15 @@ export async function expireHoldIfDue(orderId: bigint): Promise<void> {
     })
 }
 
+/** FM-7 (changed): BE-10.pay and startCheckout run the reconcile first, outside their own transactions, so an
+ *  abandoned payment never blocks the patient (M5-pass4 R4). Only the order's patient sets it off (R5). */
+export async function expireHoldIfDueForPatient(viewer: Viewer, orderId: bigint): Promise<void> {
+  const o = await useDb().selectFrom('orders').select(['patient_id', 'practice_id']).where('id', '=', orderId.toString()).executeTakeFirst()
+  if (!o) throw new ProblemError('not-found')
+  assertIsOrderPatient(viewer, { patientId: BigInt(o.patient_id), practiceId: BigInt(o.practice_id) })
+  await expireHoldIfDue(orderId)
+}
+
 /** EP-21 (FR-005, FR-009, FR-022, FR-037): the order's patient or a provider of its practice sees every line.
  *  Paid: the paid prices. A live hold: the held prices. Otherwise today's prices, with a notice for each line whose
  *  price moved since the order was sent. Anyone else, or an unknown id, gets not-found. */
@@ -289,6 +300,7 @@ export async function getOrderForViewer(viewer: Viewer, orderId: bigint): Promis
         'practices.name as practice_name',
         'provider.display_name as provider_display_name',
         sql<boolean>`orders.prices_held_until > now()`.as('hold_live'),
+        sql<boolean>`orders.checkout_started_at is not null`.as('checkout_started'),
       ])
       .where('orders.id', '=', orderId.toString())
       .executeTakeFirst()
@@ -322,6 +334,8 @@ export async function getOrderForViewer(viewer: Viewer, orderId: bigint): Promis
     prices_held_until: o.hold_live ? o.prices_held_until!.toISOString() : null,
     paid_at: o.paid_at ? o.paid_at.toISOString() : null,
     is_test_payment: true,
+    // S2: a hold that ended unpaid, told apart from an order never checked out (FR-037, M5-pass2 R4).
+    hold_ended: o.status === 'sent' && o.checkout_started,
   }
 }
 

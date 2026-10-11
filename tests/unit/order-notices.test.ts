@@ -4,11 +4,12 @@
 // run here against a fake Kysely driver holding one in-memory order, as in stock.test.ts.
 import { Kysely, PostgresAdapter, PostgresIntrospector, PostgresQueryCompiler, type CompiledQuery } from 'kysely'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { expireHoldIfDue, getOrderForViewer, orderViewLines } from '../../server/services/orders'
+import { expireHoldIfDue, getOrderForViewer, orderViewLines, startCheckout } from '../../server/services/orders'
+import { pay } from '../../server/services/payments'
 import type { Viewer } from '../../server/services/session'
 
 const fake = vi.hoisted(() => ({
-  order: { status: 'in_checkout', hold_over: true },
+  order: { status: 'in_checkout', hold_over: true, checkout_started: true },
   attempt: null as null | { id: string; status: string; failure_reason?: unknown; abandoned: boolean },
   moves: [] as { product_id: string; change: number; kind: string }[],
   sqls: [] as string[],
@@ -19,11 +20,11 @@ function run(q: CompiledQuery): { rows: any[]; numAffectedRows?: bigint } {
   const p = q.parameters as unknown[]
   fake.sqls.push(s)
   if (s.startsWith('select') && s.includes('from "orders" inner join "practices"'))
-    return { rows: [{ id: '41', patient_id: '5', practice_id: '2', status: fake.order.status, prices_held_until: null, paid_at: null, practice_name: 'Chen Clinic', provider_display_name: 'Dr. Chen', hold_live: false }] }
-  if (s.startsWith('select') && s.includes('from "orders"')) return { rows: [{ id: '41', ...fake.order }] }
+    return { rows: [{ id: '41', patient_id: '5', practice_id: '2', status: fake.order.status, prices_held_until: null, paid_at: null, practice_name: 'Chen Clinic', provider_display_name: 'Dr. Chen', hold_live: false, checkout_started: fake.order.checkout_started }] }
+  if (s.startsWith('select') && s.includes('from "orders"')) return { rows: [{ id: '41', patient_id: '5', practice_id: '2', ...fake.order }] }
   if (s.startsWith('update "orders"')) {
     fake.order.status = p[0] as string
-    return { rows: [{ id: '41' }], numAffectedRows: 1n }
+    return { rows: [{ id: '41', prices_held_until: new Date('2026-10-10T12:30:00Z') }], numAffectedRows: 1n }
   }
   if (s.startsWith('select') && s.includes('from "payment_attempts"'))
     return { rows: fake.attempt?.status === 'processing' ? [fake.attempt] : [] }
@@ -70,7 +71,7 @@ vi.mock('../../server/utils/db', () => ({
 
 const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
 beforeEach(() => {
-  fake.order = { status: 'in_checkout', hold_over: true }
+  fake.order = { status: 'in_checkout', hold_over: true, checkout_started: true }
   fake.attempt = null
   fake.moves.length = 0
   fake.sqls.length = 0
@@ -122,6 +123,50 @@ describe('getOrderForViewer: access is checked before any write (R5)', () => {
     await expect(getOrderForViewer(stranger, 41n)).rejects.toMatchObject({ slug: 'not-found' })
     expect(fake.sqls.some((s) => s.startsWith('update') || s.startsWith('insert'))).toBe(false)
     expect(fake.order.status).toBe('in_checkout')
+  })
+})
+
+const ana: Viewer = { userId: 5n, displayName: 'Ana', role: 'patient', practiceId: 2n, idleExpiresAt: new Date('2026-10-10T12:15:00Z') }
+const stranger: Viewer = { ...ana, userId: 9n, displayName: 'Someone' }
+const wrote = () => fake.sqls.some((s) => s.startsWith('update') || s.startsWith('insert'))
+
+describe('pay and checkout start reconcile an abandoned payment first (FM-7, M5-pass4 R4)', () => {
+  beforeEach(() => {
+    fake.order.hold_over = false
+    fake.attempt = { id: '90', status: 'processing', abandoned: true }
+  })
+  it('Pay over a payment abandoned 2 minutes ago fails it, gives the 2 units back, and refuses the Pay (409)', async () => {
+    await expect(pay(ana, 41n, 'k2')).rejects.toMatchObject({ slug: 'invalid-transition' })
+    expect(fake.attempt).toMatchObject({ status: 'failed', failure_reason: 'no_answer' })
+    expect(fake.moves).toEqual([{ product_id: '7', change: 2, kind: 'sale_release' }])
+    expect(fake.order.status).toBe('payment_failed')
+  })
+  it('starting checkout over a payment abandoned 2 minutes ago fails it first, then holds prices again', async () => {
+    await startCheckout(ana, 41n)
+    expect(fake.attempt).toMatchObject({ status: 'failed', failure_reason: 'no_answer' })
+    expect(fake.moves).toEqual([{ product_id: '7', change: 2, kind: 'sale_release' }])
+    expect(fake.order.status).toBe('in_checkout')
+  })
+  it('R5: someone who is not the order\'s patient gets not-found from either and changes nothing', async () => {
+    await expect(pay(stranger, 41n, 'k3')).rejects.toMatchObject({ slug: 'not-found' })
+    await expect(startCheckout(stranger, 41n)).rejects.toMatchObject({ slug: 'not-found' })
+    expect(wrote()).toBe(false)
+    expect(fake.attempt!.status).toBe('processing')
+  })
+})
+
+describe('getOrderForViewer: hold_ended tells a hold that ended apart from one never started (S2, FR-037)', () => {
+  it('sent after a checkout was started: true', async () => {
+    fake.order = { status: 'sent', hold_over: false, checkout_started: true }
+    expect((await getOrderForViewer(ana, 41n)).hold_ended).toBe(true)
+  })
+  it('sent and never checked out: false', async () => {
+    fake.order = { status: 'sent', hold_over: false, checkout_started: false }
+    expect((await getOrderForViewer(ana, 41n)).hold_ended).toBe(false)
+  })
+  it('a live hold: false', async () => {
+    fake.order = { status: 'in_checkout', hold_over: false, checkout_started: true }
+    expect((await getOrderForViewer(ana, 41n)).hold_ended).toBe(false)
   })
 })
 
