@@ -1,0 +1,37 @@
+# GitLab CI: one job, the same gate every agent and the pre-push hook run locally (`make check`).
+#
+# It runs on the human's MacBook (GitLab runner 245, docker executor). If a job sits at "pending", the Mac is
+# asleep or the runner is stopped: `brew services start gitlab-runner`. Nothing here deploys; deploying stays a
+# human-approved step (docs/runbooks/deploy.md).
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never # the merge request pipeline covers this push
+    - if: $CI_COMMIT_BRANCH
+
+stages: [check]
+
+check:
+  stage: check
+  image: node:22-bookworm # Node 22.22+ (package.json engines), with make and git
+  services:
+    - name: postgres:16-alpine # same engine as docker-compose.yml's db-test
+      alias: db-test
+  variables:
+    # Throwaway test database, the same test-only values as docker-compose.yml and .env.example; not secrets.
+    POSTGRES_DB: supplements_test
+    POSTGRES_USER: supplements_test
+    POSTGRES_PASSWORD: local-test-only
+    TEST_DB_HOST: db-test
+    TEST_DB_PORT: "5432"
+    npm_config_cache: "$CI_PROJECT_DIR/.npm"
+  cache:
+    key:
+      files: [package-lock.json]
+    paths: [.npm/]
+  script:
+    - node --version
+    - npm ci --prefer-offline --no-audit --no-fund
+    - make check
