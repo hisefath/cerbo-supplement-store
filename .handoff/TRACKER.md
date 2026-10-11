@@ -509,3 +509,4 @@ several harnesses read it and the repo is public.
 2026-10-11 10:31 CDT DEPLOY M5.2 c9b890d → production web-v2 (deployment 5224c9ca SUCCESS); SMOKE GREEN 7/0; deploy pre-approved by "tell me when M5.2 is ready to deploy, also deploy it"
 2026-10-11 10:36 CDT DISPATCH M6-ACC harness=claude-subagent why=define-acceptance first pass for M6; branch milestone/m6-measurement-and-operations
 2026-10-11 11:08 CDT PHASE define-acceptance M6: 44 ATs (42 red, 2 green pins); committed be96e14
+2026-10-11 11:08 CDT DISPATCH M6-SLICE harness=claude-subagent why=slice-tasks for M6
