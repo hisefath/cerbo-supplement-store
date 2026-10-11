@@ -852,3 +852,16 @@ Copy this block for each new entry (D-ids increase by one, starting at D1):
 - Cost accepted: one seam task (M5-T006) and a merge per parallel slice; T005 may run past its 120-minute budget. · Reversibility: Type 2 two-way — re-slice before dispatch · Confidence: med
 - Revisit if: T001 takes far longer than 120 minutes, or a parallel pair conflicts. · Evidence: specs/M5-prices-and-stock/tasks/T001.md to T006.md; analyze RESULT: PASS; approval G4 2026-10-10 21:09 CDT · Interview line: "I sliced M5 by user-visible behaviour with the price change as a tracer bullet and the stock-at-payment slice second, so the riskiest work fails early."
 - Review: Topic Process · Weight ●●○ · One-liner: M5 is six vertical slices: price change first, stock at payment second.
+
+### D75 Visual refresh as its own milestone after M5  [status: accepted]
+- Date 2026-10-10 22:36 CDT · supervisor (route) · milestone M5.1 · Decided by: human, decision: visual refresh placement 2026-10-10 22:36 CDT: "a, M5.1 visual refresh after M5 merges" · Proposed by: supervisor (Claude Code, claude-opus-5-5) · artifact: chat options card
+- Context and forces: the human asked to restyle the front end after cluely.com's design language (Geist with a serif display face, a soft sky-blue palette, rounded glassy cards, glowing primary buttons, generous whitespace). The app has no shared visual system today, it will be embedded inside Cerbo's EHR, and M5 is mid-build.
+- Options:
+  - Do nothing / simplest (shown as "d) Do nothing"): keep the plain style — cost: none — rejected: the human wants a modern look
+  - a) a separate milestone M5.1 after M5 merges: visual language in screens.md at G-ux, then slices for tokens and fonts and per-screen restyles (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: about 3 to 4 agent runs plus G-ux and G4; M6 starts later — chosen
+  - b) fold it into M5's close-out task — cost: a larger, murkier M5 review — rejected: mixes styling with logic fixes
+  - c) after M6 — cost: M6 screens built in the old style, then restyled — rejected: more work overall
+- Choice: a · Why: In the context of a restyle that touches every page but changes no behaviour, facing M5 mid-build and M6 still to come, we chose a separate milestone between them over folding it into M5 or deferring it, to get a clean review and one-revert rollback and to build M6 in the new style, accepting a later M6 start.
+- Cost accepted: M6 starts after M5.1; the inspiration stays a design language only (no Cluely branding, images or name), and dense clinical screens keep their contrast. · Reversibility: Type 2 two-way — revert the milestone merge · Confidence: high
+- Revisit if: Cerbo supplies its own design system for embedded apps, or the restyle hurts readability on the dense screens. · Evidence: https://cluely.com/ (computed styles read 2026-10-10: Geist and EB Garamond, 12px buttons with blue glow, 16-32px cards); .handoff/TRACKER.md M5.1-R01; approval decision: visual refresh placement 2026-10-10 22:36 CDT · Interview line: "I took a modern design language as inspiration, not a brand, and shipped it as its own milestone so the restyle is reviewed and reversible on its own."
+- Review: Topic Product · Weight ●○○ · One-liner: The cluely-inspired restyle is its own milestone, M5.1, after M5.

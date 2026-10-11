@@ -31,6 +31,7 @@ several harnesses read it and the repo is public.
 | M5-T004 | Platform staff adjust stock (specs/M5-prices-and-stock/tasks/T004.md) | Standard / implement-task | claude-subagent | done | 2026-10-10 21:09 CDT | see task file | 061cd49 |
 | M5-T005 | Provider opens the practice dashboard (specs/M5-prices-and-stock/tasks/T005.md) | Standard / implement-task | claude-subagent | working | 2026-10-10 21:09 CDT | see task file | — |
 | M5-T006 | M5 joins checks and menu (specs/M5-prices-and-stock/tasks/T006.md) | Standard / implement-task | claude-subagent | todo | 2026-10-10 21:09 CDT | see task file | — |
+| M5.1-R01 | Visual refresh inspired by cluely.com (Geist + serif display, sky-blue palette, soft glass cards, glow on primary buttons) — after M5 merges; starts with /map-ux-flows | Standard / map-ux-flows | supervisor | todo | 2026-10-10 22:36 CDT | docs/design/screens.md (visual language) | — |
 
 ## Approvals
 
@@ -174,6 +175,8 @@ several harnesses read it and the repo is public.
 | 2026-10-10 22:00 CDT | M5-T003 review dispositions (pass 2), option a: bring T003 up to date with T002 (squashed), relaunch to fix R3 (P0: never end a hold while a payment is processing), R5 (access check before the hold write), R1 (held price differs from sent in the test) and FM-7 (reconcile an abandoned processing attempt, from pass 3 R4); R4 to design catch-up and a close-out task; R2, R7 filed; keep R6 | .handoff/reviews/M5-pass2.md; m5/t003-patients-see-price-change-notices@c63753c | "a, relaunch T003 with R3, R5, R1 and FM-7" |
 | 2026-10-10 22:19 CDT | M5-T003 review dispositions (pass 4), option a: squash T003; R1, R2, R3 to a define-acceptance re-run (real-database tests: in-flight payment keeps the hold; abandoned attempt reconciled); R4 (pay-path reconcile) to an M5 close-out task; keep R5 | .handoff/reviews/M5-pass4.md; m5/t003-patients-see-price-change-notices@0f67851 | "a, squash T003 and add the acceptance tests" |
 | 2026-10-10 22:24 CDT | M5-T004 review dispositions (pass 5), option a: squash T004; R2, R3, R4, R6 to the M5 close-out task; R1, R5, R7 to design catch-up | .handoff/reviews/M5-pass5.md; m5/t004-platform-staff-adjust-stock@81939f7 | "a, squash T004" |
+| 2026-10-10 22:31 CDT | M5-T005 review dispositions (pass 6), option a: days are elapsed 24-hour periods (EDGE-040); relaunch T005 to fix R2, R1, R3; R4 to design catch-up; R6, R9 to the M5 close-out task; R5 to the define-acceptance re-run; R8 filed; keep R10; discard R7 | .handoff/reviews/M5-pass6.md; m5/t005-provider-opens-the-practice-dashboard@c3bac8b | "a, relaunch T005 with R2, R1, R3" |
+| 2026-10-10 22:36 CDT | decision: visual refresh placement, option a: its own milestone M5.1 "Visual refresh" after M5 merges (map-ux-flows visual language at G-ux, then slices); cluely.com design language as inspiration only, no Cluely branding or assets; dense clinical screens stay readable | chat card | "a, M5.1 visual refresh after M5 merges" |
 
 ## Log
 
@@ -389,3 +392,5 @@ several harnesses read it and the repo is public.
 2026-10-10 22:16 CDT REVIEW M5 pass 5 (M5-T004): 7 rows, all P3, no tests-that-lie, no security findings
 2026-10-10 22:19 CDT VERIFY M5-T003 squashed f386d76: relaunch done; scope-guard OK (2 paths); supervisor Done-when exit 0 (3/3 ATs; make check OK 166 unit + 43 M4); pass 4 confirms the P0 fix
 2026-10-10 22:24 CDT VERIFY M5-T004 squashed 061cd49: result done; scope-guard OK (6 paths); supervisor Done-when exit 0 (4/4 ATs; make check OK 166 unit + 43 M4); pass 5 all P3
+2026-10-10 22:31 CDT DISPATCH M5-T005 relaunch harness=claude-subagent why=review pass 6 fixes R2, R1, R3; branch merged with the milestone (T003, T004 squashed)
+2026-10-10 22:35 CDT ROUTE human-requested UX change: "revamp the front end to suite more of cluely's website style, make it more modern and like how this websites ui and colors and design language is: https://cluely.com/" -> needs a G-ux visual-language pass (map-ux-flows) then slices; awaiting placement decision

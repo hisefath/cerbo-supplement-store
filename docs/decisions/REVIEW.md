@@ -9,7 +9,7 @@ Weight: ●●● critical (hard to undo, or touches money, personal data or sig
 
 ## By topic
 
-### Product (10)
+### Product (11)
 
 - ●●● D25 — Money path first, HIPAA-ready, campaigns later.
 - ●●○ D27 — Live payout builder, two-step patient checkout, equation-first audit.
@@ -19,6 +19,7 @@ Weight: ●●● critical (hard to undo, or touches money, personal data or sig
 - ●○○ D31 — UX contract extended to M6: 14 screens, every key screen demoed.
 - ●○○ D43 — Broader holistic-care products parked as a future non-goal.
 - ●○○ D53 — Order quantity unbounded until stock limits exist.
+- ●○○ D75 — The cluely-inspired restyle is its own milestone, M5.1, after M5.
 - ●○○ ~~D12~~ — v1: order cancel added to scope. (replaced by D22)
 - ●○○ ~~D14~~ — v1: neutral branding on the public demo. (replaced by D22)
 
@@ -126,6 +127,7 @@ Decisions that adopted a software-factory-kit change (H) and the finding (F) beh
 
 ### 2026-10-10
 
+- D75 · Product · ●○○ — The cluely-inspired restyle is its own milestone, M5.1, after M5.
 - D74 · Process · ●●○ — M5 is six vertical slices: price change first, stock at payment second.
 - D73 · Process · ●●○ — The design caught up with M4's code before M5 builds on it.
 - D72 · Security · ●○○ — Session and notice tokens come straight from randomBytes; no test seam.
