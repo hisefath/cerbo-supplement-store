@@ -1,0 +1,501 @@
+diff --git a/app/components/ops-stock/ChangeForm.vue b/app/components/ops-stock/ChangeForm.vue
+new file mode 100644
+index 0000000..7505df7
+--- /dev/null
++++ b/app/components/ops-stock/ChangeForm.vue
+@@ -0,0 +1,67 @@
++<!-- FE-16 part (S7 "Record a change"): the change-in-units and reason fields for one product. The page owns the draft,
++     the errors and the save (ST-10); this form only shows them and reports edits. Esc and Cancel close it. -->
++<script setup lang="ts">
++export interface StockDraft {
++  change: string
++  reason: string
++}
++export interface StockDraftErrors {
++  change?: string
++  reason?: string
++  form?: string
++  confirm?: string
++}
++
++const props = defineProps<{ name: string; draft: StockDraft; errors: StockDraftErrors; saving: boolean; slow: boolean }>()
++const emit = defineEmits<{ change: [draft: StockDraft]; save: []; cancel: [] }>()
++const set = (patch: Partial<StockDraft>) => emit('change', { ...props.draft, ...patch })
++const root = ref<HTMLElement | null>(null)
++onMounted(() => root.value?.querySelector<HTMLInputElement>('input')?.focus())
++</script>
++
++<template>
++  <section ref="root" class="change" aria-labelledby="change-title" @keydown.esc="emit('cancel')">
++    <h2 id="change-title">Record a change: {{ name }}</h2>
++    <form novalidate @submit.prevent="emit('save')">
++      <label for="stock-change">Change in units (use a minus for removals)</label>
++      <input
++        id="stock-change"
++        :value="draft.change"
++        inputmode="numeric"
++        aria-describedby="stock-change-help stock-change-error"
++        @input="set({ change: ($event.target as HTMLInputElement).value })"
++      />
++      <p id="stock-change-help" class="helper">Like 12 or -3.</p>
++      <p v-if="errors.change" id="stock-change-error" class="error" role="alert">{{ errors.change }}</p>
++
++      <label for="stock-reason">Reason (required)</label>
++      <input
++        id="stock-reason"
++        :value="draft.reason"
++        maxlength="200"
++        aria-describedby="stock-reason-help stock-reason-error"
++        @input="set({ reason: ($event.target as HTMLInputElement).value })"
++      />
++      <p id="stock-reason-help" class="helper">Shown in the stock history.</p>
++      <p v-if="errors.reason" id="stock-reason-error" class="error" role="alert">{{ errors.reason }}</p>
++
++      <p v-if="errors.confirm" role="status">{{ errors.confirm }}</p>
++      <p v-if="errors.form" class="error" role="alert">{{ errors.form }}</p>
++      <p v-if="saving" role="status">{{ slow ? "Still saving. Don't close this window." : 'Saving…' }}</p>
++      <div class="actions">
++        <button type="submit" :disabled="saving">Save stock change</button>
++        <button type="button" @click="emit('cancel')">Cancel</button>
++      </div>
++    </form>
++  </section>
++</template>
++
++<style scoped>
++.change { border-top: 1px solid #ddd; border-bottom: 1px solid #ddd; padding: 8px 0; margin: 12px 0; }
++label { display: block; margin-top: 8px; }
++input { display: block; width: 100%; max-width: 360px; min-height: 24px; }
++.helper { margin: 2px 0; color: #444; font-size: 14px; }
++.error { color: #b00020; }
++.actions { display: flex; gap: 8px; margin-top: 12px; }
++.actions button { min-height: 32px; }
++</style>
+diff --git a/app/pages/ops/stock.vue b/app/pages/ops/stock.vue
+new file mode 100644
+index 0000000..5aa43e8
+--- /dev/null
++++ b/app/pages/ops/stock.vue
+@@ -0,0 +1,201 @@
++<!-- FE-16 StockAdjustmentsPage (S7, EP-9): every product's stock (EP-31), the change form (EP-32) and the permanent
++     stock history. Owns ST-10, the change draft, and one Idempotency-Key per save, kept for its retries. -->
++<script setup lang="ts">
++import type { StockDraft, StockDraftErrors } from '~/components/ops-stock/ChangeForm.vue'
++import type { Problem } from '~/components/ProblemMessage.vue'
++
++interface StockProduct {
++  product_id: number
++  name: string
++  units_in_stock: number
++}
++interface StockMovement {
++  product_name: string
++  change: number
++  kind: string
++  reason: string
++  actor_display_name: string | null
++  created_at: string
++  units_in_stock_after: number
++}
++interface StockList {
++  products: StockProduct[]
++  history: StockMovement[]
++  history_next_cursor: string | null
++}
++
++const LARGE_CHANGE = 10_000
++
++useHead({ title: 'Stock adjustments' })
++const route = useRoute()
++const cursor = computed(() => (typeof route.query.history_cursor === 'string' ? route.query.history_cursor : undefined))
++const { data: list, error, refresh, status } = await useFetch<StockList>('/api/ops/stock', {
++  query: { history_cursor: cursor },
++}) // ST-8
++
++const editing = ref<StockProduct | null>(null)
++const draft = ref<StockDraft>({ change: '', reason: '' }) // ST-10
++const errors = ref<StockDraftErrors>({})
++const key = ref<string | null>(null)
++const confirmed = ref(false)
++const saving = ref(false)
++const slow = ref(false)
++const success = ref('')
++
++const signed = (n: number) => (n > 0 ? `+${n}` : `${n}`)
++const when = (iso: string) =>
++  new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
++const belowZero = (n: number) => `That would take stock below 0. ${n} are in stock.`
++
++function open(p: StockProduct) {
++  editing.value = p
++  draft.value = { change: '', reason: '' }
++  errors.value = {}
++  key.value = null
++  confirmed.value = false
++  success.value = ''
++}
++function close() {
++  const id = editing.value?.product_id
++  editing.value = null
++  nextTick(() => document.getElementById(`record-${id}`)?.focus())
++}
++function onChange(d: StockDraft) {
++  draft.value = d
++  key.value = null // a different request needs its own key
++  confirmed.value = false
++}
++
++async function save() {
++  const p = editing.value
++  if (!p || saving.value) return
++  const text = draft.value.change.trim()
++  const change = /^[+-]?\d{1,9}$/.test(text) ? Number(text) : 0
++  const next: StockDraftErrors = {}
++  if (change === 0) next.change = 'Enter a whole number, like 12 or -3.'
++  else if (p.units_in_stock + change < 0) next.change = belowZero(p.units_in_stock)
++  if (draft.value.reason.trim() === '') next.reason = 'Add a reason so others know why stock changed.'
++  if (!next.change && !next.reason && Math.abs(change) >= LARGE_CHANGE && !confirmed.value) {
++    next.confirm = `${change > 0 ? 'Add' : 'Remove'} ${Math.abs(change).toLocaleString('en-US')} units? Check before saving.`
++    confirmed.value = true
++  }
++  errors.value = next
++  if (next.change || next.reason || next.confirm) return
++
++  saving.value = true
++  const timer = setTimeout(() => (slow.value = true), 10_000)
++  key.value ??= crypto.randomUUID()
++  try {
++    const saved = await $fetch<StockMovement>(`/api/ops/stock/${p.product_id}/adjustments`, {
++      method: 'POST',
++      headers: { 'idempotency-key': key.value },
++      body: {
++        change,
++        reason: draft.value.reason.trim(),
++        expected_units_in_stock: p.units_in_stock,
++        confirm_large_change: confirmed.value,
++      },
++    })
++    success.value = `${saved.product_name} stock is now ${saved.units_in_stock_after}.`
++    close()
++    await refresh()
++  } catch (e: unknown) {
++    const data = (e as { data?: Problem & { unitsInStock?: number; errors?: { pointer: string; detail: string }[] } }).data
++    const slug = data?.type?.replace('/problems/', '')
++    if (slug === 'stale-stock') {
++      errors.value = { form: `Stock changed while you were here. It's now ${data!.unitsInStock}. Check your change.` }
++      await refresh()
++      editing.value = list.value?.products.find((x) => x.product_id === p.product_id) ?? p
++    } else if (slug === 'insufficient-stock') {
++      errors.value = { change: belowZero(data!.unitsAvailable?.[0] ?? p.units_in_stock) }
++    } else if (slug === 'validation') {
++      const errs = data!.errors ?? []
++      errors.value = {
++        change: errs.some((x) => !x.pointer.startsWith('#/reason')) ? 'Enter a whole number, like 12 or -3.' : undefined,
++        reason: errs.some((x) => x.pointer.startsWith('#/reason')) ? 'Add a reason so others know why stock changed.' : undefined,
++      }
++    } else if (!navigator.onLine) {
++      errors.value = { form: "You're offline. Stock is unchanged." }
++    } else {
++      errors.value = { form: `We couldn't save the change. Stock is still ${p.units_in_stock}. Try again.` }
++    }
++  } finally {
++    clearTimeout(timer)
++    saving.value = false
++    slow.value = false
++  }
++}
++const pageProblem = computed<Problem | null>(() => (error.value ? (error.value.data as Problem) ?? { type: '/problems/internal' } : null))
++</script>
++
++<template>
++  <AppShell>
++    <section class="stock" aria-labelledby="stock-heading">
++      <h1 id="stock-heading">Stock adjustments</h1>
++      <p v-if="status === 'pending' && !list" role="status">Loading stock…</p>
++      <ProblemMessage
++        v-else-if="pageProblem"
++        :problem="pageProblem"
++        :copy="{ forbidden: 'Only platform staff can change stock.' }"
++        @retry="refresh()"
++      />
++      <template v-else-if="list">
++        <p class="success" role="status">{{ success }}</p>
++        <table class="list">
++          <thead>
++            <tr>
++              <th scope="col">Product</th><th scope="col">In stock</th><th scope="col"><span class="visually-hidden">Actions</span></th>
++            </tr>
++          </thead>
++          <tbody>
++            <tr v-for="p in list.products" :key="p.product_id">
++              <td>{{ p.name }}</td>
++              <td>{{ p.units_in_stock }}</td>
++              <td>
++                <button :id="`record-${p.product_id}`" type="button" :aria-label="`Record a change for ${p.name}`" @click="open(p)">
++                  Record a change
++                </button>
++              </td>
++            </tr>
++          </tbody>
++        </table>
++
++        <OpsStockChangeForm
++          v-if="editing"
++          :name="editing.name"
++          :draft="draft"
++          :errors="errors"
++          :saving="saving"
++          :slow="slow"
++          @change="onChange"
++          @save="save"
++          @cancel="close"
++        />
++
++        <h2>Stock history</h2>
++        <p v-if="list.history.length === 0 && !cursor">No stock changes recorded yet.</p>
++        <ul v-else class="history">
++          <li v-for="(h, i) in list.history" :key="i">
++            <span>{{ when(h.created_at) }}</span> <span v-if="h.actor_display_name">{{ h.actor_display_name }}</span>
++            <span>{{ h.product_name }}</span> <span>{{ signed(h.change) }}</span> <q>{{ h.reason }}</q>
++          </li>
++        </ul>
++        <NuxtLink v-if="list.history_next_cursor" :to="{ query: { history_cursor: list.history_next_cursor } }">Show 25 more</NuxtLink>
++      </template>
++    </section>
++  </AppShell>
++</template>
++
++<style scoped>
++.list { width: 100%; border-collapse: collapse; }
++.list th, .list td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #ddd; overflow-wrap: anywhere; }
++.list button { min-height: 24px; min-width: 24px; }
++.history { list-style: none; padding: 0; }
++.history li { padding: 6px 0; border-bottom: 1px solid #eee; display: flex; flex-wrap: wrap; gap: 8px; }
++.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
++@media (max-width: 600px) {
++  .list thead { display: none; }
++  .list tr { display: block; border: 1px solid #ddd; margin-bottom: 8px; padding: 4px; }
++  .list td { display: block; border: 0; padding: 2px 4px; }
++}
++</style>
+diff --git a/server/api/ops/stock/[productId]/adjustments.post.ts b/server/api/ops/stock/[productId]/adjustments.post.ts
+new file mode 100644
+index 0000000..12883bf
+--- /dev/null
++++ b/server/api/ops/stock/[productId]/adjustments.post.ts
+@@ -0,0 +1,21 @@
++// EP-32 POST /api/ops/stock/{productId}/adjustments (adjustStock): platform staff record a stock change with a reason.
++// Providers are refused (FR-038). The Idempotency-Key header is required, since each change appends history (BE-5, D41).
++import { getRouterParam, setResponseStatus } from 'h3'
++import { assertRole } from '../../../../services/access-policy'
++import { guard } from '../../../../services/idempotency'
++import { requireViewer } from '../../../../services/session'
++import { adjust, StockAdjustmentRequest } from '../../../../services/stock-adjustments'
++import { defineApiHandler, parseBody, ProblemError } from '../../../../utils/problem'
++
++export default defineApiHandler(async (event) => {
++  const viewer = await requireViewer(event)
++  assertRole(viewer, ['operations_specialist'])
++  const id = getRouterParam(event, 'productId') ?? ''
++  if (!/^\d{1,18}$/.test(id)) throw new ProblemError('not-found')
++  const body = await parseBody(event, StockAdjustmentRequest)
++  return guard(event, viewer.userId, 'POST /api/ops/stock/{productId}/adjustments', { product_id: id, ...body }, async () => {
++    const movement = await adjust(viewer, BigInt(id), body)
++    setResponseStatus(event, 201)
++    return movement
++  })
++})
+diff --git a/server/api/ops/stock/index.get.ts b/server/api/ops/stock/index.get.ts
+new file mode 100644
+index 0000000..90fc4bb
+--- /dev/null
++++ b/server/api/ops/stock/index.get.ts
+@@ -0,0 +1,13 @@
++// EP-31 GET /api/ops/stock (listStock): platform staff see every product's stock and a page of stock history.
++import { getQuery } from 'h3'
++import { assertRole } from '../../../services/access-policy'
++import { requireViewer } from '../../../services/session'
++import { listStock } from '../../../services/stock-adjustments'
++import { defineApiHandler } from '../../../utils/problem'
++
++export default defineApiHandler(async (event) => {
++  const viewer = await requireViewer(event)
++  assertRole(viewer, ['operations_specialist'])
++  const cursor = getQuery(event).history_cursor
++  return listStock(viewer, typeof cursor === 'string' && cursor !== '' ? cursor : undefined)
++})
+diff --git a/server/services/stock-adjustments.ts b/server/services/stock-adjustments.ts
+new file mode 100644
+index 0000000..7e83fc3
+--- /dev/null
++++ b/server/services/stock-adjustments.ts
+@@ -0,0 +1,105 @@
++// BE-13 StockService, staff side (lld.md §2, SEQ-6): adjust and listStock. Platform staff change stock only through an
++// `adjustment` movement that records who, why and the count after (FR-030, INV-4); stock never goes below zero (INV-5).
++// reserveForOrder and releaseForOrder stay in stock.ts (M5-T002).
++import { sql } from 'kysely'
++import { z } from 'zod'
++import { useDb } from '../utils/db'
++import { ProblemError } from '../utils/problem'
++import { decodeCursor, encodeCursor } from './pricing'
++import type { Viewer } from './session'
++
++const HISTORY_PAGE = 25
++
++/** EP-32 body (openapi StockAdjustmentRequest). confirm_large_change is the S7 form's own check; the server accepts it. */
++export const StockAdjustmentRequest = z.strictObject({
++  change: z.int().refine((n) => n !== 0, 'Enter a whole number, like 12 or -3.'),
++  reason: z.string().trim().min(1, 'Add a reason so others know why stock changed.').max(200),
++  expected_units_in_stock: z.int().min(0),
++  confirm_large_change: z.boolean().default(false),
++})
++export type StockAdjustmentInput = z.infer<typeof StockAdjustmentRequest>
++
++export interface StockMovement {
++  product_name: string
++  change: number
++  kind: 'sale' | 'sale_release' | 'adjustment'
++  reason: string
++  actor_display_name: string | null
++  created_at: Date
++  units_in_stock_after: number
++}
++
++export interface StockList {
++  products: { product_id: number; name: string; units_in_stock: number }[]
++  history: StockMovement[]
++  history_next_cursor: string | null
++}
++
++/** The count after the change, or /problems/stale-stock (the form saw an old count) or /problems/insufficient-stock
++ *  (it would go below zero). */
++export function checkAdjustment(productId: bigint, unitsInStock: number, input: { change: number; expected_units_in_stock: number }): number {
++  if (input.expected_units_in_stock !== unitsInStock) throw new ProblemError('stale-stock', { unitsInStock })
++  const after = unitsInStock + input.change
++  if (after < 0) throw new ProblemError('insufficient-stock', { productIds: [Number(productId)], unitsAvailable: [unitsInStock] })
++  return after
++}
++
++/** EP-32: one transaction locks the product, checks the count, updates it and appends the movement (SEQ-6 step 5). */
++export async function adjust(viewer: Viewer, productId: bigint, input: StockAdjustmentInput): Promise<StockMovement> {
++  return useDb().transaction().execute(async (tx) => {
++    const p = await tx
++      .selectFrom('products')
++      .select(['id', 'name', 'units_in_stock'])
++      .where('id', '=', productId.toString())
++      .forUpdate()
++      .executeTakeFirst()
++    if (!p) throw new ProblemError('not-found')
++    const after = checkAdjustment(productId, p.units_in_stock, input)
++    await tx.updateTable('products').set({ units_in_stock: after }).where('id', '=', p.id).execute()
++    const m = await tx
++      .insertInto('stock_movements')
++      .values({ product_id: p.id, change: input.change, kind: 'adjustment', reason: input.reason, actor_id: viewer.userId.toString(), units_after: after })
++      .returning('created_at')
++      .executeTakeFirstOrThrow()
++    return {
++      product_name: p.name,
++      change: input.change,
++      kind: 'adjustment',
++      reason: input.reason,
++      actor_display_name: viewer.displayName,
++      created_at: m.created_at,
++      units_in_stock_after: after,
++    }
++  })
++}
++
++/** EP-31: every product's count, plus one page of every stock movement, newest first (FR-029, FR-030). */
++export async function listStock(_viewer: Viewer, historyCursor?: string): Promise<StockList> {
++  const after = historyCursor ? decodeCursor(historyCursor) : undefined
++  const db = useDb()
++  const products = await db.selectFrom('products').select(['id', 'name', 'units_in_stock']).orderBy('name').execute()
++  let history = db
++    .selectFrom('stock_movements')
++    .innerJoin('products', 'products.id', 'stock_movements.product_id')
++    .leftJoin('users', 'users.id', 'stock_movements.actor_id')
++    .select([
++      'stock_movements.id',
++      sql<string>`stock_movements.created_at::text`.as('at'),
++      'products.name as product_name',
++      'stock_movements.change',
++      'stock_movements.kind',
++      'stock_movements.reason',
++      'users.display_name as actor_display_name',
++      'stock_movements.created_at',
++      'stock_movements.units_after as units_in_stock_after',
++    ])
++  if (after) history = history.where(sql<boolean>`(stock_movements.created_at, stock_movements.id) < (${after.at}::timestamptz, ${after.id}::bigint)`)
++  const page = await history.orderBy('stock_movements.created_at', 'desc').orderBy('stock_movements.id', 'desc').limit(HISTORY_PAGE + 1).execute()
++  const shown = page.slice(0, HISTORY_PAGE)
++  const last = shown.at(-1)
++  return {
++    products: products.map((p) => ({ product_id: Number(p.id), name: p.name, units_in_stock: p.units_in_stock })),
++    history: shown.map(({ id: _id, at: _at, ...h }) => h),
++    history_next_cursor: page.length > HISTORY_PAGE && last ? encodeCursor(last.at, last.id) : null,
++  }
++}
+diff --git a/tests/unit/stock-adjustments.test.ts b/tests/unit/stock-adjustments.test.ts
+new file mode 100644
+index 0000000..6de616b
+--- /dev/null
++++ b/tests/unit/stock-adjustments.test.ts
+@@ -0,0 +1,58 @@
++// BE-13 adjust, pure parts (lld.md §2, SEQ-6): the EP-32 body and the stale-count and below-zero checks. The locked
++// database path, the role check and the idempotent replay are proved by tests/acceptance/M5 (AT-017 to AT-020).
++import { describe, expect, it } from 'vitest'
++import { checkAdjustment, StockAdjustmentRequest } from '../../server/services/stock-adjustments'
++import { ProblemError } from '../../server/utils/problem'
++
++function problem(fn: () => unknown): ProblemError {
++  try {
++    fn()
++  } catch (e) {
++    if (e instanceof ProblemError) return e
++    throw e
++  }
++  throw new Error('expected a ProblemError')
++}
++
++describe('checkAdjustment', () => {
++  it('returns the new count when the form saw the current count (AE-027: 8 + 12 = 20)', () => {
++    expect(checkAdjustment(7n, 8, { change: 12, expected_units_in_stock: 8 })).toBe(20)
++  })
++
++  it('allows a removal down to exactly 0', () => {
++    expect(checkAdjustment(7n, 8, { change: -8, expected_units_in_stock: 8 })).toBe(0)
++  })
++
++  it('refuses a stale count with /problems/stale-stock and the current count', () => {
++    const p = problem(() => checkAdjustment(7n, 9, { change: 2, expected_units_in_stock: 8 }))
++    expect(p.slug).toBe('stale-stock')
++    expect(p.extensions).toEqual({ unitsInStock: 9 })
++  })
++
++  it('refuses a change below zero with /problems/insufficient-stock naming the product (INV-5)', () => {
++    const p = problem(() => checkAdjustment(7n, 9, { change: -10, expected_units_in_stock: 9 }))
++    expect(p.slug).toBe('insufficient-stock')
++    expect(p.extensions).toEqual({ productIds: [7], unitsAvailable: [9] })
++  })
++})
++
++describe('StockAdjustmentRequest', () => {
++  const ok = { change: 12, reason: 'delivery received', expected_units_in_stock: 8 }
++
++  it('accepts a whole-number change with a reason, and the optional large-change confirmation', () => {
++    expect(StockAdjustmentRequest.safeParse(ok).success).toBe(true)
++    expect(StockAdjustmentRequest.safeParse({ ...ok, confirm_large_change: true }).success).toBe(true)
++  })
++
++  it.each([
++    ['a zero change', { ...ok, change: 0 }],
++    ['a fractional change', { ...ok, change: 1.5 }],
++    ['a blank reason', { ...ok, reason: '   ' }],
++    ['a reason over 200 characters', { ...ok, reason: 'x'.repeat(201) }],
++    ['a negative expected count', { ...ok, expected_units_in_stock: -1 }],
++    ['a missing expected count', { change: 12, reason: 'delivery received' }],
++    ['an unknown field', { ...ok, actor_id: 1 }],
++  ])('refuses %s', (_name, body) => {
++    expect(StockAdjustmentRequest.safeParse(body).success).toBe(false)
++  })
++})

@@ -1,0 +1,578 @@
+diff --git a/app/pages/practice/dashboard.vue b/app/pages/practice/dashboard.vue
+new file mode 100644
+index 0000000..3edaa66
+--- /dev/null
++++ b/app/pages/practice/dashboard.vue
+@@ -0,0 +1,188 @@
++<!-- FE-15 PracticeDashboardPage (S6, SEQ-5): attention items first, then the month's orders (EP-30, 25 at a time,
++     Cancel order calls EP-20), then sales and stock (EP-29). Owns ST-7 (the month, UTC per Q-3), ST-12 (the order
++     being cancelled) and ST-8 (each section's load state). -->
++<script setup lang="ts">
++import type { Problem } from '~/components/ProblemMessage.vue'
++
++interface AttentionItem { kind: 'awaiting_payment' | 'low_stock' | 'out_of_stock'; label: string; order_id: number | null; product_id: number | null }
++interface ProductSales { product_id: number; name: string; units_sold: number; patients_paid_cents: number; provider_payout_cents: number; units_in_stock: number }
++interface PracticeDashboard { month: string; attention: AttentionItem[]; sales: ProductSales[] }
++interface PracticeOrder { order_id: number; patient_display_name: string; total_cents: number; status: string; sent_at: string; paid_at: string | null }
++interface PracticeOrderPage { data: PracticeOrder[]; next_cursor: string | null }
++
++useHead({ title: 'Practice dashboard' })
++const month = ref(new Date().toISOString().slice(0, 7)) // ST-7
++const monthName = computed(() =>
++  new Date(`${month.value}-01T00:00:00Z`).toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' }),
++)
++
++const dash = await useFetch<PracticeDashboard>('/api/practice/dashboard', { query: { month } }) // ST-8
++const list = await useFetch<PracticeOrderPage>('/api/practice/orders', { query: { month } })
++const more = ref<PracticeOrder[]>([])
++const nextCursor = ref<string | null>(null)
++watch(list.data, (p) => {
++  more.value = []
++  nextCursor.value = p?.next_cursor ?? null
++}, { immediate: true })
++const orders = computed(() => [...(list.data.value?.data ?? []), ...more.value])
++const moreProblem = ref<Problem | null>(null)
++
++async function showMore() {
++  if (!nextCursor.value) return
++  try {
++    const page = await $fetch<PracticeOrderPage>('/api/practice/orders', { query: { month: month.value, cursor: nextCursor.value } })
++    more.value.push(...page.data)
++    nextCursor.value = page.next_cursor
++    moreProblem.value = null
++  } catch (e: unknown) {
++    moreProblem.value = (e as { data?: Problem }).data ?? { type: '/problems/internal' }
++  }
++}
++
++const dollars = (c: number) => `$${(c / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
++const when = (iso: string | null) =>
++  iso ? new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'UTC' }) : '-'
++const STATUS: Record<string, string> = {
++  sent: 'Sent',
++  in_checkout: 'In checkout',
++  payment_failed: 'Payment failed',
++  paid: 'Paid',
++  needs_review: 'Needs review',
++  cancelled: 'Cancelled',
++}
++
++/** S6: "Ben Ortiz · $30.00 · awaiting payment for 4 days" and "Omega-3 Fish Oil · low stock: 3 left". */
++function attentionText(a: AttentionItem): string {
++  if (a.kind === 'out_of_stock') return a.label
++  const order = a.order_id === null ? undefined : orders.value.find((o) => o.order_id === a.order_id)
++  const product = dash.data.value?.sales.find((s) => s.product_id === a.product_id)
++  const who = order ? `${order.patient_display_name} · ${dollars(order.total_cents)} · ` : product ? `${product.name} · ` : a.order_id ? `Order ${a.order_id} · ` : ''
++  return who + a.label
++}
++
++// ST-12: the order whose cancellation is being confirmed.
++const cancelling = ref<PracticeOrder | null>(null)
++const busy = ref(false)
++const success = ref('')
++const rowProblem = ref<{ id: number; problem: Problem } | null>(null)
++
++async function confirmCancel() {
++  const o = cancelling.value
++  if (!o || busy.value) return
++  busy.value = true
++  try {
++    await $fetch(`/api/orders/${o.order_id}/cancel`, { method: 'POST' })
++    success.value = `Order ${o.order_id} cancelled. ${o.patient_display_name} will see that your practice cancelled it.`
++    rowProblem.value = null
++    cancelling.value = null
++    await Promise.all([list.refresh(), dash.refresh()])
++  } catch (e: unknown) {
++    rowProblem.value = { id: o.order_id, problem: (e as { data?: Problem }).data ?? { type: '/problems/internal' } }
++    cancelling.value = null
++  } finally {
++    busy.value = false
++  }
++}
++
++const cancelCopy = computed(() => {
++  const o = orders.value.find((x) => x.order_id === rowProblem.value?.id)
++  return {
++    'invalid-transition': o?.status === 'paid' ? "This order is paid, so it can't be cancelled." : "This order can't be cancelled: the patient has started checkout.",
++    internal: "We couldn't cancel the order. It is unchanged. Try again.",
++  }
++})
++const problemOf = (e: unknown): Problem | null => (e ? ((e as { data?: Problem }).data ?? { type: '/problems/internal' }) : null)
++const forbiddenCopy = { forbidden: 'Only providers at this practice can see this dashboard.' }
++</script>
++
++<template>
++  <AppShell>
++    <section class="dashboard" aria-labelledby="dashboard-heading">
++      <h1 id="dashboard-heading">Practice dashboard</h1>
++      <label class="month">Month <input v-model="month" type="month" required></label>
++      <p role="status">{{ dash.status.value === 'pending' ? `Loading ${monthName}…` : `Showing ${monthName}.` }} Times in UTC.</p>
++      <p class="success" role="status">{{ success }}</p>
++
++      <h2>Needs attention</h2>
++      <ProblemMessage v-if="dash.error.value" :problem="problemOf(dash.error.value)" :copy="forbiddenCopy" @retry="dash.refresh()" />
++      <template v-else-if="dash.data.value">
++        <p v-if="dash.data.value.attention.length === 0">Nothing needs attention.</p>
++        <ul v-else class="attention">
++          <li v-for="(a, i) in dash.data.value.attention" :key="i"><span aria-hidden="true">! </span>{{ attentionText(a) }}</li>
++        </ul>
++      </template>
++
++      <h2>Orders</h2>
++      <ProblemMessage
++        v-if="list.error.value"
++        :problem="problemOf(list.error.value)"
++        :copy="{ ...forbiddenCopy, internal: 'We couldn\'t load your orders. Try again.' }"
++        @retry="list.refresh()"
++      />
++      <template v-else-if="list.data.value">
++        <p v-if="orders.length === 0">No orders were sent in {{ monthName }}.</p>
++        <table v-else class="list">
++          <thead>
++            <tr><th scope="col">Patient</th><th scope="col">Total</th><th scope="col">Status</th><th scope="col">Sent</th><th scope="col">Paid</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr>
++          </thead>
++          <tbody>
++            <tr v-for="o in orders" :key="o.order_id">
++              <td>{{ o.patient_display_name }}</td>
++              <td>{{ dollars(o.total_cents) }}</td>
++              <td>{{ STATUS[o.status] ?? o.status }}</td>
++              <td>{{ when(o.sent_at) }}</td>
++              <td>{{ when(o.paid_at) }}</td>
++              <td>
++                <button v-if="o.status === 'sent' || o.status === 'payment_failed'" type="button" @click="cancelling = o">Cancel order</button>
++                <ProblemMessage v-if="rowProblem?.id === o.order_id" :problem="rowProblem.problem" :copy="cancelCopy" @retry="cancelling = o" />
++              </td>
++            </tr>
++          </tbody>
++        </table>
++        <button v-if="nextCursor" type="button" @click="showMore">Show 25 more</button>
++        <ProblemMessage v-if="moreProblem" :problem="moreProblem" :copy="{ internal: 'We couldn\'t load your orders. Try again.' }" @retry="showMore" />
++      </template>
++
++      <h2>Sales and stock</h2>
++      <table v-if="dash.data.value" class="list">
++        <thead>
++          <tr><th scope="col">Product</th><th scope="col">Sold</th><th scope="col">Patients paid</th><th scope="col">Your payout</th><th scope="col">Stock</th></tr>
++        </thead>
++        <tbody>
++          <tr v-for="s in dash.data.value.sales" :key="s.product_id">
++            <td>{{ s.name }}</td>
++            <td>{{ s.units_sold }}</td>
++            <td>{{ dollars(s.patients_paid_cents) }}</td>
++            <td>{{ dollars(s.provider_payout_cents) }}</td>
++            <td>{{ s.units_in_stock === 0 ? 'Out of stock' : s.units_in_stock }}</td>
++          </tr>
++        </tbody>
++      </table>
++      <p>Questions? Contact platform support</p>
++
++      <div v-if="cancelling" role="dialog" aria-modal="true" aria-labelledby="cancel-heading" class="dialog">
++        <p id="cancel-heading">
++          Cancel {{ cancelling.patient_display_name }}'s {{ dollars(cancelling.total_cents) }} order?
++          {{ cancelling.patient_display_name.split(' ')[0] }} will see that your practice cancelled it. This can't be undone.
++        </p>
++        <button type="button" :disabled="busy" @click="confirmCancel">{{ busy ? 'Cancelling…' : 'Cancel order' }}</button>
++        <button type="button" autofocus @click="cancelling = null">Keep order</button>
++      </div>
++    </section>
++  </AppShell>
++</template>
++
++<style scoped>
++.list { width: 100%; border-collapse: collapse; }
++.list th, .list td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #ddd; overflow-wrap: anywhere; }
++button { min-height: 24px; min-width: 24px; }
++.attention { list-style: none; padding: 0; }
++.attention li { padding: 4px 0; }
++.dialog { border: 1px solid #999; padding: 12px; background: #fff; }
++.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
++@media (max-width: 600px) {
++  .list thead { display: none; }
++  .list tr { display: block; border: 1px solid #ddd; margin-bottom: 8px; padding: 4px; }
++  .list td { display: block; border: 0; padding: 2px 4px; }
++}
++</style>
+diff --git a/server/api/practice/dashboard.get.ts b/server/api/practice/dashboard.get.ts
+new file mode 100644
+index 0000000..1c7e2d0
+--- /dev/null
++++ b/server/api/practice/dashboard.get.ts
+@@ -0,0 +1,14 @@
++// EP-29 GET /api/practice/dashboard (getPracticeDashboard): a provider sees their practice's attention items, sales
++// per product and stock for a UTC month (FR-028, FR-029, FR-046, FR-047).
++import { getQuery } from 'h3'
++import { assertRole } from '../../services/access-policy'
++import { now } from '../../services/clock'
++import { dashboard, parseMonth } from '../../services/practice-dashboard'
++import { requireViewer } from '../../services/session'
++import { defineApiHandler } from '../../utils/problem'
++
++export default defineApiHandler(async (event) => {
++  const viewer = await requireViewer(event)
++  assertRole(viewer, ['provider'])
++  return dashboard(viewer, parseMonth(getQuery(event).month, now()))
++})
+diff --git a/server/api/practice/orders.get.ts b/server/api/practice/orders.get.ts
+new file mode 100644
+index 0000000..dcd20ab
+--- /dev/null
++++ b/server/api/practice/orders.get.ts
+@@ -0,0 +1,14 @@
++// EP-30 GET /api/practice/orders (listPracticeOrders): a provider sees a page of their practice's orders sent in a
++// UTC month, with patient, total, status and times (FR-045).
++import { getQuery } from 'h3'
++import { assertRole } from '../../services/access-policy'
++import { now } from '../../services/clock'
++import { orders, parseOrdersQuery } from '../../services/practice-dashboard'
++import { requireViewer } from '../../services/session'
++import { defineApiHandler } from '../../utils/problem'
++
++export default defineApiHandler(async (event) => {
++  const viewer = await requireViewer(event)
++  assertRole(viewer, ['provider'])
++  return orders(viewer, parseOrdersQuery(getQuery(event), now()))
++})
+diff --git a/server/services/practice-dashboard.ts b/server/services/practice-dashboard.ts
+new file mode 100644
+index 0000000..0bf799c
+--- /dev/null
++++ b/server/services/practice-dashboard.ts
+@@ -0,0 +1,221 @@
++// BE-15 PracticeDashboardQueries (lld.md §2, SEQ-5): one practice's attention items, orders, sales and stock for a
++// month. A month is a UTC calendar month (acceptance.md Q-3). Read only; every query is scoped to the viewer's practice.
++import { sql } from 'kysely'
++import { z } from 'zod'
++import { useDb } from '../utils/db'
++import { ProblemError, validationProblem } from '../utils/problem'
++import { assertRole } from './access-policy'
++import { now } from './clock'
++import type { Viewer } from './session'
++
++export interface AttentionItem {
++  kind: 'awaiting_payment' | 'low_stock' | 'out_of_stock'
++  label: string
++  order_id: number | null
++  product_id: number | null
++}
++
++export interface ProductSales {
++  product_id: number
++  name: string
++  units_sold: number
++  patients_paid_cents: number
++  provider_payout_cents: number
++  units_in_stock: number
++}
++
++export interface PracticeDashboard {
++  month: string
++  attention: AttentionItem[]
++  sales: ProductSales[]
++}
++
++export interface PracticeOrderSummary {
++  order_id: number
++  patient_display_name: string
++  total_cents: number
++  status: string
++  sent_at: string
++  paid_at: string | null
++}
++
++export interface PracticeOrderPage {
++  data: PracticeOrderSummary[]
++  next_cursor: string | null
++}
++
++export interface OrdersQuery {
++  month: string
++  cursor?: string
++  limit: number
++}
++
++const DAY_MS = 86_400_000
++const AWAITING_AFTER_MS = 3 * DAY_MS // FR-046: more than 3 days
++const LOW_STOCK_AT = 3 // FR-047: 3 or fewer
++const UNPAID = ['sent', 'in_checkout', 'payment_failed']
++
++const MonthText = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Pick a month like 2026-10.')
++
++/** The month asked for, or the current UTC month when none is given; else 422 /problems/validation. */
++export function parseMonth(raw: unknown, today: Date): string {
++  if (raw === undefined || raw === '') return today.toISOString().slice(0, 7)
++  const parsed = MonthText.safeParse(raw)
++  if (!parsed.success) throw validationProblem(parsed.error)
++  return parsed.data
++}
++
++/** [start, end) of a YYYY-MM month in UTC. */
++export function monthRange(month: string): { start: Date; end: Date } {
++  const [y, m] = month.split('-').map(Number) as [number, number]
++  return { start: new Date(Date.UTC(y, m - 1, 1)), end: new Date(Date.UTC(y, m, 1)) }
++}
++
++export function awaitingPaymentItem(order: { id: string; sent_at: Date }, at: Date): AttentionItem | null {
++  const age = at.getTime() - order.sent_at.getTime()
++  if (age <= AWAITING_AFTER_MS) return null
++  // The label counts UTC calendar days (AE-043: sent 10-10, still unpaid 10-14 = 4 days), so a database clock a few
++  // milliseconds ahead of the app's cannot turn "4 days" into "3 days".
++  const day = (d: Date) => Math.floor(d.getTime() / DAY_MS)
++  const days = day(at) - day(order.sent_at)
++  return { kind: 'awaiting_payment', label: `Awaiting payment for ${days} days`, order_id: Number(order.id), product_id: null }
++}
++
++export function stockItem(p: { id: string; name: string; units_in_stock: number }): AttentionItem | null {
++  if (p.units_in_stock > LOW_STOCK_AT) return null
++  if (p.units_in_stock <= 0) return { kind: 'out_of_stock', label: `${p.name} · out of stock`, order_id: null, product_id: Number(p.id) }
++  return { kind: 'low_stock', label: `Low stock: ${p.units_in_stock} left`, order_id: null, product_id: Number(p.id) }
++}
++
++// The cursor carries PostgreSQL's own text of sent_at, so microseconds survive the round trip (a JS Date would cut
++// them to milliseconds and skip rows on a tie).
++export const encodeCursor = (sentAt: string, id: string): string => Buffer.from(`s:${sentAt}|${id}`).toString('base64url')
++
++export function decodeCursor(cursor: string): { sentAt: string; id: string } | null {
++  const m = /^s:([0-9 :.+-]{10,40})\|(\d{1,18})$/.exec(Buffer.from(cursor, 'base64url').toString())
++  return m ? { sentAt: m[1]!, id: m[2]! } : null
++}
++
++const OrdersQueryShape = z.object({
++  cursor: z.string().refine((c) => decodeCursor(c) !== null, 'Not a cursor from this list.').optional(),
++  limit: z.string().regex(/^\d+$/).transform(Number).pipe(z.int().min(1).max(100)).default(25),
++})
++
++/** EP-30's query string (month, cursor, limit), or 422 /problems/validation. */
++export function parseOrdersQuery(query: Record<string, unknown>, today: Date): OrdersQuery {
++  const month = parseMonth(query.month, today)
++  const parsed = OrdersQueryShape.safeParse(query)
++  if (!parsed.success) throw validationProblem(parsed.error)
++  return { month, limit: parsed.data.limit, ...(parsed.data.cursor === undefined ? {} : { cursor: parsed.data.cursor }) }
++}
++
++function practiceOf(viewer: Viewer | null): string {
++  assertRole(viewer, ['provider'])
++  if (viewer.practiceId === null) throw new ProblemError('forbidden')
++  return viewer.practiceId.toString()
++}
++
++/** EP-29: attention items, then per-product sales of the month's paid orders and today's stock. */
++export async function dashboard(viewer: Viewer, month: string): Promise<PracticeDashboard> {
++  const practiceId = practiceOf(viewer)
++  const { start, end } = monthRange(month)
++  const at = now()
++  const db = useDb()
++
++  const unpaid = await db
++    .selectFrom('orders')
++    .select(['id', 'sent_at'])
++    .where('practice_id', '=', practiceId)
++    .where('status', 'in', UNPAID)
++    .where('sent_at', '<', new Date(at.getTime() - AWAITING_AFTER_MS))
++    .orderBy('sent_at')
++    .orderBy('id')
++    .execute()
++
++  // SEQ-5 step 2: payout per line = paid price × quantity − unit cost × quantity − the line's fee share (FR-028, FR-069).
++  const sales = await db
++    .selectFrom('products')
++    .leftJoin(
++      (eb) =>
++        eb
++          .selectFrom('order_lines')
++          .innerJoin('orders', 'orders.id', 'order_lines.order_id')
++          .select([
++            'order_lines.product_id',
++            sql<string>`sum(order_lines.quantity)`.as('units'),
++            sql<string>`sum(order_lines.paid_unit_price_cents * order_lines.quantity)`.as('paid'),
++            sql<string>`sum((order_lines.paid_unit_price_cents - order_lines.unit_cost_cents_at_payment) * order_lines.quantity - order_lines.fee_share_cents)`.as(
++              'payout',
++            ),
++          ])
++          .where('orders.practice_id', '=', practiceId)
++          .where('orders.status', '=', 'paid')
++          .where('orders.paid_at', '>=', start)
++          .where('orders.paid_at', '<', end)
++          .groupBy('order_lines.product_id')
++          .as('s'),
++      (join) => join.onRef('s.product_id', '=', 'products.id'),
++    )
++    .select(['products.id', 'products.name', 'products.units_in_stock', 's.units', 's.paid', 's.payout'])
++    .orderBy('products.id')
++    .execute()
++
++  const attention = [
++    ...unpaid.map((o) => awaitingPaymentItem(o, at)),
++    ...sales.map((p) => stockItem(p)),
++  ].filter((a): a is AttentionItem => a !== null)
++
++  return {
++    month,
++    attention,
++    sales: sales.map((p) => ({
++      product_id: Number(p.id),
++      name: p.name,
++      units_sold: Number(p.units ?? 0),
++      patients_paid_cents: Number(p.paid ?? 0),
++      provider_payout_cents: Number(p.payout ?? 0),
++      units_in_stock: p.units_in_stock,
++    })),
++  }
++}
++
++/** EP-30: the practice's orders sent in the month, newest first (sent_at DESC, id DESC), keyset-paged. */
++export async function orders(viewer: Viewer, query: OrdersQuery): Promise<PracticeOrderPage> {
++  const practiceId = practiceOf(viewer)
++  const { start, end } = monthRange(query.month)
++  let q = useDb()
++    .selectFrom('orders')
++    .innerJoin('users as patient', 'patient.id', 'orders.patient_id')
++    .select([
++      'orders.id',
++      'orders.status',
++      'orders.sent_at',
++      'orders.paid_at',
++      'patient.display_name as patient_display_name',
++      sql<string>`orders.sent_at::text`.as('sent_at_text'),
++      sql<string>`coalesce(orders.amount_paid_cents, (select sum(coalesce(l.held_unit_price_cents, l.sent_unit_price_cents) * l.quantity) from order_lines l where l.order_id = orders.id))`.as(
++        'total_cents',
++      ),
++    ])
++    .where('orders.practice_id', '=', practiceId)
++    .where('orders.sent_at', '>=', start)
++    .where('orders.sent_at', '<', end)
++  if (query.cursor !== undefined) {
++    const c = decodeCursor(query.cursor)!
++    q = q.where(sql<boolean>`(orders.sent_at, orders.id) < (${c.sentAt}::timestamptz, ${c.id}::bigint)`)
++  }
++  const rows = await q.orderBy('orders.sent_at', 'desc').orderBy('orders.id', 'desc').limit(query.limit + 1).execute()
++  const page = rows.slice(0, query.limit)
++  const last = page[page.length - 1]
++  return {
++    data: page.map((r) => ({
++      order_id: Number(r.id),
++      patient_display_name: r.patient_display_name,
++      total_cents: Number(r.total_cents ?? 0),
++      status: r.status,
++      sent_at: r.sent_at.toISOString(),
++      paid_at: r.paid_at ? r.paid_at.toISOString() : null,
++    })),
++    next_cursor: rows.length > query.limit && last ? encodeCursor(last.sent_at_text, last.id) : null,
++  }
++}
+diff --git a/tests/unit/practice-dashboard.test.ts b/tests/unit/practice-dashboard.test.ts
+new file mode 100644
+index 0000000..9cc43f2
+--- /dev/null
++++ b/tests/unit/practice-dashboard.test.ts
+@@ -0,0 +1,111 @@
++// BE-15 PracticeDashboardQueries pure parts (lld.md §2, SEQ-5): the month (UTC, Q-3), attention items (FR-046,
++// FR-047, Q-4), the per-product payout and the orders cursor.
++import { describe, expect, it } from 'vitest'
++import {
++  awaitingPaymentItem,
++  decodeCursor,
++  encodeCursor,
++  monthRange,
++  parseMonth,
++  parseOrdersQuery,
++  stockItem,
++} from '../../server/services/practice-dashboard'
++import { ProblemError } from '../../server/utils/problem'
++
++const slugOf = (fn: () => unknown): string | undefined => {
++  try {
++    fn()
++  } catch (e) {
++    return e instanceof ProblemError ? e.slug : 'not a problem'
++  }
++  return undefined
++}
++
++const DAY = 86_400_000
++const NOW = new Date('2026-10-14T12:00:00Z')
++
++describe('parseMonth: a UTC calendar month, YYYY-MM (Q-3)', () => {
++  it('defaults to the current UTC month', () => {
++    expect(parseMonth(undefined, new Date('2026-10-31T23:30:00-05:00'))).toBe('2026-11')
++    expect(parseMonth('', NOW)).toBe('2026-10')
++  })
++  it('accepts a month', () => {
++    expect(parseMonth('2026-09', NOW)).toBe('2026-09')
++  })
++  it.each(['2026-13', '2026-00', '2026-9', '26-09', 'October', '2026-09-01', ['2026-09']])('refuses %j with /problems/validation', (m) => {
++    expect(slugOf(() => parseMonth(m, NOW))).toBe('validation')
++  })
++})
++
++describe('monthRange: [start, end) in UTC', () => {
++  it('covers the month, December rolls over the year', () => {
++    expect(monthRange('2026-10')).toEqual({ start: new Date('2026-10-01T00:00:00Z'), end: new Date('2026-11-01T00:00:00Z') })
++    expect(monthRange('2026-12')).toEqual({ start: new Date('2026-12-01T00:00:00Z'), end: new Date('2027-01-01T00:00:00Z') })
++  })
++})
++
++describe('awaitingPaymentItem: unpaid for more than 3 days (FR-046, AE-043)', () => {
++  it('flags 4 days with the day count', () => {
++    expect(awaitingPaymentItem({ id: '1043', sent_at: new Date(NOW.getTime() - 4 * DAY) }, NOW)).toEqual({
++      kind: 'awaiting_payment',
++      label: 'Awaiting payment for 4 days',
++      order_id: 1043,
++      product_id: null,
++    })
++  })
++  it('does not flag exactly 3 days, flags just over 3 days', () => {
++    expect(awaitingPaymentItem({ id: '1', sent_at: new Date(NOW.getTime() - 3 * DAY) }, NOW)).toBeNull()
++    expect(awaitingPaymentItem({ id: '1', sent_at: new Date(NOW.getTime() - 3 * DAY - 1000) }, NOW)?.label).toBe('Awaiting payment for 3 days')
++  })
++  it('counts UTC calendar days, so a database clock a moment ahead still reads 4 days (AE-043: sent 10-10, open 10-14)', () => {
++    expect(awaitingPaymentItem({ id: '1', sent_at: new Date(NOW.getTime() - 4 * DAY + 200) }, NOW)?.label).toBe('Awaiting payment for 4 days')
++    expect(awaitingPaymentItem({ id: '1', sent_at: new Date('2026-10-10T23:59:00Z') }, new Date('2026-10-14T00:01:00Z'))?.label).toBe(
++      'Awaiting payment for 4 days',
++    )
++  })
++  it('does not flag 2 days 23 hours', () => {
++    expect(awaitingPaymentItem({ id: '1', sent_at: new Date(NOW.getTime() - 3 * DAY + 3_600_000) }, NOW)).toBeNull()
++  })
++})
++
++describe('stockItem: 3 or fewer is low, 0 is out of stock (FR-047, AE-044, Q-4)', () => {
++  it('flags 3 left as low stock', () => {
++    expect(stockItem({ id: '3', name: 'Omega-3 Fish Oil', units_in_stock: 3 })).toEqual({
++      kind: 'low_stock',
++      label: 'Low stock: 3 left',
++      order_id: null,
++      product_id: 3,
++    })
++    expect(stockItem({ id: '3', name: 'Omega-3 Fish Oil', units_in_stock: 1 })?.label).toBe('Low stock: 1 left')
++  })
++  it('does not flag 4 left', () => {
++    expect(stockItem({ id: '2', name: 'Magnesium Glycinate', units_in_stock: 4 })).toBeNull()
++  })
++  it('flags 0 as out of stock with the product name', () => {
++    expect(stockItem({ id: '3', name: 'Omega-3 Fish Oil', units_in_stock: 0 })).toEqual({
++      kind: 'out_of_stock',
++      label: 'Omega-3 Fish Oil · out of stock',
++      order_id: null,
++      product_id: 3,
++    })
++  })
++})
++
++describe('orders cursor and EP-30 query', () => {
++  it('round-trips the sent time text and id', () => {
++    const c = encodeCursor('2026-10-10 09:15:00.123456+00', '1043')
++    expect(decodeCursor(c)).toEqual({ sentAt: '2026-10-10 09:15:00.123456+00', id: '1043' })
++  })
++  it('rejects a cursor from elsewhere', () => {
++    expect(decodeCursor('not a cursor')).toBeNull()
++    expect(decodeCursor(Buffer.from('o:1042').toString('base64url'))).toBeNull()
++  })
++  it('defaults to 25, accepts up to 100', () => {
++    expect(parseOrdersQuery({ month: '2026-10' }, NOW)).toEqual({ month: '2026-10', limit: 25 })
++    const c = encodeCursor('2026-10-10 09:15:00+00', '7')
++    expect(parseOrdersQuery({ cursor: c, limit: '100' }, NOW)).toEqual({ month: '2026-10', cursor: c, limit: 100 })
++  })
++  it.each([[{ limit: '0' }], [{ limit: '101' }], [{ limit: 'x' }], [{ cursor: 'nope' }], [{ month: '2026-1' }]])('refuses %j', (q) => {
++    expect(slugOf(() => parseOrdersQuery(q, NOW))).toBe('validation')
++  })
++})
