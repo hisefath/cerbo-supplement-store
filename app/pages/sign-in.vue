@@ -62,6 +62,7 @@ async function submit() {
       <p class="helper">Test accounts only: no real identity check.</p>
       <p v-if="error" role="alert" class="error">{{ error }}</p>
       <p v-else-if="idle" role="status" class="notice">{{ idle }}</p>
+      <p v-else-if="route.query.signed_out" role="status" class="notice">You signed out.</p>
       <p v-else>Sign in to continue.</p>
       <label for="email">Email</label>
       <input id="email" v-model="email" type="email" autocomplete="username" maxlength="254" />
