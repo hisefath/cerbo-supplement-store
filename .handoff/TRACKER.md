@@ -266,6 +266,7 @@ several harnesses read it and the repo is public.
 | 2026-10-11 16:51 CDT | Fix track: sign-in error line (wrong password showed "You're offline"; 2 code files + unit test, no API change) | fix/sign-in-error-message | "hey, this alert in red doesnt make sense, i typed in the wrong password, it should be representative of the right error." |
 | 2026-10-11 17:20 CDT | deploy (pre-approved) | main@502d111 → production web-v2 | "yes, deploy it when merged" |
 | 2026-10-11 17:27 CDT | G1 clarify CQ-10 (M7 Defensibility row) + G2/G3 n/a (docs/tooling, no design change) + G4 job files M7-J01..J04 | docs/product/prd.md | "go M7" (STANDING 2026-10-10 23:09 CDT) |
+| 2026-10-11 18:00 CDT | G5 M7 (report) + merge on green | docs/milestones/M7.md | STANDING 2026-10-10 23:09 CDT "i approve all next recommendations until project completion" |
 
 ## Log
 
@@ -593,3 +594,5 @@ several harnesses read it and the repo is public.
 2026-10-11 17:51 CDT RESULT M7-J04 status=done harness=claude-subagent timeout=no tree=clean
 2026-10-11 17:51 CDT FINDING MUT-1: pay() row lock (payments.ts:107) removable with no failing test; uq_payment_attempts_one_processing covers double pay; parallel cancel/hold-expiry during pay untested -> define-acceptance follow-up
 2026-10-11 17:51 CDT FLAKE M4_AT_028 paid_at 33 ms before a Node timestamp (DB clock vs app clock), passed on rerun
+2026-10-11 18:00 CDT VERIFY M7 55c255f make check exit 0 (unit 347, db 3, M4 43, M5 44, M5.1 5, M5.2 6, M6 44, M6.1 5)
+2026-10-11 18:00 CDT REPORT M7 docs/milestones/M7.md; G5 4/4
