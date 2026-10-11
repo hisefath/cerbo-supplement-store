@@ -195,6 +195,7 @@ several harnesses read it and the repo is public.
 | 2026-10-10 23:59 CDT | G5 SEC-13 | docs/security/CHECKLIST.md@adfd6fa | accept — STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
 | 2026-10-10 23:59 CDT | G5 SEC-14 | docs/security/CHECKLIST.md@adfd6fa | fix: AT-044 stock history append-only — STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
 | 2026-10-11 00:20 CDT | G5 Revise (report-milestone recommendation): answer DV-1, DV-8 (a, Log lines); D79 for 11 tasks (DV-3); re-run check-security on the head | docs/milestones/M5.md (draft, report run 2026-10-11 00:07 CDT) | STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
+| 2026-10-11 00:24 CDT | G5 security part: approve checklist (0 reachable critical/high, no new finding) | docs/security/CHECKLIST.md@77c555c | STANDING row 2026-10-10 23:09 CDT |
 
 ## Log
 
@@ -434,3 +435,4 @@ several harnesses read it and the repo is public.
 2026-10-11 00:05 CDT VERIFY M5-T011 squashed 0c4510a: result done; scope-guard OK (4 paths); supervisor make check on the milestone exit 0 (unit 217, M4 43, M5 44); diff read
 2026-10-11 00:20 CDT NOTE DV-1: M5-T001..T006 squash commits carry `Task:` in its own paragraph, apart from Co-Authored-By, so git does not parse it as a trailer; supervisor commit-message formatting, no decision; scope-guard re-run by hand exit 0 for all six (report §4.3)
 2026-10-11 00:20 CDT NOTE DV-8: ebac30e edits two comment lines in app/pages/practice/dashboard.vue: the supervisor updated the stale EP-17 comment that M5-T011's result named as out of date (outside T011 Owns); comment only, no decision
+2026-10-11 00:24 CDT SECURITY M5 re-run at 23f3451: 0 reachable critical/high; SEC-14 fixed, SEC-10/12/13 accepted D76-D78; ALL CHECKS PASSED
