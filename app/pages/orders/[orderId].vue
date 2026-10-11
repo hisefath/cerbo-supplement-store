@@ -54,27 +54,31 @@ async function back() {
       <ReceiptView v-else-if="shownReceipt" :receipt="shownReceipt" />
       <template v-else-if="order">
         <section aria-labelledby="order-heading">
-          <h1 id="order-heading">Your supplement order</h1>
-          <p>From {{ order.provider_display_name }}, {{ order.practice_name }}</p>
-          <p v-if="order.status === 'cancelled'" role="status">This order was cancelled by your practice.</p>
-          <p v-if="order.status === 'needs_review'" role="status">We couldn't complete this payment. No money was taken. Your practice will contact you.</p>
-          <p v-if="order.hold_ended" role="status">Your 30-minute price hold ended. These are the current prices.</p>
-          <ul class="notices">
-            <li v-for="c in order.price_changes" :key="c.product_id">
-              <span aria-hidden="true">(i)</span> {{ c.name }} price changed: {{ dollars(c.old_price_cents) }} to {{ dollars(c.new_price_cents) }}.
-            </li>
-          </ul>
-          <ul class="lines">
-            <li v-for="l in order.lines" :key="l.product_id">
-              <span class="name">{{ l.name }}</span>
-              <span>{{ l.quantity }} x {{ dollars(l.unit_price_cents) }}</span>
-              <span>{{ dollars(l.line_total_cents) }}</span>
-            </li>
-          </ul>
-          <dl class="total">
-            <dt>Total due</dt>
-            <dd>{{ dollars(order.total_cents) }}</dd>
+          <div class="page-band">
+            <h1 id="order-heading">Your supplement order</h1>
+            <p>From {{ order.provider_display_name }}, {{ order.practice_name }}</p>
+          </div>
+          <div class="card">
+            <p v-if="order.status === 'cancelled'" role="status">This order was cancelled by your practice.</p>
+            <p v-if="order.status === 'needs_review'" role="status">We couldn't complete this payment. No money was taken. Your practice will contact you.</p>
+            <p v-if="order.hold_ended" role="status">Your 30-minute price hold ended. These are the current prices.</p>
+            <ul class="notices">
+              <li v-for="c in order.price_changes" :key="c.product_id">
+                <span aria-hidden="true">(i)</span> {{ c.name }} price changed: {{ dollars(c.old_price_cents) }} to {{ dollars(c.new_price_cents) }}.
+              </li>
+            </ul>
+            <ul class="lines">
+              <li v-for="l in order.lines" :key="l.product_id">
+                <span class="name">{{ l.name }}</span>
+                <span>{{ l.quantity }} x {{ dollars(l.unit_price_cents) }}</span>
+                <span>{{ dollars(l.line_total_cents) }}</span>
+              </li>
+            </ul>
+            <dl class="total">
+              <dt>Total due</dt>
+              <dd>{{ dollars(order.total_cents) }}</dd>
           </dl>
+          </div>
         </section>
         <CheckoutStep v-if="canPay" :key="checkoutKey" :order="order" @back="back" @paid="(r: Receipt) => (receipt = r)" />
       </template>
@@ -84,11 +88,14 @@ async function back() {
 </template>
 
 <style scoped>
+/* S2 on the VL-2 theme (theme.css): title in the sky band, the order on a white card; layout only here. */
 .order { max-width: 560px; margin: 0 auto; }
+.order .card { margin-bottom: var(--space-section); }
 .notices, .lines { list-style: none; padding: 0; }
-.lines li { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; padding: 4px 0; }
+.notices { color: var(--color-ink-muted); }
+.lines li { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--color-border); font-variant-numeric: tabular-nums; }
 .name { overflow-wrap: anywhere; }
-.total { display: grid; grid-template-columns: 1fr auto; border-top: 1px solid #333; padding-top: 4px; }
+.total { display: grid; grid-template-columns: 1fr auto; margin: 0; padding-top: 8px; font-variant-numeric: tabular-nums; }
 .total dd { margin: 0; font-weight: 600; }
-.help { color: #444; }
+.help { color: var(--color-ink-muted); }
 </style>

@@ -79,10 +79,10 @@ async function payNow() {
 </script>
 
 <template>
-  <section aria-labelledby="checkout-heading" class="checkout">
+  <section aria-labelledby="checkout-heading" class="checkout card">
     <template v-if="!checkout">
       <ProblemMessage :problem="problem" :copy="{ offline: 'You\'re offline. No money was taken. Try again when you\'re back online.' }" @retry="start" />
-      <button type="button" class="primary" :disabled="busy" @click="start">Continue to payment</button>
+      <button type="button" class="btn-primary" :disabled="busy" @click="start">Continue to payment</button>
     </template>
     <template v-else>
       <h2 id="checkout-heading">Checkout</h2>
@@ -104,17 +104,18 @@ async function payNow() {
         }"
         @retry="payNow"
       />
-      <button type="button" class="primary" :disabled="busy" @click="payNow">Pay {{ dollars(total) }}</button>
-      <button type="button" class="secondary" @click="emit('back')">Back to order</button>
+      <button type="button" class="btn-primary" :disabled="busy" @click="payNow">Pay {{ dollars(total) }}</button>
+      <button type="button" class="btn-secondary" @click="emit('back')">Back to order</button>
     </template>
   </section>
 </template>
 
 <style scoped>
+/* S2 step 2 on the VL-2 theme (theme.css): a white card with the glowing primary button; layout only here. */
 .checkout { max-width: 560px; margin: 0 auto; }
-dl { display: grid; grid-template-columns: 1fr auto; }
-dd { margin: 0; text-align: right; }
-.test { color: #333; }
-.primary, .secondary { display: block; width: 100%; min-height: 44px; margin: 8px 0; }
-.primary { font-weight: 600; }
+dl { display: grid; grid-template-columns: 1fr auto; font-variant-numeric: tabular-nums; }
+dd { margin: 0; text-align: right; font-weight: 600; }
+.test { color: var(--color-ink-muted); }
+.btn-primary, .btn-secondary { display: block; width: 100%; margin: 8px 0; }
+.btn-primary { font-weight: 600; }
 </style>
