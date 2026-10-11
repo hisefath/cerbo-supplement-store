@@ -217,6 +217,7 @@ several harnesses read it and the repo is public.
 | 2026-10-11 08:18 CDT | G5 security part (M5.1): approve checklist (0 reachable critical/high, no new finding); re-run after M5.1-T005 (Q4) | docs/security/CHECKLIST.md@43215f6 | STANDING row 2026-10-10 23:09 CDT |
 | 2026-10-11 08:25 CDT | G5 security part (M5.1 re-run after T005): approve checklist (0 reachable critical/high, no new finding) | docs/security/CHECKLIST.md@c06a229 | STANDING row 2026-10-10 23:09 CDT |
 | 2026-10-11 08:35 CDT | G5 Revise (M5.1 report recommendation): answer DV-5 with a Log NOTE, correct MILESTONES gate SHAs (DV-6), add the missing T004 VERIFY line, re-run report-milestone | docs/milestones/M5.1.md (draft 08:25) | STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-11 08:40 CDT | G5 Merge (M5.1 report recommendation; 4 clauses yes; 0 open P0/P1; 0 unaccepted high/critical) | docs/milestones/M5.1.md@c26710a | STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
 
 ## Log
 
