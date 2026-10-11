@@ -6,4 +6,5 @@
 - Repro: tests/acceptance/M5.1/visual-language.test.ts::M5.1_AT_005 (Dr. Chen opening / gets 404). Written and committed red before the fix.
 - Fix: a site-root page sends the signed-in person to their role's home; the role-home table moves to one shared place used by the sign-in page and the root page.
 - Not fixed here: a patient's role home (/orders, the order list) does not exist yet: M5-R03 (clarify-spec, patient order list). A patient arriving at the root still meets that gap.
+- Verified: M5.1_AT_005 green; make check exit 0.
 - Approval: STANDING row 2026-10-10 23:09 CDT.

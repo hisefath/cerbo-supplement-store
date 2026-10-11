@@ -6,16 +6,6 @@ import { safeNext } from '~/middleware/auth.global'
 interface Me { role: string }
 
 const route = useRoute()
-// Each role's home (flows.md F7 step 2): a patient her orders, a provider the practice dashboard, a reviewer Paid
-// orders. Finance, SRE and analyst roles open the one operations page their role is for.
-const HOME: Record<string, string> = {
-  patient: '/orders',
-  provider: '/practice/dashboard',
-  operations_specialist: '/ops/orders',
-  finance_lead: '/ops/orders',
-  sre: '/ops/system',
-  data_analyst: '/ops/health',
-}
 const next = computed(() => safeNext(route.query.next))
 const idle = computed(() =>
   route.query.idle
@@ -63,7 +53,7 @@ async function submit() {
   // next page opens, so a second press can't sign in twice.
   clearNuxtData('viewer') // ST-1 is fetched again for the signed-in person
   try {
-    await navigateTo(next.value ?? HOME[me.role] ?? '/', { replace: true })
+    await navigateTo(next.value ?? ROLE_HOME[me.role] ?? '/', { replace: true })
   } finally {
     pending.value = false
   }
