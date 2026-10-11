@@ -221,6 +221,9 @@ several harnesses read it and the repo is public.
 | 2026-10-11 09:37 CDT | G1 (clarify CQ-5: M5.2 Safe landing) + G-ux (S15, page-not-found and wrong-role conventions) + G3 (ROLE_PAGES, FE-25, FE-26, FE-23) + G4 (AT-001..004, T001) | prd.md, screens.md, flows.md, lld.md, specs/M5.2-safe-landing on milestone/m5.2-safe-landing | "also everytime i log in, i get 404s. i dont reroute safely to a homepage, or have any info like i dont have access or get a link to a page i should be reaching, etc. lets fix that" · STANDING row 2026-10-10 23:09 CDT |
 | 2026-10-11 09:52 CDT | M5.2 review pass 1 dispositions: R1, R3 fix (tests, supervisor); R2, R5, R6 fix (M5.2-T002; S15 no-role copy added, G-ux); R4 file; R7 keep | .handoff/reviews/M5.2-pass1.md | STANDING row 2026-10-10 23:09 CDT |
 | 2026-10-11 09:59 CDT | M5.2-T002 Q1: A (keep the styled link; AT-003 stays green) | .handoff/runs/M5.2-T002/answers.md | STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-11 10:12 CDT | G5 SEC-15 | docs/security/CHECKLIST.md@e94fe57 | accept — STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
+| 2026-10-11 10:12 CDT | G5 security part (M5.2): approve checklist (0 reachable critical/high) | docs/security/CHECKLIST.md@e94fe57 | STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
+| 2026-10-11 10:12 CDT | deploy (pre-approved): the M5.2 merge commit → Railway production (web-v2), once merged on green CI | MR !11 | "tell me when M5.2 is ready to deploy, also deploy it" |
 
 ## Log
 

@@ -35,7 +35,7 @@ Weight: ●●● critical (hard to undo, or touches money, personal data or sig
 - ●○○ D56 — Demo database runs PostgreSQL 18 while tests run 16.
 - ●○○ ~~D11~~ — v1: one stock path through a single method. (replaced by D22)
 
-### Security (10)
+### Security (11)
 
 - ●●● D26 — Sign-in, notices without health details, no patient identity for platform staff.
 - ●●○ D37 — Seeded test accounts with server-side sessions.
@@ -47,6 +47,7 @@ Weight: ●●● critical (hard to undo, or touches money, personal data or sig
 - ●○○ D76 — Stock limits now cap quantity; the overflow 500 stays accepted.
 - ●○○ D77 — Absurd staff input gives a 500, not a 422; accepted, no harm.
 - ●○○ D78 — GET of an order may end a due hold; accepted, access-checked.
+- ●○○ D82 — S15 home may linger in a shared browser's history; accepted as low.
 
 ### Money (8)
 
@@ -133,6 +134,7 @@ Decisions that adopted a software-factory-kit change (H) and the finding (F) beh
 
 ### 2026-10-11
 
+- D82 · Security · ●○○ — S15 home may linger in a shared browser's history; accepted as low.
 - D81 · Infrastructure · ●○○ — One theme stylesheet; fonts ship with the app.
 - D80 · Product · ●○○ — M5.1 restyle uses light pages with a sky header band.
 - D79 · Process · ●○○ — M5 adds an 11th task for review fixes, like M4.
