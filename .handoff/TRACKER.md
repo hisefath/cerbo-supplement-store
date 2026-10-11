@@ -220,6 +220,13 @@ several harnesses read it and the repo is public.
 | 2026-10-11 08:40 CDT | G5 Merge (M5.1 report recommendation; 4 clauses yes; 0 open P0/P1; 0 unaccepted high/critical) | docs/milestones/M5.1.md@c26710a | STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
 | 2026-10-11 09:17 CDT | deploy (ship-milestone) | main@c956959 → Railway production (web-v2) | "yes, deploy c956959 to production" |
 | 2026-10-11 09:49 CDT | G3 (M6 delta: BE-22 paging, catch-up rows, D82-D86 recommendations accepted; Q-10, Q-11, Q-12 to clarify-spec) | docs/architecture/lld.md@9200719 + openapi.yaml + 9 diagrams | STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
+| 2026-10-11 09:37 CDT | G1 (clarify CQ-5: M5.2 Safe landing) + G-ux (S15, page-not-found and wrong-role conventions) + G3 (ROLE_PAGES, FE-25, FE-26, FE-23) + G4 (AT-001..004, T001) | prd.md, screens.md, flows.md, lld.md, specs/M5.2-safe-landing on milestone/m5.2-safe-landing | "also everytime i log in, i get 404s. i dont reroute safely to a homepage, or have any info like i dont have access or get a link to a page i should be reaching, etc. lets fix that" · STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-11 09:52 CDT | M5.2 review pass 1 dispositions: R1, R3 fix (tests, supervisor); R2, R5, R6 fix (M5.2-T002; S15 no-role copy added, G-ux); R4 file; R7 keep | .handoff/reviews/M5.2-pass1.md | STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-11 09:59 CDT | M5.2-T002 Q1: A (keep the styled link; AT-003 stays green) | .handoff/runs/M5.2-T002/answers.md | STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-11 10:12 CDT | G5 SEC-15 | docs/security/CHECKLIST.md@e94fe57 | accept — STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
+| 2026-10-11 10:12 CDT | G5 security part (M5.2): approve checklist (0 reachable critical/high) | docs/security/CHECKLIST.md@e94fe57 | STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
+| 2026-10-11 10:12 CDT | deploy (pre-approved): the M5.2 merge commit → Railway production (web-v2), once merged on green CI | MR !11 | "tell me when M5.2 is ready to deploy, also deploy it" |
+| 2026-10-11 10:22 CDT | G5 Merge (M5.2 report recommendation; 4 clauses yes; 0 open P0/P1; 0 unaccepted high/critical) | docs/milestones/M5.2.md@8f18a05 | STANDING row 2026-10-10 23:09 CDT |
 
 ## Log
 
@@ -486,3 +493,14 @@ several harnesses read it and the repo is public.
 2026-10-11 09:18 CDT DEPLOY M5.1 c956959 → production web-v2 (deployment b3c00832 SUCCESS); /version c956959; SMOKE GREEN 7/0; fonts 200 font/woff2 same-origin; root redirects signed-out to /sign-in?next=/
 2026-10-11 09:19 CDT DISPATCH M6-LLD harness=claude-subagent why=design-lld delta for M6 + routed design catch-up; branch design/m6-lld
 2026-10-11 10:15 CDT NOTE M6 decisions renumbered D82-D86 -> D83-D87 on design/m6-lld (D82 went to SEC-15 on milestone/m5.2-safe-landing, which merges first); the M6 G3 Approvals row's 'D82-D86' means today's D83-D87
+2026-10-11 09:37 CDT DISPATCH M5.2-T001 harness=claude-subagent why=safe landing fix (human report: 404s after sign-in)
+2026-10-11 09:48 CDT VERIFY M5.2-T001 squashed 2727f99: scope-guard OK (5 paths); supervisor make check exit 0 (218/43/44/5/4); diff read
+2026-10-11 09:48 CDT REVIEW M5.2: verifier pass 1 dispatched
+2026-10-11 09:52 CDT REVIEW M5.2 pass 1: 0 P0, 0 P1, 3 P2, 4 P3
+2026-10-11 09:52 CDT DISPATCH M5.2-T002 harness=claude-subagent why=pass 1 review fixes
+2026-10-11 09:59 CDT VERIFY M5.2-T002 squashed e9b46fc: worker stopped human_review on Q1 (button vs link vs AT-003); answer A recorded; supervisor committed the verified worktree diff (scope-guard OK, 4 paths); make check exit 0 (218/43/44/5/5)
+2026-10-11 09:59 CDT REVIEW M5.2: report-milestone and check-security dispatched
+2026-10-11 10:04 CDT FAIL flaky: pre-push make check failed once on unit tests and once on M5_AT_037 (awaiting-payment items) on milestone/m5.2-safe-landing; not reproducible: unit 218/218 alone, AT-037 3/3 alone, M5 suite 44/44 twice; route-failure candidate (shared test database or timing)
+2026-10-11 10:05 CDT FIX harness: .githooks/pre-push unsets GIT_DIR/GIT_WORK_TREE before make check; inside a worktree embed-diagrams resolved doubled paths and blocked the push (the earlier 'flaky' failures came from the same broken hook run); route-failure candidate for the kit
+2026-10-11 10:31 CDT MERGE M5.2 MR !11 -> main c9b890d (pipeline #49910 success); make check on main exit 0 (218/43/44/5/5)
+2026-10-11 10:31 CDT DEPLOY M5.2 c9b890d → production web-v2 (deployment 5224c9ca SUCCESS); SMOKE GREEN 7/0; deploy pre-approved by "tell me when M5.2 is ready to deploy, also deploy it"

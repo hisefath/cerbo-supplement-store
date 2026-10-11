@@ -1357,6 +1357,8 @@ flowchart TD
 ### Component tree
 
 - FE-1 AppShell (every screen)
+  - FE-25 HomePage (S15, new M5.2)
+  - FE-26 ErrorPage (every page error, new M5.2)
   - FE-2 SignInPage (S8)
     - FE-23 ProblemMessage
   - FE-3 NoticePage (S9)
@@ -1429,6 +1431,8 @@ FE-12, FE-22 and FE-23 are shared, stateless components; each appears under ever
 | **FE-22** | MonthPicker (changed) | S6, S10, S11, S13, S14 | value: string (YYYY-MM) | change(month) | none (stateless) | — ; a labelled native `<input type="month">` with the theme's control styles, as FE-15 already uses, not a custom widget; an emptied input means the current month |
 | **FE-23** | ProblemMessage (changed, as built) | all | problem: Problem \| null; copy?: Record<slug, string> (the screen's own copy per problem type); names?: Record<productId, string> | retry() | none (stateless) | error (maps each problem type to the screen's exact copy; offline when there is no problem body) |
 | **FE-24** | OrderFunnel | S10 | funnel: Funnel | none | none (stateless) | edge data (few orders: "read the counts, not the bars") |
+| **FE-25** (new, M5.2) | HomePage | S15 | none | none | none (reads ST-1) | empty (role has no page yet), loading, permission denied (signed out: sign-in) |
+| **FE-26** (new, M5.2) | ErrorPage | all | error: { statusCode, message } | none | none (stateless) | error (404: "We couldn't find that page"; other: "Something went wrong on our side"), with "Go to your home" |
 
 **Theme (new, M5.1, D81).** One global stylesheet, `app/assets/css/theme.css`, registered in `nuxt.config.ts` `css`, holds
 the screens.md VL-2 visual language as CSS custom properties (colours, radii, shadows, spacing, type sizes; the colour
@@ -1451,9 +1455,14 @@ text/background pair's WCAG contrast ratio.
 
 **M6 pages and the theme (new).** FE-17 to FE-21 and FE-24 follow the Theme paragraph: each page opens with the `page-band` title, its sections are `card`s, buttons use `btn-primary` / `btn-secondary`, status and "Refused" or "Needs attention" marks use `status-pill` modifiers, and no colour is written outside theme.css. FE-24's bars are CSS widths on `--color-primary`, with the counts printed beside them ("read the counts, not the bars").
 
-**Site root (new, M5.1 fix, specs/bugs/root-url-404-after-sign-in.md).** `app/pages/index.vue` sends a signed-in person to
-their role's home from the shared `ROLE_HOME` table (`app/utils/role-home.ts`, also used by FE-2); if the session
-cannot be read it goes to `/sign-in`. It redirects only to fixed paths, never to input. (changed, M6) `ROLE_HOME` already names the M6 homes: finance_lead `/ops/orders`, sre `/ops/system`, data_analyst `/ops/health`; role `none` has no home because it can no longer sign in (Q-11).
+**Site root and safe landing (changed, M5.2; FE-25, FE-26).** One table, `ROLE_PAGES` in `app/utils/role-home.ts`, lists
+for each role the pages that exist today (path and title, in order); `ROLE_HOME` is a role's first listed page. `app/pages/index.vue`
+(FE-25 HomePage, S15) sends a signed-in person to `ROLE_HOME` when their role has a page, otherwise renders S15 with the
+role's pages (none yet for patient, sre, data_analyst) and the S15 copy; if the session cannot be read it goes to `/sign-in`.
+It redirects only to fixed paths. `app/error.vue` (FE-26 ErrorPage) renders every page error inside FE-1's frame: a 404 shows
+"We couldn't find that page" and a primary "Go to your home" link to `/`; any other status shows "Something went wrong on our
+side. Try again in a moment." with the same link; the response keeps its status code. FE-23 ProblemMessage (changed): for
+`/problems/forbidden` it adds a "Go to your home" link to `/` after the screen's wrong-role copy (S8 "Here is your own work"). (M6) Each M6 page joins `ROLE_PAGES` for its role as it is built (sre `/ops/system` and `/ops/staff`, data_analyst `/ops/health` and the volume report, finance_lead the financial report and access log), so those roles land on their work page instead of S15; role `none` keeps the S15 no-role copy until Q-11 decides whether it may sign in at all.
 
 ### State ownership
 
@@ -2972,4 +2981,5 @@ stateDiagram-v2
 | 2026-10-10 23:57 CDT | Revise (M5 review pass 7 R4, pass 6 R9 a/b, pass 1 R3; Approvals STANDING 2026-10-10 23:09 CDT): EP-17 `Me` gains `practice_name` (string or null), read with the session's user; S5 and S6 titles use it | EP-17, BE-3, openapi Me | G3 by STANDING approval 2026-10-10 23:57 CDT |
 | 2026-10-11 07:24 CDT | Delta (M5.1, D75, D80): FE-1 page frame (changed); Theme paragraph (theme.css custom properties, shared classes, self-hosted fonts); D81 proposed | FE-1, D81 | G3 by STANDING approval 2026-10-11 07:24 CDT |
 | 2026-10-11 08:11 CDT | Revise (M5.1 review pass 1 R5, R9): control-border token; pill tokens listed; D81 marked accepted (journal D81); site-root page recorded | Theme, FE-2, D81 | G3 by STANDING approval 2026-10-11 08:11 CDT |
+| 2026-10-11 09:35 CDT | Delta (M5.2 safe landing, CQ-5): ROLE_PAGES; FE-25 HomePage (S15); FE-26 ErrorPage; FE-23 forbidden link | FE-23, FE-25, FE-26 | G3 by STANDING approval 2026-10-11 09:35 CDT |
 | 2026-10-11 09:25 CDT | Delta (M6-measurement-and-operations, job M6-LLD): M6 rows reconciled with the code M4, M5 and M5.1 shipped (route-file handlers, page guard, role lists, `reserveForOrder` as built, SEQ-2 attempt-before-stock order); routed M5 catch-up: attention items carry patient name and total (M5-pass6 R4), 422 for every bad cursor in the contract and one shared paging helper BE-22 (M5-pass1 R5, pass5 R5, R7, pass6 R8), price and stock bounds proposed (D83, against D77), `FOR NO KEY UPDATE` proposed (D84), invalid-transition members proposed (D85, Q-8, M5-pass7 R2); M6 design gaps closed: out-of-stock refusals counted in `request_stats` (D86), availability over 5-minute slots matching the probe (D87), EP-37 refusals reach BE-18, M6 grants; decision statuses synced with the journal (D38 superseded by D44; D39 to D42, D72 accepted); Q-9 to Q-12 | users, access_log, request_stats, health_pings, Database roles, BE-1, BE-2, BE-4, BE-8, BE-10, BE-13 to BE-19, BE-22, FE-15, FE-17 to FE-20, FE-22, FE-23, ST-7, EP-10 to EP-15, EP-25, EP-27 to EP-34, EP-37 to EP-40, Problem types, Pagination, SEQ-2, SEQ-8, SEQ-10, SEQ-12, SM-1, SM-2, FM-8, SEAM-7, D38 to D42, D72, D83 to D87, Q-8 to Q-12 | pending G3 |

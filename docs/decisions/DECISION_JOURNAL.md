@@ -940,6 +940,18 @@ Copy this block for each new entry (D-ids increase by one, starting at D1):
 - Revisit if: a design-system package is adopted, or the EHR host supplies its own fonts. · Evidence: lld.md Theme paragraph, D81; NFR-016 · Interview line: "The whole look lives in one theme file and the fonts ship with the app, so the restyle never calls a third party from inside the chart."
 - Review: Topic Infrastructure · Weight ●○○ · One-liner: One theme stylesheet; fonts ship with the app.
 
+### D82 Accept S15 home without no-store caching  [status: accepted]
+- Date 2026-10-11 10:12 CDT · phase 12 check-security (G5) · milestone M5.2 · Decided by: human, G5 SEC-15 2026-10-11 10:12 CDT: STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" · Proposed by: check-security (Claude Code, claude-opus-5-5) · artifact: docs/security/CHECKLIST.md@e94fe57
+- Context and forces: the S15 home at / shows the signed-in person's own name and role; / has no Cache-Control no-store rule (nuxt.config.ts covers /api/**, /orders/**, /ops/**), so a shared browser's back button may show the previous person's name after sign-out; /practice/** has the same gap; HTTPS rules out shared proxies.
+- Options:
+  - Do nothing / simplest (shown as "default: pending G5"): leave it undecided — cost: the milestone cannot merge — rejected: blocks G5
+  - fix: add '/' and '/practice/**' to the NO_STORE route rules — cost: a small task and a re-run — rejected: low, own-name only
+  - accept (agent's recommendation) (agent's first proposal — no instead-of recorded) — cost: a name and role may stay in a shared browser's history — chosen
+- Choice: accept · Why: In the context of a page that shows only the viewer's own name, facing a low back-button exposure on shared browsers, we chose to accept it over a caching rule now, accepting that a name may linger in history.
+- Cost accepted: on a shared browser, Back after sign-out may show the previous person's name and role. · Reversibility: Type 2 two-way · Confidence: high
+- Revisit if: S15 starts to show order or health data, or the app runs on shared clinic machines inside the EHR. · Evidence: docs/security/CHECKLIST.md SEC-15; approval G5 SEC-15 2026-10-11 10:12 CDT · Interview line: "The home page shows only your own name, so a back-button echo on a shared browser was accepted as low until it shows more."
+- Review: Topic Security · Weight ●○○ · One-liner: S15 home may linger in a shared browser's history; accepted as low.
+
 ### D83 Bound price and stock input with clear 422s  [status: accepted]
 - Date 2026-10-11 09:49 CDT · phase 6 design-lld (G3) · milestone M6 · Decided by: human, G3 2026-10-11 09:49 CDT: STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" · Proposed by: design-lld (Claude Code, claude-opus-5-5) · artifact: docs/architecture/lld.md@9200719 D83
 - Context and forces: Price, stock change and quantity had no upper bound, so absurd staff input reached the database and answered 500 (D77 accepted that for now; M5-pass1 R2, M5-pass5 R1).
