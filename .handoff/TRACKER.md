@@ -251,6 +251,17 @@ several harnesses read it and the repo is public.
 | 2026-10-11 14:27 CDT | G5 SEC-18 | docs/security/CHECKLIST.md@b1c30da | accept — STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
 | 2026-10-11 14:27 CDT | G5 security part (M6.1): approve checklist (0 reachable critical/high) | docs/security/CHECKLIST.md@b1c30da | STANDING row 2026-10-10 23:09 CDT: "i approve all next recommendations until project completion" |
 | 2026-10-11 14:35 CDT | G5 Merge (M6.1 report recommendation; 4 clauses yes; 0 open P0/P1; 0 unaccepted high/critical) | docs/milestones/M6.1.md@8656f8b | STANDING row 2026-10-10 23:09 CDT |
+| 2026-10-11 15:40 CDT | G-L5 | H20@11ab948173dd | "A, adopt all 10" |
+| 2026-10-11 15:40 CDT | G-L5 | H21@30165f829ae7 | "A, adopt all 10" |
+| 2026-10-11 15:40 CDT | G-L5 | H22@dac0d3019c2d | "A, adopt all 10" |
+| 2026-10-11 15:40 CDT | G-L5 | H23@e3e718e446ba | "A, adopt all 10" |
+| 2026-10-11 15:40 CDT | G-L5 | H24@58bc64be50b3 | "A, adopt all 10" |
+| 2026-10-11 15:40 CDT | G-L5 | H25@088425493cbb | "A, adopt all 10" |
+| 2026-10-11 15:40 CDT | G-L5 | H26@0703549f54fb | "A, adopt all 10" |
+| 2026-10-11 15:40 CDT | G-L5 | H27@c2bc8cdf30f9 | "A, adopt all 10" |
+| 2026-10-11 15:40 CDT | G-L5 | H28@886510ef97aa | "A, adopt all 10" |
+| 2026-10-11 15:40 CDT | G-L5 | H29@0a295ac08761 | "A, adopt all 10" |
+| 2026-10-11 15:40 CDT | G-L5 (block decision, rows without a diff) | FINDINGS.md F32, F34, F36, F41-F46 | "A, adopt all 10" (recommended A: accept all as listed) |
 
 ## Log
 
