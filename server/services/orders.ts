@@ -2,6 +2,7 @@
 // No method changes a sent order's lines (FR-068).
 import { sql } from 'kysely'
 import { useDb } from '../utils/db'
+import { decodeCursor, encodeCursor, parseLimit } from '../utils/paging'
 import { ProblemError } from '../utils/problem'
 import { assertCanActOnPatient, assertCanViewOrder, assertIsOrderPatient } from './access-policy'
 import { currentPrices, loadPatient } from './catalog'
@@ -395,3 +396,53 @@ export async function cancelOrder(viewer: Viewer, orderId: bigint): Promise<Orde
     sent_at: o.sent_at.toISOString(),
   }
 }
+
+/** EP-42 query, raw: BE-22 reads both, so a bad cursor or limit is 422 /problems/validation. */
+export interface PageRequest {
+  cursor?: unknown
+  limit?: unknown
+}
+
+export interface PatientOrderSummary {
+  order_id: number
+  status: string
+  practice_name: string
+  total_cents: number
+  sent_at: string
+  paid_at: string | null
+}
+
+export interface PatientOrderPage {
+  data: PatientOrderSummary[]
+  next_cursor: string | null
+}
+
+/** EP-42 (FR-039, AE-067): the viewer's own orders, keyset (sent_at DESC, id DESC) through BE-22. Each row is read
+ *  through getOrderForViewer, so its status and total are exactly what the order page shows (a moved price, an ended
+ *  hold). The caller has already checked the viewer is a patient. */
+export async function listOrdersForPatient(viewer: Viewer, page: PageRequest): Promise<PatientOrderPage> {
+  if (page.cursor !== undefined && typeof page.cursor !== 'string') {
+    throw new ProblemError('validation', { errors: [{ pointer: '#/cursor', detail: 'Not a cursor from this list.' }] })
+  }
+  const n = parseLimit(page.limit, '#/limit')
+  const after = page.cursor ? decodeCursor(page.cursor, '#/cursor', true) : undefined
+  let q = useDb()
+    .selectFrom('orders')
+    // The cursor key in BE-22's form, in UTC whatever the session time zone.
+    .select(['id', sql<string>`to_char(sent_at at time zone 'UTC', 'YYYY-MM-DD HH24:MI:SS.US"+00"')`.as('key')])
+    .where('patient_id', '=', viewer.userId.toString())
+  if (after) q = q.where(sql<boolean>`("sent_at", "id") < (${after.key}::timestamptz, ${after.id}::bigint)`)
+  const rows = await q.orderBy('sent_at', 'desc').orderBy('id', 'desc').limit(n + 1).execute()
+  const shown = rows.slice(0, n)
+  // ponytail: one getOrderForViewer per row (about 3 queries each, 25 a page); batch it if the page gets slow.
+  const data = await Promise.all(
+    shown.map(async (r) => {
+      const o = await getOrderForViewer(viewer, BigInt(r.id))
+      return { order_id: o.order_id, status: o.status, practice_name: o.practice_name, total_cents: o.total_cents, sent_at: keyToIso(r.key), paid_at: o.paid_at }
+    }),
+  )
+  const last = shown[shown.length - 1]
+  return { data, next_cursor: rows.length > n && last ? encodeCursor(last.key, last.id) : null }
+}
+
+const keyToIso = (key: string) => new Date(key.replace(' ', 'T').replace(/\+00$/, 'Z')).toISOString()
