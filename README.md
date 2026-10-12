@@ -9,7 +9,7 @@ in an append-only ledger. Operations staff get stock, finance, health and access
 - **Start here:** [docs/REVIEWER_GUIDE.md](docs/REVIEWER_GUIDE.md) · every artifact: [docs/README.md](docs/README.md)
 - **Design:** [HLD](docs/architecture/hld.md) · [LLD](docs/architecture/lld.md) · [all diagrams](docs/architecture/diagrams/README.md) · [API contract](docs/architecture/contracts/openapi.yaml)
 - **AI usage (decisions, cuts, what the AI got wrong):** [docs/AI_USAGE.md](docs/AI_USAGE.md)
-- **Demo video:** ⚠ upload link pending; script and teleprompter in [docs/demo/SCRIPT.md](docs/demo/SCRIPT.md)
+- **Demo video:** ⚠ upload link pending
 - **Decisions:** [decision journal](docs/decisions/DECISION_JOURNAL.md) · [by topic](docs/decisions/REVIEW.md)
 - **Milestones:** [MILESTONES.md](MILESTONES.md) and the reports in [docs/milestones/](docs/milestones/)
 - **Security:** [threat model](docs/security/THREAT_MODEL.md) · [checklist](docs/security/CHECKLIST.md) · [EHR embedding plan](docs/architecture/embedding-plan.md)

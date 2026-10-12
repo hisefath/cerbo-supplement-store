@@ -42,3 +42,5 @@ docs/demo/raw/
 /.output
 /.claude/worktrees/
 docs/demo/out/*.mp4
+docs/demo/SCRIPT.md
+docs/demo/out/teleprompter.html
