@@ -170,3 +170,17 @@ Each phase is its own milestone with the normal gates. E1 is worth doing even if
 | Q-5 | Should order and payment status flow back into the chart (R02 F9)? | a new write into Cerbo, and a new trust boundary | partner and product owner |
 | Q-6 | How do platform staff sign in once the stand-in is retired? | ops pages stay outside Cerbo (§2) | product owner |
 | Q-7 | Which browsers must work with third-party cookies blocked? | may need the Storage Access API (§5 item 2) | partner |
+
+<!-- pictures:start -->
+## Diagrams
+
+Today's context (what changes when Cerbo hosts the pages) and today's sign-in, which the launch token replaces.
+
+**System context: who uses the store and which outside systems it talks to**
+
+[![System context: who uses the store and which outside systems it talks to](diagrams/img/hld-context.png)](diagrams/img/hld-context.png)
+
+**Sequence: sign in and idle sign-out**
+
+[![Sequence: sign in and idle sign-out](diagrams/img/sequence-sign-in.png)](diagrams/img/sequence-sign-in.png)
+<!-- pictures:end -->

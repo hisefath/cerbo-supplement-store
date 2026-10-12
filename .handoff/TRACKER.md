@@ -270,6 +270,7 @@ several harnesses read it and the repo is public.
 | 2026-10-11 18:23 CDT | deploy (pre-approved) | main@612c5bf → production web-v2 | "tell me when M7 is merged, also deploy it" |
 | 2026-10-11 18:33 CDT | G1 clarify CQ-11 (M7.1 Hardening, NFR-017, AE-068..070) + D91 + LLD BE-23 + G4 (supervisor builds; 1 code file + tests) | docs/product/prd.md, docs/architecture/lld.md | "go M7.1" (STANDING 2026-10-10 23:09 CDT) |
 | 2026-10-11 18:35 CDT | G5 M7.1 + merge on green + deploy (pre-approved) | docs/milestones/M7.1.md | "tell me when M7.1 is merged, also deploy it" |
+| 2026-10-11 20:04 CDT | deploy | main@68a15ea (receipt fix) → production web-v2 | "deploy 68a15ea" |
 
 ## Log
 
@@ -608,3 +609,6 @@ several harnesses read it and the repo is public.
 2026-10-11 19:34 CDT MERGE M7.1 MR !22 -> main 9178201; DEPLOY 9178201 → production web-v2 (deployment 2fca750e SUCCESS); SMOKE GREEN 7/0; live write check own-origin 401, cross-site 403
 2026-10-11 19:34 CDT FIX blank receipt after paying (<ReceiptView> unresolved; CheckoutReceiptView) found while recording the demo; MR -> main 68a15ea; components-resolve unit test; not deployed yet
 2026-10-11 19:34 CDT DEMO docs/demo/SCRIPT.md (teleprompter, 11 shots, 1:52) + docs/demo/out/teleprompter.html; video docs/demo/out/demo.mp4 (gitignored, 1920x1080 30fps)
+2026-10-11 20:04 CDT DEPLOY 68a15ea (receipt fix) → production web-v2 (deployment b05c7f8e SUCCESS); SMOKE GREEN 7/0; sign-in 401 check ok
+2026-10-11 20:04 CDT FIX be-class showed "Syntax error in text" on GitLab (Mermaid 11.13 rejects spaces/hyphens in <<stereotype>>); camelCase; route-failure candidate: draw-diagrams marks render unverified because mmdc is missing; GitLab's sandbox can verify renders
+2026-10-11 20:04 CDT DOCS diagram pictures: 21 PNGs (2x, rendered by GitLab's Mermaid 11 sandbox) in docs/architecture/diagrams/img; placed under every diagram in hld/lld, new root README.md and diagrams/README.md gallery, reviewer guide, docs index, threat model, embedding plan, HEALTH, deploy runbook, milestone reports M4-M7.1. Decision journal untouched (append-only)

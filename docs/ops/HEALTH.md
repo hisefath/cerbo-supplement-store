@@ -162,3 +162,17 @@ write $HANDOFF_DIR/runs/M4-T903/result.md
 |---|---|---|---|
 | Q-1 | GAP tasks on the M4 branch (`M4-T901` to `T903`) instead of the next milestone? | yes, per D55: the demo deploys `milestone/m4-tracer-bullet` (same as runbook Q-3) | GAP-1, GAP-2, GAP-3 |
 | Q-2 | Probe choice | a free external uptime monitor, 5-minute checks, email alerts (runbook Q-4) | §4 |
+
+<!-- pictures:start -->
+## Diagrams
+
+Pictures of the Mermaid diagrams (click one to open it full size).
+
+**Sequence: checking system health**
+
+[![Sequence: checking system health](../architecture/diagrams/img/sequence-system-health.png)](../architecture/diagrams/img/sequence-system-health.png)
+
+**Sequence: platform health (where orders get stuck)**
+
+[![Sequence: platform health (where orders get stuck)](../architecture/diagrams/img/sequence-platform-health.png)](../architecture/diagrams/img/sequence-platform-health.png)
+<!-- pictures:end -->
