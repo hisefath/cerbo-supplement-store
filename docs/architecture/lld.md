@@ -313,6 +313,8 @@ erDiagram
     }
 ```
 <!-- /diagram -->
+<!-- picture: erd -->
+[![Data model (ERD): every table, key and money column](diagrams/img/erd.png)](diagrams/img/erd.png)
 
 All money columns are whole US cents in `integer` (max about $21 million per value, far above any order); the PRD fixes one currency (C-5, US only), so no currency column. All times are `timestamptz` stored in UTC (HLD §10 Time). Primary keys are `bigint` identity columns (proposed D40). No table is ever deleted from by the app except the short-lived `idempotency_keys` and `sessions` rows (Q-5); every history table is append-only by database permission (INV-4).
 
@@ -746,123 +748,123 @@ All money columns are whole US cents in `integer` (max about $21 million per val
 %% diagram: be-class
 %% source: docs/architecture/lld.md#2-backend-components @ ef9f129
 %% drawn: 2026-10-11T14:41:14Z by draw-diagrams (claude, claude-opus-5-5)
-%% render: unverified
+%% render: verified 2026-10-11 in GitLab mermaid 11.13; stereotypes are single camelCase words and member signatures read "name Type" (a space inside a stereotype, or a colon inside a member, fails to parse)
 %% render-check: mmdc not on PATH
 %% missing: 1
 %% Generated from the source section. Do not edit by hand: fix the section, then re-run `draw-diagrams be-class`.
 classDiagram
     class BE1["BE-1 ApiHandlers"]
-    <<route handlers>> BE1
-    BE1 : +defineApiHandler~T~(fn: (event: H3Event) => Promise~T~)
+    <<routeHandlers>> BE1
+    BE1 : +defineApiHandler~T~(fn (event H3Event) => Promise~T~)
     %% ⚠ missing: signature of sendProblem — docs/architecture/lld.md#2-backend-components does not state it
     class BE2["BE-2 PageGuards"]
-    <<route middleware>> BE2
+    <<routeMiddleware>> BE2
     BE2 : +defineNuxtRouteMiddleware(to => …)
-    BE2 : +safeNext(next: unknown) string | null
+    BE2 : +safeNext(next unknown) string | null
     class BE3["BE-3 SessionService"]
     <<service>> BE3
-    BE3 : +signIn(email: string, password: string, ip: string) Promise~{ viewer: Viewer#59; cookieToken: string }~
-    BE3 : +resolve(cookieToken: string | undefined) Promise~Viewer | null~
-    BE3 : +clientAddress(event: H3Event) string
-    BE3 : +signOut(cookieToken: string) Promise~void~
+    BE3 : +signIn(email string, password string, ip string) Promise~{ viewer Viewer#59; cookieToken string }~
+    BE3 : +resolve(cookieToken string | undefined) Promise~Viewer | null~
+    BE3 : +clientAddress(event H3Event) string
+    BE3 : +signOut(cookieToken string) Promise~void~
     class BE4["BE-4 AccessPolicy"]
     <<policy>> BE4
-    BE4 : +assertRole(viewer: Viewer | null, allowed: Role[]) asserts viewer is Viewer
-    BE4 : +assertIsOrderPatient(viewer: Viewer, order: OrderOwnership) void
+    BE4 : +assertRole(viewer Viewer | null, allowed Role[]) asserts viewer is Viewer
+    BE4 : +assertIsOrderPatient(viewer Viewer, order OrderOwnership) void
     BE4 : +ORDER_REVIEWER_ROLES Role[]
     BE4 : +PLATFORM_HEALTH_ROLES Role[]
     BE4 : +FINANCE_ROLES Role[]
     BE4 : +SRE_ROLES Role[]
-    BE4 : +assertCanViewOrder(viewer: Viewer, order: OrderOwnership) void
-    BE4 : +assertCanActOnPatient(viewer: Viewer, patient: PatientRef) void
-    BE4 : +assertCanChangeRole(actor: Viewer, target: StaffRef) void
+    BE4 : +assertCanViewOrder(viewer Viewer, order OrderOwnership) void
+    BE4 : +assertCanActOnPatient(viewer Viewer, patient PatientRef) void
+    BE4 : +assertCanChangeRole(actor Viewer, target StaffRef) void
     class BE5["BE-5 IdempotencyGuard"]
-    <<middleware service>> BE5
-    BE5 : +begin(userId: bigint, key: string | undefined, route: string, requestHash: Buffer) Promise~{ replay: StoredResponse } | { proceed: true }~
-    BE5 : +complete(userId: bigint, key: string, status: number, body: unknown) Promise~void~
-    BE5 : +release(userId: bigint, key: string) Promise~void~
+    <<middlewareService>> BE5
+    BE5 : +begin(userId bigint, key string | undefined, route string, requestHash Buffer) Promise~{ replay StoredResponse } | { proceed true }~
+    BE5 : +complete(userId bigint, key string, status number, body unknown) Promise~void~
+    BE5 : +release(userId bigint, key string) Promise~void~
     class BE6["BE-6 Money"]
-    <<pure module>> BE6
-    BE6 : +platformFeeCents(amountPaidCents: number) number
-    BE6 : +payoutCents(amountPaidCents: number, itemCostCents: number, feeCents: number) number
-    BE6 : +allocateFee(lineAmountsCents: number[], feeCents: number) number[]
-    BE6 : +defaultPriceCents(unitCostCents: number) number
-    BE6 : +priceFromMargin(unitCostCents: number, marginBasisPoints: number) number
-    BE6 : +lowestAllowedPriceCents(unitCostCents: number) number
-    BE6 : +belowFloorProductIds~T~(lines: { id: T#59; unitPriceCents: number#59; unitCostCents: number#59; quantity: number }[]) T[]
-    BE6 : +unitCostFromLowestAllowedPrice(lowestAllowedCents: number) number
-    BE6 : +assertSplitBalances(split: Split) void
+    <<pureModule>> BE6
+    BE6 : +platformFeeCents(amountPaidCents number) number
+    BE6 : +payoutCents(amountPaidCents number, itemCostCents number, feeCents number) number
+    BE6 : +allocateFee(lineAmountsCents number[], feeCents number) number[]
+    BE6 : +defaultPriceCents(unitCostCents number) number
+    BE6 : +priceFromMargin(unitCostCents number, marginBasisPoints number) number
+    BE6 : +lowestAllowedPriceCents(unitCostCents number) number
+    BE6 : +belowFloorProductIds~T~(lines { id T#59; unitPriceCents number#59; unitCostCents number#59; quantity number }[]) T[]
+    BE6 : +unitCostFromLowestAllowedPrice(lowestAllowedCents number) number
+    BE6 : +assertSplitBalances(split Split) void
     class BE7["BE-7 CatalogService"]
     <<service>> BE7
-    BE7 : +catalogForPatient(viewer: Viewer, patientId: bigint) Promise~Catalog~
-    BE7 : +currentPrices(practiceId: bigint, productIds: bigint[]) Promise~Map~bigint, number~~
+    BE7 : +catalogForPatient(viewer Viewer, patientId bigint) Promise~Catalog~
+    BE7 : +currentPrices(practiceId bigint, productIds bigint[]) Promise~Map~bigint, number~~
     class BE8["BE-8 PricingService"]
     <<service>> BE8
-    BE8 : +changePrice(viewer: Viewer, productId: bigint, input: PriceChangeInput) Promise~PracticePrice~
-    BE8 : +listPrices(viewer: Viewer, historyCursor?: string) Promise~PriceList~
+    BE8 : +changePrice(viewer Viewer, productId bigint, input PriceChangeInput) Promise~PracticePrice~
+    BE8 : +listPrices(viewer Viewer, historyCursor? string) Promise~PriceList~
     class BE9["BE-9 OrderService"]
     <<service>> BE9
-    BE9 : +sendOrder(viewer: Viewer, input: SendOrderInput) Promise~Order~
-    BE9 : +getOrderForViewer(viewer: Viewer, orderId: bigint) Promise~OrderView~
-    BE9 : +startCheckout(viewer: Viewer, orderId: bigint) Promise~Checkout~
-    BE9 : +cancelOrder(viewer: Viewer, orderId: bigint) Promise~Order~
-    BE9 : +expireHoldIfDue(orderId: bigint) Promise~void~
+    BE9 : +sendOrder(viewer Viewer, input SendOrderInput) Promise~Order~
+    BE9 : +getOrderForViewer(viewer Viewer, orderId bigint) Promise~OrderView~
+    BE9 : +startCheckout(viewer Viewer, orderId bigint) Promise~Checkout~
+    BE9 : +cancelOrder(viewer Viewer, orderId bigint) Promise~Order~
+    BE9 : +expireHoldIfDue(orderId bigint) Promise~void~
     class BE10["BE-10 PaymentService"]
     <<service>> BE10
-    BE10 : +countPayAttempt(userId: bigint, ip: string) Promise~void~
-    BE10 : +pay(viewer: Viewer, orderId: bigint, idempotencyKey: string) Promise~Receipt~
+    BE10 : +countPayAttempt(userId bigint, ip string) Promise~void~
+    BE10 : +pay(viewer Viewer, orderId bigint, idempotencyKey string) Promise~Receipt~
     class BE11["BE-11 PaymentGateway"]
-    <<adapter (stub)>> BE11
-    BE11 : +charge(request: { orderId: bigint#59; amountCents: number#59; idempotencyKey: string }) Promise~{ outcome: 'succeeded' } | { outcome: 'failed'#59; reason: 'declined' | 'no_answer' }~
+    <<adapterStub>> BE11
+    BE11 : +charge(request { orderId bigint#59; amountCents number#59; idempotencyKey string }) Promise~{ outcome 'succeeded' } | { outcome 'failed'#59; reason 'declined' | 'no_answer' }~
     class BE12["BE-12 MessagingGateway"]
-    <<adapter (stub)>> BE12
-    BE12 : +sendOrderNotice(input: { orderId: bigint#59; patientId: bigint#59; practiceId: bigint }) Promise~{ token: string }~
-    BE12 : +getNotice(token: string) Promise~Notice~
+    <<adapterStub>> BE12
+    BE12 : +sendOrderNotice(input { orderId bigint#59; patientId bigint#59; practiceId bigint }) Promise~{ token string }~
+    BE12 : +getNotice(token string) Promise~Notice~
     class BE13["BE-13 StockService"]
     <<service>> BE13
-    BE13 : +adjust(viewer: Viewer, productId: bigint, input: StockAdjustmentInput) Promise~StockMovement~
-    BE13 : +reserveForOrder(tx: Transaction~Database~, orderId: bigint) Promise~void~
-    BE13 : +releaseForOrder(tx: Transaction~Database~, orderId: bigint) Promise~void~
-    BE13 : +listStock(viewer: Viewer, historyCursor?: string) Promise~StockList~
+    BE13 : +adjust(viewer Viewer, productId bigint, input StockAdjustmentInput) Promise~StockMovement~
+    BE13 : +reserveForOrder(tx Transaction~Database~, orderId bigint) Promise~void~
+    BE13 : +releaseForOrder(tx Transaction~Database~, orderId bigint) Promise~void~
+    BE13 : +listStock(viewer Viewer, historyCursor? string) Promise~StockList~
     class BE14["BE-14 OpsOrderQueries"]
-    <<read model>> BE14
-    BE14 : +listOrders(viewer: Viewer, filter: { status: 'paid' | 'needs_review'#59; number?: bigint#59; cursor?: string#59; limit: number }) Promise~OpsOrderPage~
-    BE14 : +getBreakdown(viewer: Viewer, orderId: bigint) Promise~OrderBreakdown~
+    <<readModel>> BE14
+    BE14 : +listOrders(viewer Viewer, filter { status 'paid' | 'needs_review'#59; number? bigint#59; cursor? string#59; limit number }) Promise~OpsOrderPage~
+    BE14 : +getBreakdown(viewer Viewer, orderId bigint) Promise~OrderBreakdown~
     class BE15["BE-15 PracticeDashboardQueries"]
-    <<read model>> BE15
-    BE15 : +dashboard(viewer: Viewer, month: YearMonth) Promise~PracticeDashboard~
-    BE15 : +orders(viewer: Viewer, month: YearMonth, cursor?: string, limit?: number) Promise~PracticeOrderPage~
+    <<readModel>> BE15
+    BE15 : +dashboard(viewer Viewer, month YearMonth) Promise~PracticeDashboard~
+    BE15 : +orders(viewer Viewer, month YearMonth, cursor? string, limit? number) Promise~PracticeOrderPage~
     class BE16["BE-16 PlatformHealthQueries"]
-    <<read model>> BE16
-    BE16 : +health(viewer: Viewer, month: YearMonth) Promise~PlatformHealth~
+    <<readModel>> BE16
+    BE16 : +health(viewer Viewer, month YearMonth) Promise~PlatformHealth~
     class BE17["BE-17 FinanceReportService"]
-    <<read model>> BE17
-    BE17 : +report(viewer: Viewer, period: Period) Promise~FinancialReport~
-    BE17 : +exportCsv(viewer: Viewer, period: Period) AsyncIterable~string~
+    <<readModel>> BE17
+    BE17 : +report(viewer Viewer, period Period) Promise~FinancialReport~
+    BE17 : +exportCsv(viewer Viewer, period Period) AsyncIterable~string~
     class BE18["BE-18 StaffAccessService"]
     <<service>> BE18
-    BE18 : +listStaff(viewer: Viewer) Promise~StaffList~
-    BE18 : +changeRole(actor: Viewer, targetUserId: bigint, input: RoleChangeInput) Promise~StaffMember~
-    BE18 : +accessLog(viewer: Viewer, month: YearMonth, cursor?: string, limit?: number) Promise~AccessLogPage~
+    BE18 : +listStaff(viewer Viewer) Promise~StaffList~
+    BE18 : +changeRole(actor Viewer, targetUserId bigint, input RoleChangeInput) Promise~StaffMember~
+    BE18 : +accessLog(viewer Viewer, month YearMonth, cursor? string, limit? number) Promise~AccessLogPage~
     class BE19["BE-19 RequestMetrics"]
-    <<middleware + read model>> BE19
-    BE19 : +routeGroup(path: string) string | null
-    BE19 : +record(routeGroup: string, status: number, durationMs: number, stockRefusal: boolean) Promise~void~
+    <<middlewareReadModel>> BE19
+    BE19 : +routeGroup(path string) string | null
+    BE19 : +record(routeGroup string, status number, durationMs number, stockRefusal boolean) Promise~void~
     BE19 : +recordPing() Promise~void~
-    BE19 : +systemHealth(viewer: Viewer, month: YearMonth) Promise~SystemHealth~
+    BE19 : +systemHealth(viewer Viewer, month YearMonth) Promise~SystemHealth~
     class BE20["BE-20 Clock"]
     <<seam>> BE20
     BE20 : +now() Date
     class BE21["BE-21 PruneAttempts"]
-    <<scheduled task>> BE21
-    BE21 : +run() Promise~{ result: 'ok' }~
+    <<scheduledTask>> BE21
+    BE21 : +run() Promise~{ result 'ok' }~
     class BE22["BE-22 Paging"]
-    <<pure module>> BE22
-    BE22 : +encodeCursor(key: string | null, id: string) string
-    BE22 : +decodeCursor(cursor: string, pointer: string, keyed: boolean) { key: string | null#59; id: string }
-    BE22 : +parseLimit(raw: unknown, pointer: string) number
-    BE22 : +parseMonth(raw: unknown, pointer: string) YearMonth
-    BE22 : +parsePeriod(query: { month?: unknown#59; from?: unknown#59; to?: unknown }) Period
+    <<pureModule>> BE22
+    BE22 : +encodeCursor(key string | null, id string) string
+    BE22 : +decodeCursor(cursor string, pointer string, keyed boolean) { key string | null#59; id string }
+    BE22 : +parseLimit(raw unknown, pointer string) number
+    BE22 : +parseMonth(raw unknown, pointer string) YearMonth
+    BE22 : +parsePeriod(query { month? unknown#59; from? unknown#59; to? unknown }) Period
     BE1 ..> BE3 : depends on
     BE1 ..> BE4 : depends on
     BE1 ..> BE5 : depends on
@@ -927,6 +929,8 @@ classDiagram
     note for BE22 "depends on: Zod (installed)"
 ```
 <!-- /diagram -->
+<!-- picture: be-class -->
+[![Backend components: every service and its public methods](diagrams/img/be-class.png)](diagrams/img/be-class.png)
 
 **Layering:** Nuxt server routes (`server/api/**`, BE-1) and page route guards (BE-2) only translate HTTP: they read the session (BE-3), ask the access policy (BE-4), wrap mutations in the idempotency guard (BE-5), call one service, and map its typed errors to problem details. Services (BE-7 to BE-19) hold the rules and own their tables. Pure money arithmetic lives in BE-6, with no I/O. Every outside system is reached through exactly one adapter (BE-11 payments, BE-12 messaging), each a §9 seam. Validation runs in the route handler with Zod schemas generated from the same shapes as `openapi.yaml`. Every component is in container CN-1.
 
@@ -1364,6 +1368,8 @@ flowchart TD
     FE23 -.->|"retry()"| FE21
 ```
 <!-- /diagram -->
+<!-- picture: fe-components -->
+[![Frontend components: every screen and the parts it is built from](diagrams/img/fe-components.png)](diagrams/img/fe-components.png)
 
 **Rendering model:** hybrid, per HLD D34 and D32: Nuxt renders each page on the server for the first view, then the page's components call the JSON API (EP-15 to EP-40) on the same origin for every read and action. Server data lives in each page's fetch (Nuxt `useFetch`), never in a client store.
 
@@ -1678,6 +1684,8 @@ sequenceDiagram
     end
 ```
 <!-- /diagram -->
+<!-- picture: sequence-send-order -->
+[![Sequence: a provider builds and sends an order](diagrams/img/sequence-send-order.png)](diagrams/img/sequence-send-order.png)
 
 - **Trigger:** Dr. Chen opens the Supplements section of Ana Ruiz's chart and presses Send to Ana Ruiz
 - **Participants:** Provider (actor), FE-4 OrderBuilderPage, BE-1 ApiHandlers, BE-5 IdempotencyGuard, BE-9 OrderService, BE-7 CatalogService, BE-12 MessagingGateway, DB
@@ -1793,6 +1801,8 @@ sequenceDiagram
     end
 ```
 <!-- /diagram -->
+<!-- picture: sequence-pay-order -->
+[![Sequence: a patient reviews and pays an order (lock, idempotency, split, ledger)](diagrams/img/sequence-pay-order.png)](diagrams/img/sequence-pay-order.png)
 
 - **Trigger:** Ana opens her notice and signs in
 - **Participants:** Patient (actor), FE-3 NoticePage, FE-2 SignInPage, FE-7 PatientOrderPage, FE-8 CheckoutStep, BE-1 ApiHandlers, BE-3 SessionService, BE-5 IdempotencyGuard, BE-9 OrderService, BE-10 PaymentService, BE-11 PaymentGateway, BE-13 StockService, DB
@@ -1882,6 +1892,8 @@ sequenceDiagram
     end
 ```
 <!-- /diagram -->
+<!-- picture: sequence-audit-order -->
+[![Sequence: a reviewer checks where every cent went](diagrams/img/sequence-audit-order.png)](diagrams/img/sequence-audit-order.png)
 
 - **Trigger:** Omar opens Paid orders
 - **Participants:** Operations specialist (actor), SRE or data analyst (actor), FE-10 OpsOrderListPage, FE-11 OrderBreakdownPage, FE-12 MoneyEquation, BE-1 ApiHandlers, BE-4 AccessPolicy, BE-14 OpsOrderQueries, DB
@@ -1946,6 +1958,8 @@ sequenceDiagram
     end
 ```
 <!-- /diagram -->
+<!-- picture: sequence-change-price -->
+[![Sequence: a provider changes a price on purpose](diagrams/img/sequence-change-price.png)](diagrams/img/sequence-change-price.png)
 
 - **Trigger:** Dr. Chen chooses Change price on Omega-3
 - **Participants:** Provider (actor), FE-13 PracticePricesPage, FE-14 PriceChangeDialog, BE-1 ApiHandlers, BE-5 IdempotencyGuard, BE-8 PricingService, BE-6 Money, DB
@@ -2022,6 +2036,8 @@ sequenceDiagram
     end
 ```
 <!-- /diagram -->
+<!-- picture: sequence-practice-dashboard -->
+[![Sequence: the practice dashboard (orders, sales, stock)](diagrams/img/sequence-practice-dashboard.png)](diagrams/img/sequence-practice-dashboard.png)
 
 - **Trigger:** Dr. Chen opens the practice dashboard
 - **Participants:** Provider (actor), FE-15 PracticeDashboardPage, FE-22 MonthPicker, BE-1 ApiHandlers, BE-4 AccessPolicy, BE-9 OrderService, BE-15 PracticeDashboardQueries, DB
@@ -2098,6 +2114,8 @@ sequenceDiagram
     end
 ```
 <!-- /diagram -->
+<!-- picture: sequence-adjust-stock -->
+[![Sequence: operations records a stock change](diagrams/img/sequence-adjust-stock.png)](diagrams/img/sequence-adjust-stock.png)
 
 - **Trigger:** a delivery arrives and Omar opens Stock adjustments
 - **Participants:** Operations specialist (actor), Provider (actor), FE-16 StockAdjustmentsPage, BE-1 ApiHandlers, BE-4 AccessPolicy, BE-5 IdempotencyGuard, BE-13 StockService, DB
@@ -2167,6 +2185,8 @@ sequenceDiagram
     end
 ```
 <!-- /diagram -->
+<!-- picture: sequence-sign-in -->
+[![Sequence: sign in and idle sign-out](diagrams/img/sequence-sign-in.png)](diagrams/img/sequence-sign-in.png)
 
 - **Trigger:** anyone opens a page while signed out
 - **Participants:** Person (actor), FE-1 AppShell, FE-2 SignInPage, BE-2 PageGuards, BE-1 ApiHandlers, BE-3 SessionService, DB
@@ -2227,6 +2247,8 @@ sequenceDiagram
     end
 ```
 <!-- /diagram -->
+<!-- picture: sequence-platform-health -->
+[![Sequence: platform health (where orders get stuck)](diagrams/img/sequence-platform-health.png)](diagrams/img/sequence-platform-health.png)
 
 - **Trigger:** Dana opens Platform health
 - **Participants:** Data analyst (actor), FE-17 PlatformHealthPage, FE-24 OrderFunnel, BE-1 ApiHandlers, BE-2 PageGuards, BE-4 AccessPolicy, BE-16 PlatformHealthQueries, DB
@@ -2289,6 +2311,8 @@ sequenceDiagram
     end
 ```
 <!-- /diagram -->
+<!-- picture: sequence-financial-report -->
+[![Sequence: finance closes the month](diagrams/img/sequence-financial-report.png)](diagrams/img/sequence-financial-report.png)
 
 - **Trigger:** Fran opens Financial report and picks October
 - **Participants:** Finance lead (actor), Other operations person (actor), FE-18 FinancialReportPage, FE-12 MoneyEquation, BE-1 ApiHandlers, BE-4 AccessPolicy, BE-17 FinanceReportService, DB
@@ -2366,6 +2390,8 @@ sequenceDiagram
     end
 ```
 <!-- /diagram -->
+<!-- picture: sequence-change-role -->
+[![Sequence: the SRE grants or removes an operations role](diagrams/img/sequence-change-role.png)](diagrams/img/sequence-change-role.png)
 
 - **Trigger:** Sam opens Operations access to give Dana a role
 - **Participants:** SRE (actor), Other operations person (actor), FE-19 OperationsAccessPage, BE-1 ApiHandlers, BE-4 AccessPolicy, BE-5 IdempotencyGuard, BE-18 StaffAccessService, DB
@@ -2439,6 +2465,8 @@ sequenceDiagram
     end
 ```
 <!-- /diagram -->
+<!-- picture: sequence-access-log -->
+[![Sequence: reviewing the staff access log](diagrams/img/sequence-access-log.png)](diagrams/img/sequence-access-log.png)
 
 - **Trigger:** Fran opens Access log for October
 - **Participants:** Finance lead (actor), Other operations person (actor), FE-20 AccessLogPage, BE-1 ApiHandlers, BE-4 AccessPolicy, BE-18 StaffAccessService, DB
@@ -2495,6 +2523,8 @@ sequenceDiagram
     end
 ```
 <!-- /diagram -->
+<!-- picture: sequence-system-health -->
+[![Sequence: checking system health](diagrams/img/sequence-system-health.png)](diagrams/img/sequence-system-health.png)
 
 - **Trigger:** Sam opens System health for October
 - **Participants:** SRE (actor), Uptime monitor (external), FE-21 SystemHealthPage, BE-1 ApiHandlers, BE-4 AccessPolicy, BE-19 RequestMetrics, DB
@@ -2541,6 +2571,8 @@ stateDiagram-v2
     needs_review --> [*]
 ```
 <!-- /diagram -->
+<!-- picture: state-order -->
+[![State machine: an order (sent, in checkout, paid, cancelled, needs review)](diagrams/img/state-order.png)](diagrams/img/state-order.png)
 
 - **Initial:** `sent` · **Terminal:** `paid`, `cancelled`, `needs_review` · **Stored in:** CHECK `ck_orders_status`
 - **Enforced in:** BE-9 and BE-10, each transition a conditional update ("change to X only where the status is still Y", checking the affected-row count), so two racing requests can't both win; (changed, proposed D85) every 409 `/problems/invalid-transition` names `from` and `event`
@@ -2587,6 +2619,8 @@ stateDiagram-v2
     failed --> [*]
 ```
 <!-- /diagram -->
+<!-- picture: state-payment-attempt -->
+[![State machine: a payment attempt](diagrams/img/state-payment-attempt.png)](diagrams/img/state-payment-attempt.png)
 
 - **Initial:** `processing` · **Terminal:** `succeeded`, `failed` · **Stored in:** CHECK `ck_payment_attempts_status`
 - **Enforced in:** BE-10.pay with conditional updates; `uq_payment_attempts_one_processing` and `uq_payment_attempts_one_success` stop two attempts racing
@@ -2624,6 +2658,8 @@ stateDiagram-v2
     completed --> [*]
 ```
 <!-- /diagram -->
+<!-- picture: state-idempotency-key -->
+[![State machine: an idempotency key](diagrams/img/state-idempotency-key.png)](diagrams/img/state-idempotency-key.png)
 
 - **Initial:** `in_flight` · **Terminal:** `completed` (replayed for 24 h); a released key ends its life by deletion, so a retry starts again from Initial · **Stored in:** CHECK `ck_idempotency_keys_status`
 - **Enforced in:** BE-5 with an insert that fails on the primary key for a repeat, and conditional updates

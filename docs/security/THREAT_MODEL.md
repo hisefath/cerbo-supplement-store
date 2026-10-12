@@ -95,3 +95,21 @@ Worst first. "Not built" means the repo has no defence; "no test" means the defe
 
 Medium residual risks with tests in place: T-9 and T-11 (owner role and live grants unchecked, N10),
 T-15 (shared demo password, Q2; proxy address, N2), T-25 (read routes unlimited, SEC-17).
+
+<!-- pictures:start -->
+## Diagrams
+
+The trust boundaries this model walks (TB-1 to TB-5) are the dashed boxes in the container diagram.
+
+**Containers: one web app and one database, with the trust boundaries between them**
+
+[![Containers: one web app and one database, with the trust boundaries between them](../architecture/diagrams/img/hld-container.png)](../architecture/diagrams/img/hld-container.png)
+
+**System context: who uses the store and which outside systems it talks to**
+
+[![System context: who uses the store and which outside systems it talks to](../architecture/diagrams/img/hld-context.png)](../architecture/diagrams/img/hld-context.png)
+
+**Sequence: sign in and idle sign-out**
+
+[![Sequence: sign in and idle sign-out](../architecture/diagrams/img/sequence-sign-in.png)](../architecture/diagrams/img/sequence-sign-in.png)
+<!-- pictures:end -->

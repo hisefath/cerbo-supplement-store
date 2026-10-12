@@ -167,3 +167,13 @@ Never add `-y`, `--yes` or `--new` to `railway up`, and never deploy without `--
 | Q-2 | Does Railway's Node builder pick Node 22.22+ from `engines` and start with `node .output/server/index.mjs`? | confirm in the first build log; if not, a follow-up task adds a `railway.json` (config is implement-task's) | DEP-3 |
 | Q-3 | ~~Should the GAP tasks land on the M4 branch?~~ answered: yes (Approvals "Approve, run the three GAP tasks") | — | nothing |
 | Q-4 | Which uptime monitor watches `/healthz`? | a free external monitor every 5 minutes alerting your email (you create the account) | HEALTH.md §4 |
+
+<!-- pictures:start -->
+## Diagrams
+
+Pictures of the Mermaid diagrams (click one to open it full size).
+
+**Deployment: local machine vs. production on Railway**
+
+[![Deployment: local machine vs. production on Railway](../architecture/diagrams/img/deployment.png)](../architecture/diagrams/img/deployment.png)
+<!-- pictures:end -->

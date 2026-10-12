@@ -60,3 +60,17 @@ page, agents will not find it. `garden-docs` keeps this file in sync; it lists p
 - `docs/product/prd.md` is living; `specs/M<N>-<slug>/` is frozen once its milestone merges.
 - Templates for the task and result contracts: `specs/_templates/task.md`, `specs/_templates/result.md`.
 - Private reflections and quiz notes never live here: `~/software-factory-kit-private/<repo>/`.
+
+<!-- pictures:start -->
+## Diagrams
+
+All 21 pictures: [architecture/diagrams/README.md](architecture/diagrams/README.md).
+
+**System context: who uses the store and which outside systems it talks to**
+
+[![System context: who uses the store and which outside systems it talks to](architecture/diagrams/img/hld-context.png)](architecture/diagrams/img/hld-context.png)
+
+**Containers: one web app and one database, with the trust boundaries between them**
+
+[![Containers: one web app and one database, with the trust boundaries between them](architecture/diagrams/img/hld-container.png)](architecture/diagrams/img/hld-container.png)
+<!-- pictures:end -->

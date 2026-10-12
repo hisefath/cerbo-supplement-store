@@ -172,3 +172,29 @@ between the markers.
 | FR-068 | If anyone tries to change the items or quantities of a sent… | M4 | M4_AT_039 | `tests/acceptance/M4/send-order.test.ts` |
 | FR-069 | The system shall share each paid order's one platform fee across its… | M5 | M5_AT_022, M5_AT_027, M5_AT_028 | `tests/acceptance/M5/stock-dashboard.test.ts` |
 <!-- evidence:end -->
+
+<!-- pictures:start -->
+## Diagrams
+
+Pictures of the Mermaid diagrams (click one to open it full size).
+
+**System context: who uses the store and which outside systems it talks to**
+
+[![System context: who uses the store and which outside systems it talks to](architecture/diagrams/img/hld-context.png)](architecture/diagrams/img/hld-context.png)
+
+**Containers: one web app and one database, with the trust boundaries between them**
+
+[![Containers: one web app and one database, with the trust boundaries between them](architecture/diagrams/img/hld-container.png)](architecture/diagrams/img/hld-container.png)
+
+**Data model (ERD): every table, key and money column**
+
+[![Data model (ERD): every table, key and money column](architecture/diagrams/img/erd.png)](architecture/diagrams/img/erd.png)
+
+**Sequence: a patient reviews and pays an order (lock, idempotency, split, ledger)**
+
+[![Sequence: a patient reviews and pays an order (lock, idempotency, split, ledger)](architecture/diagrams/img/sequence-pay-order.png)](architecture/diagrams/img/sequence-pay-order.png)
+
+**State machine: an order (sent, in checkout, paid, cancelled, needs review)**
+
+[![State machine: an order (sent, in checkout, paid, cancelled, needs review)](architecture/diagrams/img/state-order.png)](architecture/diagrams/img/state-order.png)
+<!-- pictures:end -->

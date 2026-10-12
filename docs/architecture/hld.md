@@ -111,6 +111,8 @@ flowchart LR
     X4 -->|"deploys us, injects secrets, restarts on crash, backs up the database (⚠ Q-1): build, secrets, process signals, backups"| SYS
 ```
 <!-- /diagram -->
+<!-- picture: hld-context -->
+[![System context: who uses the store and which outside systems it talks to](diagrams/img/hld-context.png)](diagrams/img/hld-context.png)
 
 | Element | Kind | Interaction with our system | Data exchanged | Owner | Basis |
 |---|---|---|---|---|---|
@@ -171,6 +173,8 @@ flowchart LR
     style TB5 stroke-dasharray: 5 5
 ```
 <!-- /diagram -->
+<!-- picture: hld-container -->
+[![Containers: one web app and one database, with the trust boundaries between them](diagrams/img/hld-container.png)](diagrams/img/hld-container.png)
 
 | Id | Container | Technology | Responsibility | Data owned | Scaling unit | Basis |
 |---|---|---|---|---|---|---|
@@ -429,6 +433,8 @@ flowchart TB
     SEC_production[/"secrets from: Railway's environment secrets"/] -.->|"secrets from"| ENV_production
 ```
 <!-- /diagram -->
+<!-- picture: deployment -->
+[![Deployment: local machine vs. production on Railway](diagrams/img/deployment.png)](diagrams/img/deployment.png)
 
 | Environment | Runs on | Containers | Deployed by | Secrets from | Data | Basis |
 |---|---|---|---|---|---|---|
