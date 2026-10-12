@@ -8,24 +8,23 @@ video: docs/demo/out/demo.mp4
 # Demo script — Cerbo supplement store
 
 The video is silent. Read each line while its shot is on screen. Start reading when the clock in the left column
-shows. The video circles and points at each thing as you mention it. Speak slowly, as if to a friend. Every line is short enough to say in one breath;
-pause briefly between lines.
+shows. The video circles and points at each thing as you mention it. Speak at a steady pace; each line fits its shot with a short pause at the end.
 
 ## Teleprompter
 
 | Clock | On screen | Say |
 |---|---|---|
-| 0:00 | The GitLab repo | Meet the supplement store for Cerbo, the app doctors use to run their practice. Everything lives right here. |
-| 0:07 | Dr. Chen builds Ana's order | A doctor picks what her patient needs. As she adds each item, she sees the total, our small fee, and exactly what she keeps. One click, and it's on its way. |
-| 0:20 | Ana opens her order and pays | Now the patient. She opens her order, checks the price, and pays. Tap pay twice by accident? She's still charged once. And here's her receipt. |
-| 0:34 | Fran's financial report | Behind the scenes, finance sees every dollar split three ways, and one simple answer: it all adds up. |
-| 0:42 | High-level design diagrams | How does it work? One app, one database. Payments and messages plug in through clean doors, so the real ones can slide in later. |
-| 0:54 | Data model, then the pay sequence | Here's the data. Money is written down once, and never erased. And if someone presses pay twice, the app simply replays its first answer. No double charge. |
-| 1:08 | My answers in the product spec | AI helped build this, but I made the calls. When the AI misread a competitor's price cap, I set it straight, and asked for a price-change form with a paper trail. When the AI wanted to leave the order dashboard for later, I pulled it forward. |
-| 1:26 | The decision ledger | Every decision lives in this ledger: what we chose, and what we didn't. |
-| 1:32 | The planted-bug check | The AI wrote the code. Tests it couldn't touch decided when it was done. |
-| 1:38 | The top of payments.ts | The heart of it: payments happen in two quick steps, so a slow bank never jams the store. |
-| 1:45 | The reviewer guide | And if you're reviewing: start here. Every promise links to the test that proves it. Thank you. |
+| 0:00 | The GitLab repo | This is a supplement ordering service built for Cerbo, an EHR used by functional-medicine practices. |
+| 0:07 | Dr. Chen builds Ana's order | A provider builds an order for a patient. As items are added, it shows the total, the 0.75% platform fee, and the provider's payout. Then the provider sends it. |
+| 0:20 | Ana opens her order and pays | The patient signs in, opens the order, and pays. Payment is idempotent: pressing pay twice still charges once. The receipt lists each item and the total. |
+| 0:34 | Fran's financial report | Finance sees each month split into cost, payouts and fees, and whether it balances. |
+| 0:42 | High-level design diagrams | The architecture is one Nuxt app and one PostgreSQL database. Payments and messaging are stand-ins behind their own interfaces, so real providers can replace them later. |
+| 0:54 | Data model, then the pay sequence | Every payment is recorded on the order and in an append-only ledger that must balance. A repeated payment request returns the stored response instead of charging again. |
+| 1:08 | My answers in the product spec | AI wrote most of this code under my review, and I corrected it where it was wrong. It treated a competitor's discount cap as a price ceiling, and it wanted to defer the order dashboard. I changed both. |
+| 1:26 | The decision ledger | Every decision is recorded, grouped here by topic, with the options we rejected. |
+| 1:32 | The planted-bug check | We also plant bugs in the money code on purpose, to prove the tests catch them. |
+| 1:38 | The top of payments.ts | Payment uses two short transactions around the charge, so no lock is held while waiting. |
+| 1:45 | The reviewer guide | The reviewer guide links every requirement to the test that proves it. |
 
 ## Shot list (what the video does)
 
@@ -48,16 +47,16 @@ pause briefly between lines.
 | Claim | Evidence |
 |---|---|
 | The doctor sees total, fee and payout before sending | `app/components/order-builder/OrderPanel.vue:45-47`; FR-002 |
-| Pay twice, charged once | FR-008; M4_AT_006 (`tests/acceptance/M4/pay-order.test.ts`); D41 |
+| Pressing pay twice charges once (idempotent) | FR-008; M4_AT_006 (`tests/acceptance/M4/pay-order.test.ts`); D41 |
 | Finance sees the three-way split and that it balances | FR-060, FR-061; `app/pages/ops/finance.vue` |
-| One app, one database, payments and messages as stand-ins | `docs/architecture/hld.md` §2-§3; D33, D34 |
+| One Nuxt app, one PostgreSQL database; payments and messaging are stand-ins behind interfaces | `docs/architecture/hld.md` §2-§3; D33, D34 |
 | Money written once and never erased | INV-4; `db/migrations/1760000002000_payments-ledger.sql` (triggers, insert-only grant) |
 | Pay pressed again replays the first answer | `docs/architecture/lld.md` SEQ-2; D41 |
 | Price cap correction, price-change form with a paper trail | `docs/product/prd.md` Interview log Q3 (the human's words) |
 | Dashboard pulled forward | `docs/product/prd.md` Interview log Q9: recommendation "order-status list Later", answer "we need a dashboard" |
 | Every decision with what lost | `docs/decisions/DECISION_JOURNAL.md`, `docs/decisions/REVIEW.md` |
 | Tests the AI couldn't touch decided done | `AGENTS.md` Never rules (`tests/acceptance/**` is QA-owned); `scripts/scope-guard.sh`; `docs/ops/MUTATION.md` |
-| Two quick steps, so a slow bank never jams the store | `server/services/payments.ts:1-3`; D42 |
+| Two short transactions around the charge; no lock held while waiting | `server/services/payments.ts:1-3`; D42 |
 | Every promise links to its test | `docs/REVIEWER_GUIDE.md`; `scripts/evidence-table.sh` |
 
 ## Recording notes
