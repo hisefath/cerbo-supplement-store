@@ -605,3 +605,6 @@ several harnesses read it and the repo is public.
 2026-10-11 18:33 CDT M7.1 red: AT-003 got 200 (expected 403); AT-001/002/004 green pins. AT-004 does not kill MUT-1 (expireHoldIfDue takes the same lock first) -> accepted, documented
 2026-10-11 18:33 CDT M7.1 BE-23 OriginGuard built; unit 3/3, M7.1 4/4
 2026-10-11 18:35 CDT REVIEW M7.1 pass1 R1-R6 fixed (host normalised)
+2026-10-11 19:34 CDT MERGE M7.1 MR !22 -> main 9178201; DEPLOY 9178201 → production web-v2 (deployment 2fca750e SUCCESS); SMOKE GREEN 7/0; live write check own-origin 401, cross-site 403
+2026-10-11 19:34 CDT FIX blank receipt after paying (<ReceiptView> unresolved; CheckoutReceiptView) found while recording the demo; MR -> main 68a15ea; components-resolve unit test; not deployed yet
+2026-10-11 19:34 CDT DEMO docs/demo/SCRIPT.md (teleprompter, 11 shots, 1:52) + docs/demo/out/teleprompter.html; video docs/demo/out/demo.mp4 (gitignored, 1920x1080 30fps)
