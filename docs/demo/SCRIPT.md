@@ -21,7 +21,7 @@ pause briefly between lines.
 | 0:34 | Fran's financial report | Behind the scenes, finance sees every dollar split three ways, and one simple answer: it all adds up. |
 | 0:42 | High-level design diagrams | How does it work? One app, one database. Payments and messages plug in through clean doors, so the real ones can slide in later. |
 | 0:54 | Data model, then the pay sequence | Here's the data. Money is written down once, and never erased. And if someone presses pay twice, the app simply replays its first answer. No double charge. |
-| 1:08 | My answers in the product spec | AI helped build this, but I made the calls. When the research mixed up a competitor's price cap, I set it straight, and asked for a price-change form with a paper trail. When the AI wanted to leave the order dashboard for later, I pulled it forward. |
+| 1:08 | My answers in the product spec | AI helped build this, but I made the calls. When the AI misread a competitor's price cap, I set it straight, and asked for a price-change form with a paper trail. When the AI wanted to leave the order dashboard for later, I pulled it forward. |
 | 1:26 | The decision ledger | Every decision lives in this ledger: what we chose, and what we didn't. |
 | 1:32 | The planted-bug check | The AI wrote the code. Tests it couldn't touch decided when it was done. |
 | 1:38 | The top of payments.ts | The heart of it: payments happen in two quick steps, so a slow bank never jams the store. |
