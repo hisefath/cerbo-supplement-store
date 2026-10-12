@@ -41,3 +41,4 @@ docs/demo/raw/
 /.nuxt
 /.output
 /.claude/worktrees/
+docs/demo/out/*.mp4
