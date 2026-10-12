@@ -588,7 +588,7 @@ Copy this block for each new entry (D-ids increase by one, starting at D1):
 - Cost accepted: the advisory stays in package-lock.json and on developer machines. · Reversibility: Type 2 two-way — upgrade when patched · Confidence: high
 - Revisit if: simple-git appears in .output/server, devtools are switched on, or a Nuxt 4 release ships patched devtools. · Evidence: docs/security/CHECKLIST.md SEC-1, Q1; npm audit CMD-16; .handoff/TRACKER.md Log SEC-1 Q1 build check; approvals G5 SEC-1 (investigate, then accept) · Interview line: "A critical git-execution advisory sat in Nuxt's devtools; we proved by building that it never ships and devtools are off, then accepted it with a trigger."
 
-### D52 Accept SameSite and JSON-only as the CSRF defence  [status: accepted]
+### D52 Accept SameSite and JSON-only as the CSRF defence  [status: superseded-by D91]
 - Date 2026-10-10 15:51 CDT · phase 12 check-security (G5) · milestone M4 · Decided by: human, G5 SEC-5 2026-10-10 15:51 CDT: "Approve, add T011 and run it" · Proposed by: check-security (Claude Code, claude-opus-5-5) · artifact: docs/security/CHECKLIST.md@239c922
 - Context and forces: no anti-CSRF token or Origin check exists. Session cookies are SameSite=Lax (server/services/session.ts:180) and request bodies are JSON-only (server/utils/problem.ts:50), so a cross-site page cannot send an authenticated write today. An in-EHR iframe would need SameSite=None, which removes that protection.
 - Options:
@@ -1048,3 +1048,15 @@ Copy this block for each new entry (D-ids increase by one, starting at D1):
 - Cost accepted: a crafted request produces a 500 and an error-log line. · Reversibility: Type 2 two-way · Confidence: high
 - Revisit if: a real user hits it, or a decoded cursor ever feeds a write. · Evidence: docs/security/CHECKLIST.md SEC-18; approval G5 SEC-18 2026-10-11 14:27 CDT · Interview line: "A tampered cursor only breaks the tamperer's own request with a 500, so it is accepted until a real user hits it."
 - Review: Topic Security · Weight ●○○ · One-liner: A year-0000 cursor answers 500; accepted as low.
+
+### D91 Refuse API writes whose Origin is another site  [status: accepted]
+- Date 2026-10-11 18:27 CDT · phase clarify-spec CQ-11 · milestone M7.1 · Decided by: human, CQ-11 2026-10-11 18:27 CDT: "go M7.1" (STANDING row 2026-10-10 23:09 CDT) · Proposed by: supervisor (Claude Code, claude-opus-5-5) · artifact: docs/product/prd.md CQ-11
+- Context and forces: D52 accepted SameSite=Lax plus JSON-only bodies as the CSRF defence, with the revisit trigger "a write endpoint accepts a non-JSON body". EP-22 start checkout takes no body and no Idempotency-Key (server/api/orders/[orderId]/checkout.post.ts), so SameSite alone guards it; embedding in Cerbo (docs/architecture/embedding-plan.md §5) will loosen SameSite. Supersedes D52 in part: SameSite and JSON-only stay; an Origin check is added.
+- Options:
+  - Do nothing / simplest: keep D52 as is — cost: start checkout depends on one browser setting — rejected: the D52 trigger has fired
+  - Origin check (agent's recommendation) (agent's first proposal — no instead-of recorded): every non-GET /api request whose Origin or Sec-Fetch-Site names another site is refused 403 before the handler runs; requests with no Origin (server-to-server, tests) pass — cost: one small server middleware — chosen
+  - Anti-CSRF token on every write — cost: a token round trip in every page and client — rejected: needed only once the cookie goes SameSite=None (embedding-plan E1)
+- Choice: Origin check · Why: In the context of one write that SameSite alone guards, facing an embed that will loosen SameSite, we chose a server-side Origin check over a token now, accepting that a request with no Origin header still passes.
+- Cost accepted: a non-browser client with a stolen cookie and no Origin header is not stopped by this check (it never was by SameSite either). · Reversibility: Type 2 two-way · Confidence: high
+- Revisit if: the session cookie moves to SameSite=None (add the token, embedding-plan E1). · Evidence: docs/security/THREAT_MODEL.md T-16; CQ-11; supersedes D52 in part · Interview line: "Writes carry an Origin header in every browser, so the server refuses any write whose Origin is another site; the token comes when we embed."
+- Review: Topic Security · Weight ●●○ · One-liner: Cross-site writes refused by Origin check; token waits for the embed.

@@ -6,10 +6,10 @@
 # Commands table in AGENTS.md). Until then they fail on purpose, so an unconfigured repo can never look green.
 # Keep the target names: skills and hooks call `make check`, not the tools directly.
 
-.PHONY: check lint types test setup db-test-up test-acceptance test-acceptance-m4 test-acceptance-m5 test-acceptance-m5.1 test-acceptance-m5.2 test-acceptance-m6 test-acceptance-m6.1 decisions mutation-check test-db
+.PHONY: check lint types test setup db-test-up test-acceptance test-acceptance-m4 test-acceptance-m5 test-acceptance-m5.1 test-acceptance-m5.2 test-acceptance-m6 test-acceptance-m6.1 test-acceptance-m7.1 decisions mutation-check test-db
 
 ## check: lint + types + tests + M4, M5, M5.1, M5.2, M6 and M6.1 acceptance suites + decision review in sync — the gate
-check: lint types test test-db test-acceptance-m4 test-acceptance-m5 test-acceptance-m5.1 test-acceptance-m5.2 test-acceptance-m6 test-acceptance-m6.1 decisions
+check: lint types test test-db test-acceptance-m4 test-acceptance-m5 test-acceptance-m5.1 test-acceptance-m5.2 test-acceptance-m6 test-acceptance-m6.1 test-acceptance-m7.1 decisions
 	@echo "make check: OK"
 
 ## lint: workflow scripts must parse (docs-only phase: no product code yet; stack tools are added at M3 design)
@@ -72,6 +72,9 @@ test-acceptance-m6:
 ## test-acceptance-m6.1: the M6.1 acceptance suite, part of check (needs `make db-test-up`)
 test-acceptance-m6.1:
 	npx vitest run --dir tests/acceptance/M6.1
+
+test-acceptance-m7.1:
+	npx vitest run --dir tests/acceptance/M7.1
 
 # --- Example: Laravel 13 / PHP 8.5 (Pint + Larastan/PHPStan + Pest or PHPUnit) -------------------------------
 # Replace the three recipes above with these (recipe lines must start with a TAB):
