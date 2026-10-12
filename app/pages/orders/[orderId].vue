@@ -51,7 +51,7 @@ async function back() {
         :copy="{ 'not-found': 'We can\'t find this order.', unauthenticated: 'You were signed out after 15 minutes without activity. Sign in to return to your order.' }"
         @retry="refresh"
       />
-      <ReceiptView v-else-if="shownReceipt" :receipt="shownReceipt" />
+      <CheckoutReceiptView v-else-if="shownReceipt" :receipt="shownReceipt" />
       <template v-else-if="order">
         <section aria-labelledby="order-heading">
           <div class="page-band">
